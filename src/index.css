@@ -1,0 +1,124 @@
+@import "tailwindcss";
+
+@theme inline {
+  /* Primary brand colors - vibrant and friendly */
+  --color-primary: #ff6b6b;
+  --color-primary-foreground: #ffffff;
+
+  /* Secondary colors - playful palette */
+  --color-secondary: #4ecdc4;
+  --color-secondary-foreground: #ffffff;
+
+  /* Accent colors for game elements */
+  --color-accent: #45b7d1;
+  --color-accent-foreground: #ffffff;
+
+  /* Success/Safe color */
+  --color-success: #96ceb4;
+  --color-success-foreground: #2d5a3d;
+
+  /* Warning/Suspicious color */
+  --color-warning: #feca57;
+  --color-warning-foreground: #8b4513;
+
+  /* Danger/Impostor color */
+  --color-danger: #ff6b6b;
+  --color-danger-foreground: #ffffff;
+
+  /* Background colors */
+  --color-background: #f8f9ff;
+  --color-foreground: #2d3748;
+
+  /* Card and surface colors */
+  --color-card: #ffffff;
+  --color-card-foreground: #2d3748;
+
+  /* Muted colors */
+  --color-muted: #e2e8f0;
+  --color-muted-foreground: #64748b;
+
+  /* Border colors */
+  --color-border: #e2e8f0;
+  --color-input: #e2e8f0;
+
+  /* Ring colors for focus states */
+  --color-ring: #45b7d1;
+
+  /* Radius for rounded corners */
+  --radius: 1rem;
+
+  /* Game-specific colors */
+  --color-impostor: #ff4757;
+  --color-crewmate: #5352ed;
+  --color-chat: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+  /* Avatar colors */
+  --color-red: #ff6b6b;
+  --color-blue: #4ecdc4;
+  --color-green: #96ceb4;
+  --color-yellow: #feca57;
+  --color-purple: #a55eea;
+  --color-orange: #ff9f43;
+  --color-pink: #fd79a8;
+  --color-cyan: #00d2d3;
+}
+
+body {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+}
+
+/* Custom animations */
+@keyframes bounce-in {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(69, 183, 209, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(69, 183, 209, 0.6);
+  }
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.6s ease-out;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Game-specific styles */
+.game-gradient {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.chat-gradient {
+  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+}
+
+.impostor-gradient {
+  background: linear-gradient(135deg, #ff4757 0%, #ff3742 100%);
+}
+
+.crewmate-gradient {
+  background: linear-gradient(135deg, #5352ed 0%, #3742fa 100%);
+}
