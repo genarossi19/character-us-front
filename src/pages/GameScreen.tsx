@@ -1,191 +1,248 @@
-import type React from "react";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "../components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
-import { Badge } from "../components/ui/badge";
 import ChatComponent from "../components/ChatComponent";
-
-interface GameScreenProps {
-  gameData: any;
-  onStartVoting: () => void;
+import VotingPanel from "../components/VotingPanel";
+import { BotMessageSquare } from "lucide-react";
+interface Player {
+  id: string;
+  name: string;
+  avatar: string;
+  isAlive: boolean;
+  isImpostor: boolean;
+  character: string;
 }
 
-const characters = [
-  "Detective",
-  "Médico",
-  "Científico",
-  "Ingeniero",
-  "Capitán",
-  "Piloto",
-  "Guardia",
-  "Mecánico",
-  "Cocinero",
-  "Artista",
-];
+const GameScreen: React.FC = () => {
+  const [gameData] = useState({
+    roomCode: "123456",
+    currentUser: {
+      id: "1",
+      name: "Alex",
+      avatar: "/avatar1.png",
+      isAlive: true,
+      isImpostor: false,
+      character: "Detective",
+    },
+    players: [
+      {
+        id: "1",
+        name: "Alex",
+        avatar: "/avatar1.png",
+        isAlive: true,
+        isImpostor: false,
+        character: "Detective",
+      },
+      {
+        id: "2",
+        name: "Maria",
+        avatar: "/avatar2.png",
+        isAlive: true,
+        isImpostor: false,
+        character: "Médico",
+      },
+      {
+        id: "3",
+        name: "Carlos",
+        avatar: "/avatar3.png",
+        isAlive: true,
+        isImpostor: true,
+        character: "Ingeniero",
+      },
+      {
+        id: "4",
+        name: "Sofia",
+        avatar: "/avatar4.png",
+        isAlive: true,
+        isImpostor: false,
+        character: "Cocinero",
+      },
+    ],
+  });
 
-const GameScreen: React.FC<GameScreenProps> = ({ gameData, onStartVoting }) => {
-  const [timeLeft, setTimeLeft] = useState(120); // 2 minutos de discusión
-  const [showChat, setShowChat] = useState(false);
+  const { currentUser, players } = gameData;
 
+  const [phase, setPhase] = useState<
+    "waiting" | "voting" | "voteSummary" | "results"
+  >("waiting");
+  const [voteButtonEnabled, setVoteButtonEnabled] = useState(false);
+  const [votingPanelOpen, setVotingPanelOpen] = useState(false);
+  const [voteCountdown, setVoteCountdown] = useState(5);
+  const [votingCountdown, setVotingCountdown] = useState(15);
+  const [votes, setVotes] = useState<Record<string, string>>({});
+  const [selectedVote, setSelectedVote] = useState<string | null>(null);
+  const [eliminatedPlayer, setEliminatedPlayer] = useState<Player | null>(null);
+  const [chatOpen, setChatOpen] = useState(true);
+
+  // Contador habilitación votación
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          onStartVoting();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    if (voteCountdown <= 0) {
+      setVoteButtonEnabled(true);
+      return;
+    }
+    const timer = setTimeout(() => setVoteCountdown(voteCountdown - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [voteCountdown]);
 
-    return () => clearInterval(timer);
-  }, [onStartVoting]);
+  // Contador votación
+  useEffect(() => {
+    if (!votingPanelOpen || votingCountdown <= 0) return;
+    const timer = setTimeout(
+      () => setVotingCountdown(votingCountdown - 1),
+      1000
+    );
+    if (votingCountdown === 1) endVoting();
+    return () => clearTimeout(timer);
+  }, [votingCountdown, votingPanelOpen]);
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  const toggleVotingPanel = () => {
+    if (!votingPanelOpen) {
+      setPhase("voting");
+      setVotingPanelOpen(true);
+      setVotingCountdown(15);
+      setSelectedVote(null);
+      setVotes({});
+    } else {
+      setPhase("waiting");
+      setVotingPanelOpen(false);
+    }
   };
 
-  const currentCharacter =
-    gameData.currentUser.character ||
-    characters[Math.floor(Math.random() * characters.length)];
-  const isImpostor = gameData.currentUser.isImpostor || Math.random() < 0.3;
+  const confirmVote = () => {
+    if (!selectedVote) return;
+    setVotes((prev) => ({ ...prev, [currentUser.id]: selectedVote }));
+    setSelectedVote(null);
+  };
+
+  const endVoting = () => {
+    setPhase("voteSummary");
+    setTimeout(() => {
+      const voteCounts: Record<string, number> = {};
+      Object.values(votes).forEach((votedId) => {
+        voteCounts[votedId] = (voteCounts[votedId] || 0) + 1;
+      });
+      const maxVotes = Math.max(...Object.values(voteCounts), 0);
+      const eliminatedId = Object.keys(voteCounts).find(
+        (id) => voteCounts[id] === maxVotes
+      );
+      const player = eliminatedId
+        ? players.find((p) => p.id === eliminatedId) || null
+        : null;
+      setEliminatedPlayer(player);
+      setPhase("results");
+    }, 5000);
+  };
 
   return (
-    <div className="min-h-screen p-4">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header con timer */}
-        <div className="text-center space-y-4">
-          <div className="flex items-center justify-center gap-4">
-            <Badge
-              variant="outline"
-              className="bg-white/10 text-white border-white/30 px-4 py-2 text-lg"
-            >
-              Sala: {gameData.roomCode}
-            </Badge>
-            <div
-              className={`px-6 py-3 rounded-2xl font-bold text-xl ${
-                timeLeft > 60
-                  ? "bg-success"
-                  : timeLeft > 30
-                  ? "bg-warning"
-                  : "bg-danger"
-              } text-white`}
-            >
-              ⏰ {formatTime(timeLeft)}
+    <div className="flex h-screen bg-gray-900 text-white relative">
+      {/* Main Left Area */}
+      <div className="flex-1 flex flex-col items-center justify-center p-6 overflow-hidden">
+        {/* Espera / Personaje */}
+        {phase === "waiting" && !votingPanelOpen && (
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-96 h-96 rounded-full overflow-hidden border-4 border-white/20 shadow-lg">
+              <img
+                src={currentUser.avatar}
+                alt={currentUser.character}
+                className="w-full h-full object-cover"
+              />
             </div>
-          </div>
-        </div>
-
-        {/* Tarjeta de personaje */}
-        <Card
-          className={`border-white/20 backdrop-blur-md ${
-            isImpostor ? "bg-red-500/20" : "bg-blue-500/20"
-          }`}
-        >
-          <CardHeader className="text-center">
-            <CardTitle
-              className={`text-3xl font-bold ${
-                isImpostor ? "text-red-300" : "text-blue-300"
-              }`}
-            >
-              {isImpostor ? "🔪 IMPOSTOR" : `👤 ${currentCharacter}`}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-center space-y-4">
-            <div
-              className={`w-32 h-32 mx-auto rounded-full flex items-center justify-center text-6xl ${
-                isImpostor ? "bg-red-500" : "bg-blue-500"
-              }`}
-            >
-              {isImpostor ? "😈" : "😊"}
-            </div>
-            <p
-              className={`text-lg font-medium ${
-                isImpostor ? "text-red-200" : "text-blue-200"
-              }`}
-            >
-              {isImpostor
-                ? "Tu objetivo es eliminar a todos sin ser descubierto"
-                : "Tu objetivo es descubrir y votar al impostor"}
+            <h2 className="text-4xl font-bold">{currentUser.character}</h2>
+            <p className="text-center text-lg text-gray-300">
+              {currentUser.isImpostor
+                ? "Eres el impostor. Tu objetivo es eliminar sin ser descubierto."
+                : "Descubre al impostor y vota correctamente."}
             </p>
-          </CardContent>
-        </Card>
-
-        {/* Lista de jugadores */}
-        <Card className="border-white/20 bg-white/10 backdrop-blur-md">
-          <CardHeader>
-            <CardTitle className="text-white text-center">
-              Jugadores en la Partida
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {gameData.players
-                .filter((p: any) => p.isAlive)
-                .map((player: any) => (
-                  <div key={player.id} className="text-center space-y-2">
-                    <div
-                      className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center text-2xl ${
-                        player.avatar === "red"
-                          ? "bg-red-500"
-                          : player.avatar === "blue"
-                          ? "bg-blue-500"
-                          : player.avatar === "green"
-                          ? "bg-green-500"
-                          : player.avatar === "yellow"
-                          ? "bg-yellow-500"
-                          : player.avatar === "purple"
-                          ? "bg-purple-500"
-                          : player.avatar === "orange"
-                          ? "bg-orange-500"
-                          : player.avatar === "pink"
-                          ? "bg-pink-500"
-                          : "bg-cyan-500"
-                      }`}
-                    >
-                      😊
-                    </div>
-                    <p className="text-white font-medium">{player.name}</p>
-                    {player.id === gameData.currentUser.id && (
-                      <Badge className="bg-accent text-white">Tú</Badge>
-                    )}
-                  </div>
-                ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Botones de acción */}
-        <div className="flex gap-4 justify-center">
-          <Button
-            onClick={() => setShowChat(!showChat)}
-            className="bg-accent hover:bg-accent/90 text-white font-bold px-8 py-3 rounded-2xl"
-          >
-            💬 {showChat ? "Ocultar Chat" : "Abrir Chat"}
-          </Button>
-
-          <Button
-            onClick={onStartVoting}
-            className="bg-warning hover:bg-warning/90 text-white font-bold px-8 py-3 rounded-2xl"
-          >
-            🗳️ Iniciar Votación
-          </Button>
-        </div>
-
-        {/* Chat Component */}
-        {showChat && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="w-full max-w-md">
-              <ChatComponent onClose={() => setShowChat(false)} />
-            </div>
           </div>
+        )}
+
+        {/* Panel de votación */}
+        {(phase === "voting" || phase === "voteSummary") && (
+          <VotingPanel
+            players={players}
+            currentUserId={currentUser.id}
+            phase={phase}
+            votes={votes}
+            selectedVote={selectedVote}
+            setSelectedVote={setSelectedVote}
+            confirmVote={confirmVote}
+            endVoting={endVoting}
+            votingCountdown={votingCountdown}
+          />
+        )}
+
+        {/* Resultados */}
+        {phase === "results" && eliminatedPlayer && (
+          <div className="flex flex-col items-center gap-6 overflow-hidden">
+            <h2 className="text-4xl font-bold text-red-500">
+              Jugador Eliminado
+            </h2>
+            <div className="w-48 h-48 rounded-full overflow-hidden border-4 border-red-500">
+              <img
+                src={eliminatedPlayer.avatar}
+                alt={eliminatedPlayer.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <p className="text-2xl font-semibold">{eliminatedPlayer.name}</p>
+            <p
+              className={`text-xl font-bold ${
+                eliminatedPlayer.isImpostor ? "text-red-500" : "text-green-400"
+              }`}
+            >
+              {eliminatedPlayer.isImpostor ? "Impostor" : "Tripulante"}
+            </p>
+            <Button
+              onClick={() => {
+                setPhase("waiting");
+                setVotes({});
+                setEliminatedPlayer(null);
+                setVotingPanelOpen(false);
+                setVoteButtonEnabled(false);
+                setVoteCountdown(5);
+                setVotingCountdown(15);
+              }}
+              className="mt-4 bg-green-500 hover:bg-green-600 px-6 py-2 rounded-2xl font-bold"
+            >
+              Continuar
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Chat Left */}
+      <div className="absolute top-4 right-4 flex gap-4">
+        <Button
+          disabled={!voteButtonEnabled}
+          onClick={toggleVotingPanel}
+          className="mt-4 bg-cyan-500 hover:bg-cyan-600 px-6 py-2 rounded-2xl font-bold w-full"
+        >
+          {!voteButtonEnabled
+            ? `Habilitación votación: ${voteCountdown}s`
+            : "Votar"}
+        </Button>
+        {/* Chat Right */}
+        {chatOpen ? (
+          <div className="w-96 flex-shrink-0 border-l border-white/20 flex flex-col h-screen">
+            <div className="flex justify-between items-center bg-gray-800 p-2 border-b border-white/20">
+              Chat
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setChatOpen(false)}
+                className="text-xs"
+              >
+                Cerrar
+              </Button>
+            </div>
+            <ChatComponent onClose={() => setChatOpen(false)} />
+          </div>
+        ) : (
+          <p
+            onClick={() => setChatOpen(true)}
+            className=" bg-accent hover:bg-secondary hover:cursor-pointer text-white px-4 py-4 rounded-full shadow-lg"
+          >
+            <BotMessageSquare className="w-6 h-6" />
+          </p>
         )}
       </div>
     </div>

@@ -1,5 +1,10 @@
+@import url("https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&display=swap");
 @import "tailwindcss";
 
+@theme {
+  /* Esto genera la clase de utilidad: font-titan */
+  --font-fredoka: "Fredoka", system-ui, sans-serif;
+}
 @theme inline {
   /* Primary brand colors - vibrant and friendly */
   --color-primary: #ff6b6b;
@@ -10,7 +15,7 @@
   --color-secondary-foreground: #ffffff;
 
   /* Accent colors for game elements */
-  --color-accent: #45b7d1;
+  --color-accent: #30bfb1;
   --color-accent-foreground: #ffffff;
 
   /* Success/Safe color */
@@ -64,9 +69,9 @@
 }
 
 body {
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    sans-serif;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  font-family: "Fredoka", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+
   min-height: 100vh;
 }
 
@@ -121,4 +126,130 @@ body {
 
 .crewmate-gradient {
   background: linear-gradient(135deg, #5352ed 0%, #3742fa 100%);
+}
+
+@keyframes animate {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+    border-radius: 0;
+  }
+  100% {
+    transform: translateY(-1000px) rotate(720deg);
+    opacity: 0;
+    border-radius: 50%;
+  }
+}
+
+.background {
+  position: fixed;
+  width: 100vw;
+  height: 100vh;
+  top: 0;
+  left: 0;
+  margin: 0;
+  padding: 0;
+  background: #4e54c8;
+  overflow: hidden;
+}
+.background li {
+  position: absolute;
+  display: block;
+  list-style: none;
+  width: 20px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.2);
+  animation: animate 12s linear infinite;
+}
+
+.background li:nth-child(0) {
+  left: 78%;
+  width: 167px;
+  height: 167px;
+  bottom: -167px;
+  animation-delay: 1s;
+}
+.background li:nth-child(1) {
+  left: 28%;
+  width: 139px;
+  height: 139px;
+  bottom: -139px;
+  animation-delay: 1s;
+}
+.background li:nth-child(2) {
+  left: 53%;
+  width: 121px;
+  height: 121px;
+  bottom: -121px;
+  animation-delay: 6s;
+}
+.background li:nth-child(3) {
+  left: 40%;
+  width: 115px;
+  height: 115px;
+  bottom: -115px;
+  animation-delay: 6s;
+}
+.background li:nth-child(4) {
+  left: 79%;
+  width: 129px;
+  height: 129px;
+  bottom: -129px;
+  animation-delay: 18s;
+}
+.background li:nth-child(5) {
+  left: 50%;
+  width: 157px;
+  height: 157px;
+  bottom: -157px;
+  animation-delay: 16s;
+}
+.background li:nth-child(6) {
+  left: 9%;
+  width: 116px;
+  height: 116px;
+  bottom: -116px;
+  animation-delay: 22s;
+}
+.background li:nth-child(7) {
+  left: 48%;
+  width: 110px;
+  height: 110px;
+  bottom: -110px;
+  animation-delay: 16s;
+}
+.background li:nth-child(8) {
+  left: 65%;
+  width: 165px;
+  height: 165px;
+  bottom: -165px;
+  animation-delay: 22s;
+}
+.background li:nth-child(9) {
+  left: 22%;
+  width: 119px;
+  height: 119px;
+  bottom: -119px;
+  animation-delay: 27s;
+}
+.background li:nth-child(10) {
+  left: 66%;
+  width: 108px;
+  height: 108px;
+  bottom: -108px;
+  animation-delay: 35s;
+}
+.background li:nth-child(11) {
+  left: 14%;
+  width: 118px;
+  height: 118px;
+  bottom: -118px;
+  animation-delay: 11s;
+}
+.background li:nth-child(12) {
+  left: 83%;
+  width: 100px;
+  height: 100px;
+  bottom: -100px;
+  animation-delay: 32s;
 }

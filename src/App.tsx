@@ -1,4 +1,3 @@
-import { Button } from "./components/ui/button";
 import { Routes, Route } from "react-router";
 import LoginScreen from "./pages/LoginScreen";
 import { useNavigate } from "react-router";
@@ -8,60 +7,116 @@ import QuickJoinScreen from "./pages/QuickJoinScreen";
 import GameScreen from "./pages/GameScreen";
 import VotingScreen from "./pages/VotingScreen";
 import ResultsScreen from "./pages/ResultScreen";
+import HomePage from "./pages/HomePage";
+import SignupScreen from "./pages/SignupScreen";
+import NotFound from "./pages/NotFound";
+import Menu from "./pages/Menu";
+import CreateRoomPage from "./pages/CreateRoomPage";
 function App() {
   const [gameData, setGameData] = useState({
-    roomCode: "ABC123",
+    roomCode: "123456",
     players: [
-      { id: "1", name: "Alex", avatar: "🎮", isHost: true, isReady: true },
-      { id: "2", name: "Maria", avatar: "🌟", isHost: false, isReady: true },
-      { id: "3", name: "Carlos", avatar: "🚀", isHost: false, isReady: true },
-      { id: "4", name: "Sofia", avatar: "🎨", isHost: false, isReady: true },
+      {
+        id: "1",
+        name: "Alex",
+        avatar: "/avatar1.webp",
+        isHost: true,
+        isReady: true,
+        isAlive: true,
+        character: "Detective",
+        isImpostor: false,
+      },
+      {
+        id: "2",
+        name: "Maria",
+        avatar: "/avatar2.png",
+        isHost: false,
+        isReady: true,
+        isAlive: true,
+        character: "Médico",
+        isImpostor: false,
+      },
+      {
+        id: "3",
+        name: "Carlos",
+        avatar: "/avatar3.webp",
+        isHost: false,
+        isReady: true,
+        isAlive: true,
+        character: "Ingeniero",
+        isImpostor: true,
+      },
+      {
+        id: "4",
+        name: "Sofia",
+        avatar: "/avatar4.png",
+        isHost: false,
+        isReady: true,
+        isAlive: true,
+        character: "Cocinero",
+        isImpostor: false,
+      },
     ],
-    currentUser: { id: "1", name: "Alex", isHost: true },
-    votedPlayer: null,
+    currentUser: {
+      id: "1",
+      name: "Alex",
+      isHost: true,
+      isAlive: true,
+      character: "Detective",
+      isImpostor: false,
+      avatar: "/avatar1.webp",
+    },
+    votedPlayer: null, // jugador elegido en la votación
     eliminatedPlayer: {
       id: "2",
       name: "Maria",
-      avatar: "🌟",
+      avatar: "/avatar2.png",
       wasImpostor: false,
     },
+
+    // Info de la partida
+    category: "Disney",
+    impostorCount: 1,
+    impostorsKnowEachOther: true,
+    minPlayers: 3,
   });
+
   const navigate = useNavigate();
   return (
     <>
       <Routes>
+        <Route path="/signup" element={<SignupScreen />} />
+        <Route path="/login" element={<LoginScreen />} />
+        <Route index element={<HomePage />} />
+
         <Route
-          path="/"
+          path="/lobby"
           element={
-            <LoginScreen
-              onLogin={() => navigate("/waiting-room")}
-              onQuickJoin={() => navigate("/join")}
+            <WaitingRoom
+              gameData={gameData}
+              onStartGame={() => navigate("/game")}
             />
           }
         />
         <Route
-          path="/waiting-room"
-          element={
-            <WaitingRoom
-              gameData={gameData}
-              onStartGame={() => navigate("/lobby")}
-            />
-          }
+          path="/create"
+          element={<CreateRoomPage onSubmit={() => navigate("/lobby")} />}
         />
         <Route
           path="/join"
           element={
             <QuickJoinScreen
-              onJoin={() => navigate("/waiting-room")}
+              onJoin={() => navigate("/lobby")}
               onBack={() => navigate(-1)}
             />
           }
         />
         <Route
-          path="/lobby"
+          path="/game"
           element={
             <GameScreen
               gameData={gameData}
+              onSubmitVote={() => navigate("/results")}
               onStartVoting={() => navigate("/voting-screen")}
             />
           }
@@ -85,6 +140,8 @@ function App() {
             />
           }
         />
+        <Route path="/menu" element={<Menu />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </>
   );

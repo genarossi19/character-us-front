@@ -1,5 +1,3 @@
-"use client";
-
 import type React from "react";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "./ui/button";
@@ -7,7 +5,7 @@ import { Input } from "./ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 
 interface ChatComponentProps {
-  onClose: () => void;
+  onClose?: () => void;
 }
 
 interface Message {
@@ -16,6 +14,7 @@ interface Message {
   message: string;
   timestamp: Date;
   avatar: string;
+  isSelf?: boolean;
 }
 
 const ChatComponent: React.FC<ChatComponentProps> = ({ onClose }) => {
@@ -42,103 +41,118 @@ const ChatComponent: React.FC<ChatComponentProps> = ({ onClose }) => {
       avatar: "green",
     },
   ]);
+
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
   useEffect(() => {
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newMessage.trim()) {
-      const message: Message = {
-        id: Date.now().toString(),
-        sender: "Tú",
-        message: newMessage.trim(),
-        timestamp: new Date(),
-        avatar: "red",
-      };
-      setMessages((prev) => [...prev, message]);
-      setNewMessage("");
-    }
+    if (!newMessage.trim()) return;
+
+    const message: Message = {
+      id: Date.now().toString(),
+      sender: "Tú",
+      message: newMessage.trim(),
+      timestamp: new Date(),
+      avatar: "cyan",
+      isSelf: true,
+    };
+    setMessages((prev) => [...prev, message]);
+    setNewMessage("");
   };
 
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString("es-ES", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
+  const formatTime = (date: Date) =>
+    date.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
 
   return (
-    <Card className="border-white/20 bg-white/10 backdrop-blur-md h-96 flex flex-col">
-      <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-white text-lg">
-          💬 Chat de Discusión
+    <Card className="flex flex-col h-full w-full bg-gray-800 border border-gray-700 shadow-lg rounded-none">
+      {/* Header */}
+      <CardHeader className="flex items-center justify-between p-4 border-b border-gray-700">
+        <CardTitle className="text-white text-lg font-bold">
+          💬 Chat de la Partida
         </CardTitle>
-        <Button
-          onClick={onClose}
-          variant="ghost"
-          className="text-white hover:bg-white/10 h-8 w-8 p-0"
-        >
-          ✕
-        </Button>
+        {onClose && (
+          <Button
+            onClick={onClose}
+            variant="ghost"
+            className="text-white hover:bg-gray-700 h-8 w-8 p-0"
+          >
+            ✕
+          </Button>
+        )}
       </CardHeader>
 
-      <CardContent className="flex-1 flex flex-col space-y-4 p-4">
-        {/* Messages area */}
-        <div className="flex-1 overflow-y-auto space-y-3 pr-2">
+      {/* Mensajes + Input */}
+      <CardContent className="flex flex-col flex-1 min-h-0 p-4">
+        {/* Mensajes con scroll */}
+        <div className="flex-1 min-h-0 overflow-y-auto pr-2 space-y-3">
           {messages.map((msg) => (
-            <div key={msg.id} className="flex gap-3">
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0 ${
-                  msg.avatar === "red"
-                    ? "bg-red-500"
-                    : msg.avatar === "blue"
-                    ? "bg-blue-500"
-                    : msg.avatar === "green"
-                    ? "bg-green-500"
-                    : "bg-yellow-500"
-                }`}
-              >
-                😊
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-white font-medium text-sm">
-                    {msg.sender}
-                  </span>
-                  <span className="text-white/50 text-xs">
-                    {formatTime(msg.timestamp)}
-                  </span>
+            <div
+              key={msg.id}
+              className={`flex gap-3 ${
+                msg.isSelf ? "justify-end" : "justify-start"
+              }`}
+            >
+              {!msg.isSelf && (
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm flex-shrink-0 ${
+                    msg.avatar === "red"
+                      ? "bg-red-500"
+                      : msg.avatar === "blue"
+                      ? "bg-blue-500"
+                      : msg.avatar === "green"
+                      ? "bg-green-500"
+                      : msg.avatar === "yellow"
+                      ? "bg-yellow-400"
+                      : "bg-purple-500"
+                  }`}
+                >
+                  😊
                 </div>
-                <div className="bg-white/10 rounded-lg px-3 py-2">
-                  <p className="text-white text-sm">{msg.message}</p>
+              )}
+              <div className="flex flex-col max-w-[70%]">
+                {!msg.isSelf && (
+                  <span className="text-gray-300 text-sm font-semibold">
+                    {msg.sender} • {formatTime(msg.timestamp)}
+                  </span>
+                )}
+                <div
+                  className={`px-4 py-2 rounded-2xl break-words text-sm ${
+                    msg.isSelf
+                      ? "bg-cyan-500 text-white self-end rounded-br-none"
+                      : "bg-gray-700 text-white rounded-bl-none"
+                  }`}
+                >
+                  {msg.message}
                 </div>
               </div>
+              {msg.isSelf && (
+                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm bg-cyan-500">
+                  😊
+                </div>
+              )}
             </div>
           ))}
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input area */}
-        <form onSubmit={handleSendMessage} className="flex gap-2">
+        {/* Input */}
+        <form onSubmit={handleSendMessage} className="mt-4 flex gap-2">
           <Input
+            placeholder="Escribe un mensaje..."
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Escribe tu mensaje..."
-            className="bg-white/10 border-white/30 text-white placeholder:text-white/50"
+            className="flex-1 rounded-2xl bg-gray-700 border border-gray-600 text-white placeholder:text-gray-400 px-4 py-2"
             maxLength={200}
           />
           <Button
             type="submit"
             disabled={!newMessage.trim()}
-            className="bg-accent hover:bg-accent/90 text-white px-4"
+            className="bg-cyan-500 hover:bg-cyan-600 text-white font-bold px-6 rounded-2xl"
           >
             📤
           </Button>

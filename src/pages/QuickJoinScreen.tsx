@@ -1,101 +1,101 @@
 import type React from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
+
+import { Move, MoveLeft } from "lucide-react";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "../components/ui/card";
-
+import BackgroundAnimate from "../components/BackgroundAnimate";
+import { useNavigate } from "react-router";
 interface QuickJoinScreenProps {
-  onJoin: () => void;
   onBack: () => void;
 }
 
-const QuickJoinScreen: React.FC<QuickJoinScreenProps> = ({
-  onJoin,
-  onBack,
-}) => {
+const QuickJoinScreen: React.FC<QuickJoinScreenProps> = ({ onBack }) => {
+  const navigate = useNavigate();
   const [roomCode, setRoomCode] = useState("");
-  const [playerName, setPlayerName] = useState("");
+
+  const [isValid, setIsValid] = useState(false);
+
+  useEffect(() => {
+    setIsValid(false);
+    if (roomCode.length >= 6) {
+      setIsValid(true);
+    }
+  }, [roomCode]);
+
+  const onJoin = () => {
+    if (roomCode === "123456") {
+      navigate("/lobby");
+    } else {
+      alert("Sala no encontrada");
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (roomCode.length >= 4 && playerName.trim()) {
+    if (isValid) {
       onJoin();
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center space-y-2 animate-bounce-in">
-          <Button
-            onClick={onBack}
-            variant="ghost"
-            className="absolute top-4 left-4 text-white hover:bg-white/10"
-          >
-            ← Volver
-          </Button>
+      <Button
+        onClick={onBack}
+        size={"lg"}
+        variant="ghost"
+        className="absolute top-4 left-4 text-white hover:bg-white/10 text-xl"
+      >
+        ← Volver
+      </Button>
+      <Button
+        size={"lg"}
+        onClick={() => navigate("/login")}
+        variant="ghost"
+        className="absolute top-4 right-4 text-white hover:bg-white/10 text-xl"
+      >
+        Log In
+      </Button>
 
-          <div className="w-20 h-20 mx-auto bg-gradient-to-br from-accent to-secondary rounded-3xl flex items-center justify-center text-3xl shadow-2xl">
-            🚀
-          </div>
-          <h1 className="text-3xl font-bold text-white text-balance">
-            Unirse Rápido
-          </h1>
-          <p className="text-white/80 text-pretty">
-            Ingresa el código de la sala y tu nombre para jugar
-          </p>
-        </div>
-
-        <Card className="border-white/20 bg-white/10 backdrop-blur-md">
-          <CardHeader>
-            <CardTitle className="text-2xl text-center text-white">
-              Datos de Entrada
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <label className="text-white font-medium">Código de Sala</label>
-                <Input
-                  type="text"
-                  placeholder="Ej: ABC123"
-                  value={roomCode}
-                  onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                  className="bg-white/10 border-white/30 text-white placeholder:text-white/50 text-center text-2xl font-bold tracking-widest"
-                  maxLength={6}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-white font-medium">Tu Nombre</label>
-                <Input
-                  type="text"
-                  placeholder="Ingresa tu nombre"
-                  value={playerName}
-                  onChange={(e) => setPlayerName(e.target.value)}
-                  className="bg-white/10 border-white/30 text-white placeholder:text-white/50 text-lg"
-                  maxLength={20}
-                  required
-                />
-              </div>
-
-              <Button
-                type="submit"
-                disabled={roomCode.length < 4 || !playerName.trim()}
-                className="w-full bg-success hover:bg-success/90 text-white font-bold py-4 text-lg rounded-2xl disabled:opacity-50"
-              >
-                🎮 Continuar
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
+      <BackgroundAnimate />
+      <Card className="border-none bg-white min-w-[300px] w-md animate-bounce-in">
+        <CardHeader>
+          <CardTitle className="flex flex-col text-center justify-center items-center gap-4">
+            <img
+              src="/logo.webp"
+              alt="logo"
+              className=" w-24 h-24 rounded-md"
+            />
+            <span className=" text-3xl font-fredoka font-bolds">
+              Ingresar a una Sala
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form className="flex flex-col gap-4">
+            <Input
+              value={roomCode}
+              onChange={(e) => setRoomCode(e.target.value)}
+              placeholder="Codigo de Sala"
+              className="text-center !text-gray-600 !text-3xl border-2 !tracking-widest placeholder:tracking-normal !font-bold placeholder:font-normal border-gray-400 h-12 w-full  placeholder:text-2xl placeholder:text-center placeholder:text-gray-400 "
+            />
+            <Button
+              disabled={!isValid}
+              variant={"secondary"}
+              className="h-12 "
+              onClick={handleSubmit}
+            >
+              <span className="text-xl">Ingresar</span>
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 };

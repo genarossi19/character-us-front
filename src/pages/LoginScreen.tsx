@@ -1,80 +1,229 @@
 import type React from "react";
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { Button } from "../components/ui/button";
-import { Card, CardContent } from "../components/ui/card";
-interface LoginScreenProps {
-  onLogin: () => void;
-  onQuickJoin: () => void;
-}
+import { Card, CardContent, CardTitle } from "../components/ui/card";
+import BackgroundAnimate from "../components/BackgroundAnimate";
+import { Input } from "../components/ui/input";
+import { Mail, Lock, Chrome, Github } from "lucide-react";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "../components/ui/popover";
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onQuickJoin }) => {
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [formData, setFormData] = useState({
-    username: "",
-    email: "",
-    password: "",
-  });
+const LoginScreen: React.FC = () => {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [touched, setTouched] = useState({ email: false, password: false });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onLogin();
+    // prevención adicional: no submit si campos incompletos o contraseña corta
+    if (!formData.email.trim() || formData.password.length < 8) return;
+
+    // login aquí
+    navigate("/menu");
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const emailIsValid = (email: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  const emailInvalid =
+    !emailIsValid(formData.email) &&
+    (touched.email || formData.email.length > 0);
+  const passwordInvalid =
+    formData.password.length > 0 &&
+    formData.password.length < 8 &&
+    (touched.password || formData.password.length > 0);
+
+  const loginValid = formData.email.trim() && formData.password.length >= 8;
+
+  const getLoginDisabledReasons = () => {
+    const reasons: string[] = [];
+    if (!formData.email.trim()) reasons.push("Falta el email.");
+    if (formData.password.length < 8)
+      reasons.push("La contraseña debe tener al menos 8 caracteres.");
+    return reasons;
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4 relative">
+      <Button
+        onClick={() => navigate(-1)}
+        size="lg"
+        variant="ghost"
+        className="absolute top-4 left-4 text-white hover:bg-white/10 text-xl"
+      >
+        ← Volver
+      </Button>
+      <BackgroundAnimate />
+
       <div className="w-full max-w-md space-y-8">
         {/* Logo/Brand */}
         <div className="text-center space-y-2 animate-bounce-in">
-          <div className="w-20 h-20 mx-auto bg-gradient-to-br from-primary to-secondary rounded-3xl flex items-center justify-center text-3xl font-bold text-white shadow-2xl">
-            🎭
+          <div className="w-20 h-20 mx-auto bg-gradient-to-br from-primary to-secondary rounded-3xl flex items-center justify-center shadow-2xl">
+            <img className="rounded-xl" src="/logo.webp" alt="logo" />
           </div>
-          <h1 className="text-4xl font-bold text-white text-balance">
-            CharacterUs
-          </h1>
-          <p className="text-white/80 text-pretty text-lg">
-            Descubre quién es el impostor en este emocionante juego social
-          </p>
+          <h1 className="text-4xl font-bold text-white">CharacterUs</h1>
         </div>
 
-        <div className="space-y-4">
-          <Card className="border-white/20 bg-white/10 backdrop-blur-md">
-            <CardContent className="p-6 space-y-4">
-              <Button
-                onClick={onQuickJoin}
-                className="w-full bg-accent hover:bg-accent/90 text-white font-bold py-4 text-lg rounded-2xl animate-pulse-glow"
-              >
-                🚀 Unirse Rápido con Código
-              </Button>
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-white/20" />
+        <Card className="backdrop-blur-md shadow-md animate-bounce-in animate-pulse-glow border-none">
+          <CardTitle>
+            <h1 className="text-center text-4xl font-extrabold">
+              Iniciar sesión
+            </h1>
+          </CardTitle>
+          <CardContent className="pt-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Email */}
+              <div>
+                <label
+                  htmlFor="email"
+                  className="block text-md font-medium text-gray-600"
+                >
+                  Email
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="email@ejemplo.com"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    onBlur={() => setTouched({ ...touched, email: true })}
+                    aria-invalid={emailInvalid}
+                    className={
+                      "pl-10 placeholder:text-gray-400 " +
+                      (emailInvalid ? "border-destructive" : "")
+                    }
+                  />
                 </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white/10 px-3 py-1 rounded-full text-white/70">
-                    O
-                  </span>
-                </div>
+                {emailInvalid && (
+                  <p className="mt-1 text-sm text-destructive">
+                    Por favor ingresa un email válido.
+                  </p>
+                )}
               </div>
 
+              {/* Password */}
+              <div>
+                <label
+                  htmlFor="password"
+                  className="block text-md font-medium text-gray-600"
+                >
+                  Contraseña
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    placeholder="********"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    onBlur={() => setTouched({ ...touched, password: true })}
+                    aria-invalid={passwordInvalid}
+                    className={
+                      "pl-10 placeholder:text-gray-400 " +
+                      (passwordInvalid ? "border-destructive" : "")
+                    }
+                  />
+                </div>
+                {passwordInvalid && (
+                  <p className="mt-1 text-sm text-destructive">
+                    La contraseña debe tener al menos 8 caracteres.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" id="remember" className="rounded" />
+                  <label htmlFor="remember" className="text-gray-500">
+                    Recordarme
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  className="text-accent font-semibold hover:underline"
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
+              </div>
+
+              <div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <div className="w-full">
+                      <Button
+                        type="submit"
+                        variant="default"
+                        size="lg"
+                        disabled={!loginValid}
+                        className="w-full text-white font-semibold text-lg rounded-md "
+                      >
+                        Entrar
+                      </Button>
+                    </div>
+                  </PopoverTrigger>
+                  {!loginValid && (
+                    <PopoverContent>
+                      <div className="text-sm text-muted-foreground space-y-1">
+                        {getLoginDisabledReasons().map((r) => (
+                          <div key={r}>{r}</div>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  )}
+                </Popover>
+              </div>
+            </form>
+
+            {/* Divider */}
+            <div className="flex items-center my-6">
+              <div className="flex-grow border-t border-gray-600" />
+              <span className="mx-2 text-gray-400 text-sm">o</span>
+              <div className="flex-grow border-t border-gray-600" />
+            </div>
+
+            {/* Social signup */}
+            <div className="flex flex-col md:flex-row gap-2">
               <Button
-                onClick={onLogin}
                 variant="outline"
-                className="w-full border-white/30 hover:bg-white/10 bg-transparent text-white font-medium py-4 text-lg rounded-2xl"
+                size="lg"
+                className="w-full flex-1 flex items-center gap-2 justify-center"
               >
-                📧 Iniciar Sesión / Registrarse
+                <Chrome className="h-5 w-5" /> Google
               </Button>
-            </CardContent>
-          </Card>
-        </div>
-        {/* </CHANGE> */}
+              <Button
+                variant="outline"
+                size="lg"
+                className="w-full flex-1 flex items-center gap-2 justify-center"
+              >
+                <Github className="h-5 w-5" /> GitHub
+              </Button>
+            </div>
+
+            {/* Redirect signup */}
+            <p className="mt-6 text-center text-sm text-gray-400">
+              ¿No tienes cuenta?{" "}
+              <span
+                onClick={() => navigate("/signup")}
+                className="text-accent font-semibold cursor-pointer"
+              >
+                Regístrate
+              </span>
+            </p>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
