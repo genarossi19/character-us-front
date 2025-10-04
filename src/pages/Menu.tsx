@@ -7,15 +7,13 @@ import { Button } from "../components/ui/button";
 import { PlusCircle, Users } from "lucide-react";
 
 export default function MenuPage() {
-  // Aquí puedes implementar logout real si lo necesitas
-
   return (
     <div className="bg-accent/8 min-h-screen flex flex-col">
       <NavBarLoggued />
 
       {/* Main content */}
       <main className="flex-1 flex flex-col items-center justify-center p-6">
-        <div className="max-w-2xl w-full space-y-8">
+        <div className="max-w-3xl w-full space-y-8">
           <div className="text-center space-y-2">
             <h1 className="text-5xl font-bold text-foreground">
               Menú Principal
@@ -55,16 +53,27 @@ export default function MenuPage() {
                   Unirse a Partida
                 </CardTitle>
                 <p className="text-muted-foreground text-center">
-                  Ingresa a una partida existente usando su código.
+                  Elige cómo quieres unirte a una partida existente.
                 </p>
-                <Button
-                  asChild
-                  size="lg"
-                  variant="secondary"
-                  className="w-full"
-                >
-                  <Link to="/join">Unirse</Link>
-                </Button>
+
+                <div className="w-full space-y-3">
+                  <Button
+                    asChild
+                    size="lg"
+                    variant="secondary"
+                    className="w-full"
+                  >
+                    <Link to="/join">Unirse a una Sala</Link>
+                  </Button>
+                  <Button
+                    asChild
+                    size="lg"
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <Link to="/public-rooms">Buscar Salas</Link>
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </div>

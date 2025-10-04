@@ -3,6 +3,9 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { AnimateIcon } from "./animate-ui/icons/icon";
+import { MessageSquareX } from "./animate-ui/icons/message-square-x";
+import { AnimatePresence, motion } from "motion/react";
 
 interface ChatComponentProps {
   onClose?: () => void;
@@ -71,18 +74,19 @@ const ChatComponent: React.FC<ChatComponentProps> = ({ onClose }) => {
   return (
     <Card className="flex flex-col h-full w-full bg-gray-800 border border-gray-700 shadow-lg rounded-none">
       {/* Header */}
-      <CardHeader className="flex items-center justify-between p-4 border-b border-gray-700">
+      <CardHeader className="flex items-center justify-between p-4 border-b border-gray-700 h-4">
         <CardTitle className="text-white text-lg font-bold">
           💬 Chat de la Partida
         </CardTitle>
         {onClose && (
-          <Button
-            onClick={onClose}
-            variant="ghost"
-            className="text-white hover:bg-gray-700 h-8 w-8 p-0"
-          >
-            ✕
-          </Button>
+          <AnimateIcon animateOnHover>
+            <button
+              onClick={onClose}
+              className="hover:cursor-pointer text-white hover:bg-gray-700 h-12 w-12 p-0 items-center justify-center flex rounded-full mb-2"
+            >
+              <MessageSquareX className="h-6 w-6" />
+            </button>
+          </AnimateIcon>
         )}
       </CardHeader>
 
@@ -90,53 +94,59 @@ const ChatComponent: React.FC<ChatComponentProps> = ({ onClose }) => {
       <CardContent className="flex flex-col flex-1 min-h-0 p-4">
         {/* Mensajes con scroll */}
         <div className="flex-1 min-h-0 overflow-y-auto pr-2 space-y-3">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex gap-3 ${
-                msg.isSelf ? "justify-end" : "justify-start"
-              }`}
-            >
-              {!msg.isSelf && (
-                <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm flex-shrink-0 ${
-                    msg.avatar === "red"
-                      ? "bg-red-500"
-                      : msg.avatar === "blue"
-                      ? "bg-blue-500"
-                      : msg.avatar === "green"
-                      ? "bg-green-500"
-                      : msg.avatar === "yellow"
-                      ? "bg-yellow-400"
-                      : "bg-purple-500"
-                  }`}
-                >
-                  😊
-                </div>
-              )}
-              <div className="flex flex-col max-w-[70%]">
+          <AnimatePresence>
+            {messages.map((msg) => (
+              <motion.div
+                key={msg.id}
+                initial={{ opacity: 0, y: 20, scale: 0.8 }}
+                animate={{ opacity: 1, y: 0, scale: [1.1, 0.95, 1] }} // rebote
+                exit={{ opacity: 0, y: -20, scale: 0.8 }}
+                transition={{ duration: 0.25, ease: "easeOut" }} // rápido y seguro
+                className={`flex gap-3 ${
+                  msg.isSelf ? "justify-end" : "justify-start"
+                }`}
+              >
                 {!msg.isSelf && (
-                  <span className="text-gray-300 text-sm font-semibold">
-                    {msg.sender} • {formatTime(msg.timestamp)}
-                  </span>
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm flex-shrink-0 ${
+                      msg.avatar === "red"
+                        ? "bg-red-500"
+                        : msg.avatar === "blue"
+                        ? "bg-blue-500"
+                        : msg.avatar === "green"
+                        ? "bg-green-500"
+                        : msg.avatar === "yellow"
+                        ? "bg-yellow-400"
+                        : "bg-purple-500"
+                    }`}
+                  >
+                    😊
+                  </div>
                 )}
-                <div
-                  className={`px-4 py-2 rounded-2xl break-words text-sm ${
-                    msg.isSelf
-                      ? "bg-cyan-500 text-white self-end rounded-br-none"
-                      : "bg-gray-700 text-white rounded-bl-none"
-                  }`}
-                >
-                  {msg.message}
+                <div className="flex flex-col max-w-[70%]">
+                  {!msg.isSelf && (
+                    <span className="text-gray-300 text-sm font-semibold">
+                      {msg.sender} • {formatTime(msg.timestamp)}
+                    </span>
+                  )}
+                  <div
+                    className={`px-4 py-2 rounded-2xl break-words text-sm ${
+                      msg.isSelf
+                        ? "bg-cyan-500 text-white self-end rounded-br-none"
+                        : "bg-gray-700 text-white rounded-bl-none"
+                    }`}
+                  >
+                    {msg.message}
+                  </div>
                 </div>
-              </div>
-              {msg.isSelf && (
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm bg-cyan-500">
-                  😊
-                </div>
-              )}
-            </div>
-          ))}
+                {msg.isSelf && (
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm bg-cyan-500">
+                    😊
+                  </div>
+                )}
+              </motion.div>
+            ))}
+          </AnimatePresence>
           <div ref={messagesEndRef} />
         </div>
 

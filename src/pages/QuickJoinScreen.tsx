@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 
-import { Move, MoveLeft } from "lucide-react";
 import {
   Card,
   CardContent,

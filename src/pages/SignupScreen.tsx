@@ -152,12 +152,12 @@ const SignupScreen: React.FC = () => {
                       aria-invalid={usernameInvalid}
                       className={
                         "pl-10 placeholder:text-gray-400 " +
-                        (usernameInvalid ? "border-destructive" : "")
+                        (usernameInvalid ? "border-red-400" : "")
                       }
                     />
                   </div>
                   {usernameInvalid && (
-                    <p className="mt-1 text-sm text-destructive">
+                    <p className="mt-1 text-sm text-red-400">
                       Ingresa un nombre de usuario.
                     </p>
                   )}
@@ -184,12 +184,12 @@ const SignupScreen: React.FC = () => {
                       aria-invalid={emailInvalid}
                       className={
                         "pl-10 placeholder:text-gray-400 " +
-                        (emailInvalid ? "border-destructive" : "")
+                        (emailInvalid ? "border-red-400" : "")
                       }
                     />
                   </div>
                   {emailInvalid && (
-                    <p className="mt-1 text-sm text-destructive">
+                    <p className="mt-1 text-sm text-red-400">
                       Ingresa un email válido.
                     </p>
                   )}
@@ -216,12 +216,12 @@ const SignupScreen: React.FC = () => {
                       aria-invalid={passwordInvalid}
                       className={
                         "pl-10 placeholder:text-gray-400 " +
-                        (passwordInvalid ? "border-destructive" : "")
+                        (passwordInvalid ? "border-red-400" : "")
                       }
                     />
                   </div>
                   {passwordInvalid && (
-                    <p className="mt-1 text-sm text-destructive">
+                    <p className="mt-1 text-sm text-red-400">
                       La contraseña debe tener al menos 8 caracteres.
                     </p>
                   )}
@@ -250,12 +250,12 @@ const SignupScreen: React.FC = () => {
                       aria-invalid={confirmInvalid}
                       className={
                         "pl-10 placeholder:text-gray-400 " +
-                        (confirmInvalid ? "border-destructive" : "")
+                        (confirmInvalid ? "border-red-400" : "")
                       }
                     />
                   </div>
                   {confirmInvalid && (
-                    <p className="mt-1 text-sm text-destructive">
+                    <p className="mt-1 text-sm text-red-400">
                       Las contraseñas no coinciden.
                     </p>
                   )}
@@ -268,7 +268,7 @@ const SignupScreen: React.FC = () => {
                     id="terms"
                     className={
                       "rounded text-primary " +
-                      (termsInvalid ? "ring-2 ring-destructive" : "")
+                      (termsInvalid ? "ring-2 ring-red-400" : "")
                     }
                     checked={acceptedTerms}
                     onChange={(e) => {
@@ -284,7 +284,7 @@ const SignupScreen: React.FC = () => {
                   </label>
                 </div>
                 {termsInvalid && (
-                  <p className="mt-1 text-sm text-destructive">
+                  <p className="mt-1 text-sm text-red-400">
                     Debes aceptar los términos.
                   </p>
                 )}

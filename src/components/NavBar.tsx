@@ -11,14 +11,14 @@ export default function NavMenu() {
         <div className="flex items-center gap-2">
           {/* Main nav */}
           <div className="flex items-center gap-6">
-            <a href="#" className="">
+            <Link to={"/"}>
               <div className="flex items-center gap-4">
                 <img className="h-12 w-12 rounded-md" src="/logo.webp" alt="" />
                 <span className="text-5xl font-extrabold bg-gradient-to-b from-accent/60 via-accent/80 to-accent bg-clip-text text-transparent">
                   CharacterUs
                 </span>
               </div>
-            </a>
+            </Link>
           </div>
         </div>
         {/* Right side */}

@@ -101,12 +101,12 @@ const LoginScreen: React.FC = () => {
                     aria-invalid={emailInvalid}
                     className={
                       "pl-10 placeholder:text-gray-400 " +
-                      (emailInvalid ? "border-destructive" : "")
+                      (emailInvalid ? "border-red-400" : "")
                     }
                   />
                 </div>
                 {emailInvalid && (
-                  <p className="mt-1 text-sm text-destructive">
+                  <p className="mt-1 text-sm text-red-400">
                     Por favor ingresa un email válido.
                   </p>
                 )}
@@ -133,12 +133,12 @@ const LoginScreen: React.FC = () => {
                     aria-invalid={passwordInvalid}
                     className={
                       "pl-10 placeholder:text-gray-400 " +
-                      (passwordInvalid ? "border-destructive" : "")
+                      (passwordInvalid ? "border-red-400" : "")
                     }
                   />
                 </div>
                 {passwordInvalid && (
-                  <p className="mt-1 text-sm text-destructive">
+                  <p className="mt-1 text-sm text-red-400">
                     La contraseña debe tener al menos 8 caracteres.
                   </p>
                 )}

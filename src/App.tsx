@@ -12,6 +12,8 @@ import SignupScreen from "./pages/SignupScreen";
 import NotFound from "./pages/NotFound";
 import Menu from "./pages/Menu";
 import CreateRoomPage from "./pages/CreateRoomPage";
+import Test from "./pages/Test";
+import PublicRoomsPage from "./pages/PublicRooms";
 function App() {
   const [gameData, setGameData] = useState({
     roomCode: "123456",
@@ -85,9 +87,11 @@ function App() {
   return (
     <>
       <Routes>
+        <Route path="/test" element={<Test />} />
         <Route path="/signup" element={<SignupScreen />} />
         <Route path="/login" element={<LoginScreen />} />
         <Route index element={<HomePage />} />
+        <Route path="/public-rooms" element={<PublicRoomsPage />} />
 
         <Route
           path="/lobby"
