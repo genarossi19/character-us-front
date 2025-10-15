@@ -10,7 +10,7 @@ const HomePage = () => {
         <div className="flex flex-no-wrap justify-center max-w-[80%] ">
           <img src="/avatar7.webp" alt="" className="max-w-[33.33%]" />
           <img src="/avatar1.webp" alt="" className="max-w-[33.33%]" />
-          <img src="/avatar8.webp" alt="" className="max-w-[33.33%]" />
+          <img src="/avatar8.png" alt="" className="max-w-[33.33%]" />
         </div>
         <div className="flex flex-col items-center gap-4">
           <h1 className="text-5xl font-bold text-foreground text-balance ">

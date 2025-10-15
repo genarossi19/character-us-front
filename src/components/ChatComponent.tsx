@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { AnimateIcon } from "./animate-ui/icons/icon";
 import { MessageSquareX } from "./animate-ui/icons/message-square-x";
 import { AnimatePresence, motion } from "motion/react";
+import { Send } from "./animate-ui/icons/send";
 
 interface ChatComponentProps {
   onClose?: () => void;
@@ -47,7 +48,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({ onClose }) => {
 
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
+  const [isSending, setIsSending] = useState(false);
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -55,7 +56,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({ onClose }) => {
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
-
+    setIsSending(true);
     const message: Message = {
       id: Date.now().toString(),
       sender: "Tú",
@@ -66,6 +67,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({ onClose }) => {
     };
     setMessages((prev) => [...prev, message]);
     setNewMessage("");
+    setIsSending(false);
   };
 
   const formatTime = (date: Date) =>
@@ -99,9 +101,16 @@ const ChatComponent: React.FC<ChatComponentProps> = ({ onClose }) => {
               <motion.div
                 key={msg.id}
                 initial={{ opacity: 0, y: 20, scale: 0.8 }}
-                animate={{ opacity: 1, y: 0, scale: [1.1, 0.95, 1] }} // rebote
+                animate={
+                  msg.isSelf
+                    ? { opacity: 1, y: [10, -5, 0], scale: [1.2, 0.95, 1] } // bounce rápido solo para tus mensajes
+                    : { opacity: 1, y: 0, scale: 1 } // otros mensajes solo fade-in
+                }
                 exit={{ opacity: 0, y: -20, scale: 0.8 }}
-                transition={{ duration: 0.25, ease: "easeOut" }} // rápido y seguro
+                transition={{
+                  duration: msg.isSelf ? 0.3 : 0.2,
+                  ease: "easeOut",
+                }}
                 className={`flex gap-3 ${
                   msg.isSelf ? "justify-end" : "justify-start"
                 }`}
@@ -159,13 +168,15 @@ const ChatComponent: React.FC<ChatComponentProps> = ({ onClose }) => {
             className="flex-1 rounded-2xl bg-gray-700 border border-gray-600 text-white placeholder:text-gray-400 px-4 py-2"
             maxLength={200}
           />
-          <Button
-            type="submit"
-            disabled={!newMessage.trim()}
-            className="bg-cyan-500 hover:bg-cyan-600 text-white font-bold px-6 rounded-2xl"
-          >
-            📤
-          </Button>
+          <AnimateIcon animate completeOnStop>
+            <Button
+              type="submit"
+              disabled={!newMessage.trim()}
+              className="bg-cyan-500 hover:bg-cyan-600 text-white font-bold px-6 rounded-2xl"
+            >
+              <Send />
+            </Button>
+          </AnimateIcon>
         </form>
       </CardContent>
     </Card>

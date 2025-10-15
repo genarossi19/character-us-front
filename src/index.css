@@ -149,8 +149,13 @@ body {
   left: 0;
   margin: 0;
   padding: 0;
-  background: #4e54c8;
+  background: #5dcec6;
   overflow: hidden;
+}
+@media (prefers-color-scheme: dark) {
+  .background {
+    background: #4354c8;
+  }
 }
 .background li {
   position: absolute;

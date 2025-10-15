@@ -252,7 +252,7 @@ const GameScreen: React.FC = () => {
       {/* Chat button: only show when sheet is closed */}
       {!chatOpen && (
         <div className="fixed top-4 right-4 z-50 pointer-events-auto">
-          <AnimateIcon animateOnHover>
+          <AnimateIcon animateOnHover loop loopDelay={800}>
             <button
               onClick={() => setChatOpen(true)}
               aria-expanded={chatOpen}

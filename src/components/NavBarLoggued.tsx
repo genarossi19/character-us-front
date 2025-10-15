@@ -18,9 +18,9 @@ export default function NavBarLoggued() {
   };
 
   return (
-    <header className="sticky top-0 z-50 h-16 md:h-20 px-6 flex items-center justify-between bg-gradient-to-br">
+    <header className="fixed top-0 left-0 w-full z-50 h-16 md:h-20 px-6 flex items-center justify-between bg-white shadow-sm">
       <div className="flex items-center gap-4">
-        <Link to={"/"} className="flex items-center gap-4">
+        <Link to="/" className="flex items-center gap-4">
           <img className="h-12 w-12 rounded-md" src="/logo.webp" alt="logo" />
           <span className="text-3xl font-extrabold bg-gradient-to-b from-accent/60 via-accent/80 to-accent bg-clip-text text-transparent">
             CharacterUs
