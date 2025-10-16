@@ -1,6 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&display=swap");
 @import "tailwindcss";
-
+@custom-variant dark (&:where(.dark, .dark *));
 @theme {
   /* Esto genera la clase de utilidad: font-titan */
   --font-fredoka: "Fredoka", system-ui, sans-serif;
@@ -149,14 +149,15 @@ body {
   left: 0;
   margin: 0;
   padding: 0;
-  background: #5dcec6;
+  background: #5dcec6; /* color por defecto light */
   overflow: hidden;
 }
-@media (prefers-color-scheme: dark) {
-  .background {
-    background: #4354c8;
-  }
+
+/* Cuando el html tiene class="dark" */
+html.dark .background {
+  background: #4354c8;
 }
+
 .background li {
   position: absolute;
   display: block;

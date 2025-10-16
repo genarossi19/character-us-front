@@ -3,7 +3,7 @@ import { Button } from "../components/ui/button";
 import { Link } from "react-router";
 const HomePage = () => {
   return (
-    <div className="bg-accent/8 min-h-screen flex flex-col ">
+    <div className="bg-accent/8 dark:bg-[#111828] min-h-screen flex flex-col ">
       <NavMenu />
 
       <main className="flex-1 flex flex-col items-center justify-center p-4">
@@ -13,14 +13,14 @@ const HomePage = () => {
           <img src="/avatar8.png" alt="" className="max-w-[33.33%]" />
         </div>
         <div className="flex flex-col items-center gap-4">
-          <h1 className="text-5xl font-bold text-foreground text-balance ">
+          <h1 className="text-5xl font-bold text-foreground text-balance dark:text-white">
             ¡Desafia a tus amigos y descubre al impostor!
           </h1>
           <Button
             asChild
             variant={"secondary"}
             size={"lg"}
-            className="animate-bounce-in mt-4 text-3xl h-12 bg-gradient-to-br from-accent to-secondary hover:from-secondary hover:to-accent"
+            className="animate-bounce-in mt-4 text-3xl h-12 bg-gradient-to-br from-accent to-secondary hover:from-secondary hover:to-accent dark:bg-black"
           >
             <Link to={"/signup"}>Registrarse</Link>
           </Button>

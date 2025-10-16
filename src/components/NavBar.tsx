@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 import { Button } from "./ui/button";
-
+import { ThemeToggleButton } from "../components/ui/shadcn-io/theme-toggle-button/index";
 // Navigation links array to be used in both desktop and mobile menus
 
 export default function NavMenu() {
@@ -34,6 +34,7 @@ export default function NavMenu() {
           <Button asChild size="lg" className="text-md">
             <Link to={"/join"}>Join Game </Link>
           </Button>
+          <ThemeToggleButton variant="circle-blur" start="top-right" />
         </div>
       </div>
     </header>

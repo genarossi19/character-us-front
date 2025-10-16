@@ -14,6 +14,7 @@ import Menu from "./pages/Menu";
 import CreateRoomPage from "./pages/CreateRoomPage";
 import Test from "./pages/Test";
 import PublicRoomsPage from "./pages/PublicRooms";
+import { ThemeProvider } from "./components/theme-provider";
 function App() {
   const [gameData, setGameData] = useState({
     roomCode: "123456",
@@ -86,67 +87,69 @@ function App() {
   const navigate = useNavigate();
   return (
     <>
-      <Routes>
-        <Route path="/test" element={<Test />} />
-        <Route path="/signup" element={<SignupScreen />} />
-        <Route path="/login" element={<LoginScreen />} />
-        <Route index element={<HomePage />} />
-        <Route path="/public-rooms" element={<PublicRoomsPage />} />
+      <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+        <Routes>
+          <Route path="/test" element={<Test />} />
+          <Route path="/signup" element={<SignupScreen />} />
+          <Route path="/login" element={<LoginScreen />} />
+          <Route index element={<HomePage />} />
+          <Route path="/public-rooms" element={<PublicRoomsPage />} />
 
-        <Route
-          path="/lobby"
-          element={
-            <WaitingRoom
-              gameData={gameData}
-              onStartGame={() => navigate("/game")}
-            />
-          }
-        />
-        <Route
-          path="/create"
-          element={<CreateRoomPage onSubmit={() => navigate("/lobby")} />}
-        />
-        <Route
-          path="/join"
-          element={
-            <QuickJoinScreen
-              onJoin={() => navigate("/lobby")}
-              onBack={() => navigate(-1)}
-            />
-          }
-        />
-        <Route
-          path="/game"
-          element={
-            <GameScreen
-              gameData={gameData}
-              onSubmitVote={() => navigate("/results")}
-              onStartVoting={() => navigate("/voting-screen")}
-            />
-          }
-        />
-        <Route
-          path="/voting-screen"
-          element={
-            <VotingScreen
-              players={gameData.players}
-              onVote={() => navigate("results")}
-            />
-          }
-        />
-        <Route
-          path="/results"
-          element={
-            <ResultsScreen
-              onBackToLobby={() => navigate("/lobby")}
-              eliminatedPlayer={gameData.eliminatedPlayer}
-              onContinue={() => navigate("voting-screen")}
-            />
-          }
-        />
-        <Route path="/menu" element={<Menu />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+          <Route
+            path="/lobby"
+            element={
+              <WaitingRoom
+                gameData={gameData}
+                onStartGame={() => navigate("/game")}
+              />
+            }
+          />
+          <Route
+            path="/create"
+            element={<CreateRoomPage onSubmit={() => navigate("/lobby")} />}
+          />
+          <Route
+            path="/join"
+            element={
+              <QuickJoinScreen
+                onJoin={() => navigate("/lobby")}
+                onBack={() => navigate(-1)}
+              />
+            }
+          />
+          <Route
+            path="/game"
+            element={
+              <GameScreen
+                gameData={gameData}
+                onSubmitVote={() => navigate("/results")}
+                onStartVoting={() => navigate("/voting-screen")}
+              />
+            }
+          />
+          <Route
+            path="/voting-screen"
+            element={
+              <VotingScreen
+                players={gameData.players}
+                onVote={() => navigate("results")}
+              />
+            }
+          />
+          <Route
+            path="/results"
+            element={
+              <ResultsScreen
+                onBackToLobby={() => navigate("/lobby")}
+                eliminatedPlayer={gameData.eliminatedPlayer}
+                onContinue={() => navigate("voting-screen")}
+              />
+            }
+          />
+          <Route path="/menu" element={<Menu />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </ThemeProvider>
     </>
   );
 }
