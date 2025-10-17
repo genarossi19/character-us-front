@@ -47,7 +47,7 @@ const VotingPanel: React.FC<VotingPanelProps> = ({
           const hasVoted = votes[currentUserId] === player.id;
           const isSelected = selectedVote === player.id;
           const votersForThisPlayer = Object.entries(votes)
-            .filter(([_, votedId]) => votedId === player.id)
+            .filter(([, votedId]) => votedId === player.id)
             .map(([voterId]) => players.find((p) => p.id === voterId));
 
           return (
@@ -56,8 +56,8 @@ const VotingPanel: React.FC<VotingPanelProps> = ({
               onClick={() => phase === "voting" && setSelectedVote(player.id)}
               className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer ${
                 isSelected
-                  ? "bg-cyan-500 border-white"
-                  : "bg-gray-800/60 border-white/20"
+                  ? "bg-cyan-100 dark:bg-cyan-500 border-cyan-500 dark:border-cyan-700 text-white"
+                  : " bg-card border-gray-200 dark:bg-gray-800/60 dark:border-white/20"
               }`}
             >
               <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white/30">
@@ -67,7 +67,9 @@ const VotingPanel: React.FC<VotingPanelProps> = ({
                   className="w-full h-full object-cover"
                 />
               </div>
-              <p className="flex-1 text-lg font-semibold">{player.name}</p>
+              <p className="flex-1 text-lg text-foreground font-semibold">
+                {player.name}
+              </p>
 
               {/* Avatares de votantes (solo en resumen) */}
               {phase === "voteSummary" && votersForThisPlayer.length > 0 && (
@@ -114,7 +116,7 @@ const VotingPanel: React.FC<VotingPanelProps> = ({
           onClick={endVoting}
           className="mt-2 bg-cyan-500 hover:bg-cyan-600 px-6 py-2 rounded-2xl font-bold"
         >
-          Cerrar Votación
+          Cerrar Votación (boton simulador)
         </Button>
       )}
     </div>

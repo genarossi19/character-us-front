@@ -12,7 +12,7 @@ import SignupScreen from "./pages/SignupScreen";
 import NotFound from "./pages/NotFound";
 import Menu from "./pages/Menu";
 import CreateRoomPage from "./pages/CreateRoomPage";
-import Test from "./pages/Test";
+
 import PublicRoomsPage from "./pages/PublicRooms";
 import { ThemeProvider } from "./components/theme-provider";
 function App() {
@@ -32,7 +32,7 @@ function App() {
       {
         id: "2",
         name: "Maria",
-        avatar: "/avatar2.png",
+        avatar: "/avatar2.webp",
         isHost: false,
         isReady: true,
         isAlive: true,
@@ -52,7 +52,7 @@ function App() {
       {
         id: "4",
         name: "Sofia",
-        avatar: "/avatar4.png",
+        avatar: "/avatar4.webp",
         isHost: false,
         isReady: true,
         isAlive: true,
@@ -73,7 +73,7 @@ function App() {
     eliminatedPlayer: {
       id: "2",
       name: "Maria",
-      avatar: "/avatar2.png",
+      avatar: "/avatar2.webp",
       wasImpostor: false,
     },
 
@@ -89,7 +89,6 @@ function App() {
     <>
       <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
         <Routes>
-          <Route path="/test" element={<Test />} />
           <Route path="/signup" element={<SignupScreen />} />
           <Route path="/login" element={<LoginScreen />} />
           <Route index element={<HomePage />} />

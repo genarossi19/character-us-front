@@ -27,11 +27,11 @@ export default function NavMenu() {
             asChild
             variant="ghost"
             size="lg"
-            className="text-md transition-colors ease-in-out duration-150"
+            className="text-foreground text-md transition-colors ease-in-out duration-150"
           >
             <Link to={"/login"}>Login</Link>
           </Button>
-          <Button asChild size="lg" className="text-md">
+          <Button asChild size="lg" className="text-md text-light">
             <Link to={"/join"}>Join Game </Link>
           </Button>
           <ThemeToggleButton variant="circle-blur" start="top-right" />

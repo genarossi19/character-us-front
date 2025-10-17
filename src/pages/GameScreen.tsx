@@ -7,6 +7,7 @@ import { AnimateIcon } from "../components/animate-ui/icons/icon";
 import { BotMessageSquareIcon } from "../components/animate-ui/icons/bot-message-square";
 import { SquareKanban } from "../components/animate-ui/icons/square-kanban";
 import { motion } from "motion/react";
+import { ThemeToggleButton } from "../components/ui/shadcn-io/theme-toggle-button";
 
 interface Player {
   id: string;
@@ -20,12 +21,47 @@ interface Player {
 const GameScreen: React.FC = () => {
   const [gameData] = useState({
     roomCode: "123456",
+    roomInfo: {
+      impostorsKnowEachOther: false,
+      impostorCount: 2,
+      minPlayers: 4,
+      category: "Los Simpsons",
+      isHost: true,
+      charactersList: [
+        {
+          id: 1,
+          name: "Lisa Simpson",
+          avatar: "/lisa-simpson.webp",
+        },
+        {
+          id: 2,
+          name: "Bart Simpson",
+          avatar: "/bart-simpson.webp",
+        },
+        {
+          id: 3,
+          name: "Homero Simpson",
+          avatar: "/los-simpson.webp",
+        },
+        {
+          id: 4,
+          name: "Maggie Simpson",
+          avatar: "/maggie-simpson.webp",
+        },
+        {
+          id: 5,
+          name: "Marge Simpson",
+          avatar: "/marge-simpson.webp",
+        },
+      ],
+    },
     currentUser: {
       id: "1",
       name: "Alex",
       avatar: "/avatar1.png",
       isAlive: true,
-      isImpostor: false,
+      // Simulacion de impostor
+      isImpostor: Math.random() < 0.5,
       character: "Detective",
     },
     players: [
@@ -34,7 +70,7 @@ const GameScreen: React.FC = () => {
         name: "Alex",
         avatar: "/avatar1.png",
         isAlive: true,
-        isImpostor: false,
+        isImpostor: true,
         character: "Detective",
       },
       {
@@ -43,7 +79,7 @@ const GameScreen: React.FC = () => {
         avatar: "/avatar2.png",
         isAlive: true,
         isImpostor: false,
-        character: "Médico",
+        character: "Detective",
       },
       {
         id: "3",
@@ -51,7 +87,7 @@ const GameScreen: React.FC = () => {
         avatar: "/avatar3.png",
         isAlive: true,
         isImpostor: true,
-        character: "Ingeniero",
+        character: "Detective",
       },
       {
         id: "4",
@@ -59,12 +95,12 @@ const GameScreen: React.FC = () => {
         avatar: "/avatar4.png",
         isAlive: true,
         isImpostor: false,
-        character: "Cocinero",
+        character: "Detective",
       },
     ],
   });
 
-  const { currentUser, players } = gameData;
+  const { currentUser, players, roomInfo } = gameData;
 
   const [phase, setPhase] = useState<
     "waiting" | "voting" | "voteSummary" | "results"
@@ -137,30 +173,50 @@ const GameScreen: React.FC = () => {
     setSelectedVote(null);
   };
 
-  // endVoting is implemented above with useCallback
+  const [randomCharacterIndex, setrandomCharacterIndex] = useState(0);
+  const randomNumber = Math.floor(
+    Math.random() * roomInfo.charactersList.length
+  );
+
+  useEffect(() => {
+    setrandomCharacterIndex(randomNumber);
+  }, []);
 
   return (
-    <div className="flex h-screen bg-gray-900 text-white relative">
+    <div className="flex h-screen bg-secondary/10 dark:bg-background text-white relative">
+      <ThemeToggleButton className="absolute top-4 left-4" start="top-left" />
       {/* Main Left Area */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 overflow-hidden">
         {/* Espera / Personaje */}
         {phase === "waiting" && !votingPanelOpen && (
           <div className="flex flex-col items-center gap-4">
             <motion.div
-              className="w-96 h-96 rounded-full overflow-hidden border-4 border-white/20 shadow-lg"
+              className="w-96 h-96 rounded-full overflow-hidden border-4 border-black/10 dark:border-white/20 shadow-lg"
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
             >
-              <img
-                src={currentUser.avatar}
-                alt={currentUser.character}
-                className="w-full h-full object-cover"
-              />
+              {currentUser.isImpostor ? (
+                <img
+                  src={"/impostor.webp"}
+                  alt={roomInfo.charactersList[randomCharacterIndex].name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <img
+                  src={roomInfo.charactersList[randomCharacterIndex].avatar}
+                  alt={roomInfo.charactersList[randomCharacterIndex].name}
+                  className="w-full h-full object-cover"
+                />
+              )}
             </motion.div>
-            <h2 className="text-4xl font-bold">{currentUser.character}</h2>
-            <p className="text-center text-lg text-gray-300">
+            <h2 className="text-4xl font-bold text-foreground/80">
               {currentUser.isImpostor
-                ? "Eres el impostor. Tu objetivo es eliminar sin ser descubierto."
+                ? "Eres el impostor"
+                : roomInfo.charactersList[randomCharacterIndex].name}
+            </h2>
+            <p className="text-center text-lg text-gray-600 dark:text-gray-300">
+              {currentUser.isImpostor
+                ? "Eres el impostor. Evita ser descubierto."
                 : "Descubre al impostor y vota correctamente."}
             </p>
           </div>
@@ -182,40 +238,71 @@ const GameScreen: React.FC = () => {
         )}
 
         {/* Resultados */}
-        {phase === "results" && eliminatedPlayer && (
+        {phase === "results" && (
           <div className="flex flex-col items-center gap-6 overflow-hidden">
-            <h2 className="text-4xl font-bold text-red-500">
-              Jugador Eliminado
-            </h2>
-            <div className="w-48 h-48 rounded-full overflow-hidden border-4 border-red-500">
-              <img
-                src={eliminatedPlayer.avatar}
-                alt={eliminatedPlayer.name}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <p className="text-2xl font-semibold">{eliminatedPlayer.name}</p>
-            <p
-              className={`text-xl font-bold ${
-                eliminatedPlayer.isImpostor ? "text-red-500" : "text-green-400"
-              }`}
-            >
-              {eliminatedPlayer.isImpostor ? "Impostor" : "Tripulante"}
-            </p>
-            <Button
-              onClick={() => {
-                setPhase("waiting");
-                setVotes({});
-                setEliminatedPlayer(null);
-                setVotingPanelOpen(false);
-                setVoteButtonEnabled(false);
-                setVoteCountdown(5);
-                setVotingCountdown(15);
-              }}
-              className="mt-4 bg-green-500 hover:bg-green-600 px-6 py-2 rounded-2xl font-bold"
-            >
-              Continuar
-            </Button>
+            {eliminatedPlayer ? (
+              <>
+                <h2 className="text-4xl font-bold text-red-500">
+                  Jugador Eliminado
+                </h2>
+                <div className="w-48 h-48 rounded-full overflow-hidden border-4 border-red-500">
+                  <img
+                    src={eliminatedPlayer.avatar}
+                    alt={eliminatedPlayer.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <p className="text-2xl font-semibold text-foreground">
+                  {eliminatedPlayer.name}
+                </p>
+                <p
+                  className={`text-xl font-bold ${
+                    eliminatedPlayer.isImpostor
+                      ? "text-red-500"
+                      : "text-green-400"
+                  }`}
+                >
+                  {eliminatedPlayer.isImpostor ? "Impostor" : "Tripulante"}
+                </p>
+                <Button
+                  onClick={() => {
+                    setPhase("waiting");
+                    setVotes({});
+                    setEliminatedPlayer(null);
+                    setVotingPanelOpen(false);
+                    setVoteButtonEnabled(false);
+                    setVoteCountdown(5);
+                    setVotingCountdown(15);
+                  }}
+                  className="mt-4 bg-green-500 hover:bg-green-600 px-6 py-2 rounded-2xl font-bold"
+                >
+                  {eliminatedPlayer.isImpostor ? "Volver a Jugar" : "Continuar"}
+                </Button>
+              </>
+            ) : (
+              <>
+                <h2 className="text-4xl font-bold text-yellow-400">
+                  Nadie fue eliminado
+                </h2>
+                <p className="text-2xl font-semibold text-foreground">
+                  Empate de votos o sin votos
+                </p>
+                <Button
+                  onClick={() => {
+                    setPhase("waiting");
+                    setVotes({});
+                    setEliminatedPlayer(null);
+                    setVotingPanelOpen(false);
+                    setVoteButtonEnabled(false);
+                    setVoteCountdown(5);
+                    setVotingCountdown(15);
+                  }}
+                  className="mt-4 bg-green-500 hover:bg-green-600 px-6 py-2 rounded-2xl font-bold"
+                >
+                  Continuar
+                </Button>
+              </>
+            )}
           </div>
         )}
       </div>

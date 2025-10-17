@@ -9,6 +9,8 @@ import {
 } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import BackgroundAnimate from "../components/BackgroundAnimate";
+import { ThemeToggleButton } from "../components/ui/shadcn-io/theme-toggle-button";
+import { Link } from "react-router";
 
 interface Player {
   id: string;
@@ -35,14 +37,14 @@ interface WaitingRoomProps {
 }
 
 const avatarOptions = [
-  "/avatar1.png",
-  "/avatar2.png",
-  "/avatar3.png",
-  "/avatar4.png",
-  "/avatar5.png",
-  "/avatar6.png",
-  "/avatar7.png",
-  "/avatar8.png",
+  "/avatar1.webp",
+  "/avatar2.webp",
+  "/avatar3.webp",
+  "/avatar4.webp",
+  "/avatar5.webp",
+  "/avatar6.webp",
+  "/avatar7.webp",
+  "/avatar8.webp",
 ];
 
 const WaitingRoom: React.FC<WaitingRoomProps> = ({
@@ -73,6 +75,7 @@ const WaitingRoom: React.FC<WaitingRoomProps> = ({
 
   return (
     <div className="min-h-screen p-4  to-primary/5">
+      <ThemeToggleButton className="absolute top-4 right-4 text-light" />
       <BackgroundAnimate />
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
@@ -109,7 +112,7 @@ const WaitingRoom: React.FC<WaitingRoomProps> = ({
                 <Button
                   onClick={onStartGame}
                   disabled={!canStartGame}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-2 px-4 text-sm"
+                  className="bg-primary hover:bg-primary/90 text-light font-medium py-2 px-4 text-sm"
                 >
                   {canStartGame
                     ? "Iniciar Partida"
@@ -126,23 +129,25 @@ const WaitingRoom: React.FC<WaitingRoomProps> = ({
                 </Button>
               )}
 
-              <Button
-                variant="outline"
-                className="border-border/50 hover:bg-accent/50 bg-transparent py-2 px-4 text-sm"
-              >
-                Salir de la Sala
-              </Button>
+              <Link to="/join">
+                <Button
+                  variant="outline"
+                  className="border-border/50 hover:bg-accent/50 bg-transparent py-2 px-4 text-sm"
+                >
+                  Salir de la Sala
+                </Button>
+              </Link>
             </div>
           </CardHeader>
 
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 ">
               {displayedPlayers.map((player) => {
                 const isCurrentUser = player.id === currentUser.id;
                 return (
                   <div
                     key={player.id}
-                    className="flex flex-col items-center space-y-2 p-2 rounded-xl bg-white shadow-sm"
+                    className="flex flex-col items-center space-y-2 p-2 rounded-xl bg-foreground/4 shadow-sm"
                   >
                     <div className="relative">
                       <img
@@ -221,7 +226,7 @@ const WaitingRoom: React.FC<WaitingRoomProps> = ({
 
         {/* Game Info Compacta */}
         <Card className="border-border/50 bg-card backdrop-blur-sm p-4 md:p-6 h-[220px] md:h-[180px]">
-          <h2 className="text-lg md:text-xl font-bold text-black mb-2 text-center">
+          <h2 className="text-lg md:text-xl font-bold text-foreground mb-2 text-center">
             Información de la Partida
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 h-full">

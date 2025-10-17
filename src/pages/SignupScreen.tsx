@@ -11,6 +11,7 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "../components/ui/popover";
+import { ThemeToggleButton } from "../components/ui/shadcn-io/theme-toggle-button";
 
 const SignupScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -31,18 +32,16 @@ const SignupScreen: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // validación final antes de enviar
     if (!isFormValid()) return;
-    navigate("/login");
+    navigate("/menu");
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const emailIsValid = (email: string) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  };
+  const emailIsValid = (email: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   const usernameInvalid =
     !formData.username.trim() &&
@@ -60,37 +59,42 @@ const SignupScreen: React.FC = () => {
     (touched.confirmPassword || formData.confirmPassword.length > 0);
   const termsInvalid = !acceptedTerms && touchedTerms;
 
-  const isFormValid = () => {
-    return (
-      formData.username.trim().length > 0 &&
-      emailIsValid(formData.email) &&
-      formData.password.length >= 8 &&
-      formData.password === formData.confirmPassword &&
-      acceptedTerms
-    );
-  };
+  const isFormValid = () =>
+    formData.username.trim().length > 0 &&
+    emailIsValid(formData.email) &&
+    formData.password.length >= 8 &&
+    formData.password === formData.confirmPassword &&
+    acceptedTerms;
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative ">
+    <div className="min-h-screen flex items-center justify-center p-4 relative bg-background text-foreground">
       <BackgroundAnimate />
-      <Button
-        onClick={() => navigate(-1)}
-        size="lg"
-        variant="ghost"
-        className="absolute top-4 left-4 text-white hover:bg-white/10 text-xl"
-      >
-        ← Volver
-      </Button>
+
+      <header className="fixed top-0 left-0 w-full z-50 h-16 md:h-20 px-6 flex items-center justify-between  ">
+        {/* Botón Volver */}
+        <div className="flex items-center">
+          <Button
+            onClick={() => navigate(-1)}
+            size="lg"
+            variant="ghost"
+            className="text-light hover:bg-accent/20 text-lg font-semibold transition-colors"
+          >
+            ← Volver
+          </Button>
+        </div>
+
+        {/* Sección derecha */}
+        <div className="flex items-center gap-2">
+          <ThemeToggleButton className="text-light" />
+        </div>
+      </header>
 
       <div className="w-full max-w-6xl">
-        <Card className="shadow-md border-none overflow-hidden flex flex-col md:flex-row min-h-screen md:min-h-[700px]">
-          {/* LEFT: Character + circular glow */}
-          <div className="hidden md:flex md:w-1/2 relative flex-col items-center justify-center p-6 bg-white animate-bounce-in">
+        <Card className="shadow-md border-none overflow-hidden flex flex-col md:flex-row min-h-screen md:min-h-[700px] bg-card text-card-foreground">
+          {/* LEFT: Character + glow */}
+          <div className="hidden md:flex md:w-1/2 relative flex-col items-center justify-center p-6 animate-bounce-in">
             <div className="relative w-72 h-72">
-              {/* Circular glow behind avatar */}
               <div className="absolute top-1/2 left-1/2 w-96 h-96 rounded-full bg-gradient-to-b from-accent/20 to-transparent -translate-x-1/2 -translate-y-1/2"></div>
-
-              {/* Character avatar */}
               <img
                 src="/avatar3.webp"
                 alt="Character"
@@ -98,20 +102,18 @@ const SignupScreen: React.FC = () => {
               />
             </div>
 
-            <h2 className="mt-8 text-4xl font-extrabold text-center text-slate-900 z-10">
+            <h2 className="mt-8 text-4xl font-extrabold text-center text-foreground z-10">
               CharacterUs
             </h2>
-
-            <p className="mt-2 text-slate-700 text-center text-lg z-10 px-4">
+            <p className="mt-2 text-foreground/80 text-center text-lg z-10 px-4">
               Únete a partidas online, crea tu cuenta y empieza a jugar con tu
               personaje favorito.
             </p>
           </div>
 
           {/* RIGHT: Form */}
-          <div className="md:w-1/2 flex flex-col justify-center p-6 md:p-10 bg-white rounded-tr-lg rounded-br-lg min-h-screen md:min-h-[700px]">
-            {/* Logo solo en mobile */}
-            <div className=" md:hidden mb-4 flex justify-center">
+          <div className="md:w-1/2 flex flex-col justify-center p-6 md:p-10 min-h-screen md:min-h-[700px] bg-card rounded-tr-lg rounded-br-lg">
+            <div className="md:hidden mb-4 flex justify-center">
               <img
                 src="/logo.webp"
                 alt="Logo"
@@ -119,13 +121,11 @@ const SignupScreen: React.FC = () => {
               />
             </div>
 
-            {/* Sign Up Legend */}
-            <h3 className="text-xl md:text-2xl font-semibold text-center text-slate-900 mb-2">
+            <h3 className="text-xl md:text-2xl font-semibold text-center text-foreground mb-2">
               Sign Up
             </h3>
-
             <CardTitle>
-              <h1 className="text-3xl md:text-4xl font-extrabold text-center text-slate-900 mb-4">
+              <h1 className="text-3xl md:text-4xl font-extrabold text-center text-foreground mb-4">
                 Crear cuenta
               </h1>
             </CardTitle>
@@ -136,12 +136,12 @@ const SignupScreen: React.FC = () => {
                 <div>
                   <label
                     htmlFor="username"
-                    className="block text-md font-medium text-gray-600"
+                    className="block text-md font-medium text-muted-foreground"
                   >
                     Usuario
                   </label>
                   <div className="relative">
-                    <User className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                    <User className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
                     <Input
                       id="username"
                       name="username"
@@ -150,10 +150,9 @@ const SignupScreen: React.FC = () => {
                       onChange={handleInputChange}
                       onBlur={() => setTouched({ ...touched, username: true })}
                       aria-invalid={usernameInvalid}
-                      className={
-                        "pl-10 placeholder:text-gray-400 " +
-                        (usernameInvalid ? "border-red-400" : "")
-                      }
+                      className={`pl-10 placeholder:text-muted-foreground ${
+                        usernameInvalid ? "border-red-400" : ""
+                      }`}
                     />
                   </div>
                   {usernameInvalid && (
@@ -167,12 +166,12 @@ const SignupScreen: React.FC = () => {
                 <div>
                   <label
                     htmlFor="email"
-                    className="block text-md font-medium text-gray-600"
+                    className="block text-md font-medium text-muted-foreground"
                   >
                     Email
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                    <Mail className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
                     <Input
                       id="email"
                       name="email"
@@ -182,10 +181,9 @@ const SignupScreen: React.FC = () => {
                       onChange={handleInputChange}
                       onBlur={() => setTouched({ ...touched, email: true })}
                       aria-invalid={emailInvalid}
-                      className={
-                        "pl-10 placeholder:text-gray-400 " +
-                        (emailInvalid ? "border-red-400" : "")
-                      }
+                      className={`pl-10 placeholder:text-muted-foreground ${
+                        emailInvalid ? "border-red-400" : ""
+                      }`}
                     />
                   </div>
                   {emailInvalid && (
@@ -199,12 +197,12 @@ const SignupScreen: React.FC = () => {
                 <div>
                   <label
                     htmlFor="password"
-                    className="block text-md font-medium text-gray-600"
+                    className="block text-md font-medium text-muted-foreground"
                   >
                     Contraseña
                   </label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                    <Lock className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
                     <Input
                       id="password"
                       name="password"
@@ -214,10 +212,9 @@ const SignupScreen: React.FC = () => {
                       onChange={handleInputChange}
                       onBlur={() => setTouched({ ...touched, password: true })}
                       aria-invalid={passwordInvalid}
-                      className={
-                        "pl-10 placeholder:text-gray-400 " +
-                        (passwordInvalid ? "border-red-400" : "")
-                      }
+                      className={`pl-10 placeholder:text-muted-foreground ${
+                        passwordInvalid ? "border-red-400" : ""
+                      }`}
                     />
                   </div>
                   {passwordInvalid && (
@@ -231,12 +228,12 @@ const SignupScreen: React.FC = () => {
                 <div>
                   <label
                     htmlFor="confirmPassword"
-                    className="block text-md font-medium text-gray-600"
+                    className="block text-md font-medium text-muted-foreground"
                   >
                     Confirmar contraseña
                   </label>
                   <div className="relative">
-                    <CheckCircle className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                    <CheckCircle className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
                     <Input
                       id="confirmPassword"
                       name="confirmPassword"
@@ -248,10 +245,9 @@ const SignupScreen: React.FC = () => {
                         setTouched({ ...touched, confirmPassword: true })
                       }
                       aria-invalid={confirmInvalid}
-                      className={
-                        "pl-10 placeholder:text-gray-400 " +
-                        (confirmInvalid ? "border-red-400" : "")
-                      }
+                      className={`pl-10 placeholder:text-muted-foreground ${
+                        confirmInvalid ? "border-red-400" : ""
+                      }`}
                     />
                   </div>
                   {confirmInvalid && (
@@ -262,14 +258,13 @@ const SignupScreen: React.FC = () => {
                 </div>
 
                 {/* Terms */}
-                <div className="flex items-center space-x-2 text-sm text-gray-700">
+                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                   <input
                     type="checkbox"
                     id="terms"
-                    className={
-                      "rounded text-primary " +
-                      (termsInvalid ? "ring-2 ring-red-400" : "")
-                    }
+                    className={`rounded text-primary ${
+                      termsInvalid ? "ring-2 ring-red-400" : ""
+                    }`}
                     checked={acceptedTerms}
                     onChange={(e) => {
                       setAcceptedTerms(e.target.checked);
@@ -298,7 +293,7 @@ const SignupScreen: React.FC = () => {
                         variant="default"
                         size="lg"
                         disabled={!isFormValid()}
-                        className="w-full text-white font-semibold text-lg rounded-md bg-primary hover:bg-primary/90"
+                        className="w-full font-semibold text-lg rounded-md bg-primary hover:bg-primary/90"
                       >
                         Registrarse
                       </Button>
@@ -334,9 +329,9 @@ const SignupScreen: React.FC = () => {
 
               {/* Divider */}
               <div className="flex items-center my-4">
-                <div className="flex-grow border-t border-gray-300" />
-                <span className="mx-2 text-gray-400 text-sm">o</span>
-                <div className="flex-grow border-t border-gray-300" />
+                <div className="flex-grow border-t border-muted" />
+                <span className="mx-2 text-muted-foreground text-sm">o</span>
+                <div className="flex-grow border-t border-muted" />
               </div>
 
               {/* Social signup */}
@@ -344,21 +339,21 @@ const SignupScreen: React.FC = () => {
                 <Button
                   variant="outline"
                   size="lg"
-                  className="w-full flex-1 flex items-center gap-2 justify-center"
+                  className="w-full flex-1 flex items-center gap-2 justify-center text-foreground border-border"
                 >
                   <Chrome className="h-5 w-5" /> Google
                 </Button>
                 <Button
                   variant="outline"
                   size="lg"
-                  className="w-full flex-1 flex items-center gap-2 justify-center"
+                  className="w-full flex-1 flex items-center gap-2 justify-center text-foreground border-border"
                 >
                   <Github className="h-5 w-5" /> GitHub
                 </Button>
               </div>
 
               {/* Redirect login */}
-              <p className="mt-6 text-center text-sm text-gray-700">
+              <p className="mt-6 text-center text-sm text-foreground">
                 ¿Ya tienes cuenta?{" "}
                 <span
                   onClick={() => navigate("/login")}

@@ -8,7 +8,7 @@ import { PlusCircle, Users } from "lucide-react";
 
 export default function MenuPage() {
   return (
-    <div className="bg-accent/8 min-h-screen flex flex-col">
+    <div className="bg-background min-h-screen flex flex-col">
       <NavBarLoggued />
 
       {/* Main content */}

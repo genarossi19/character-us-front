@@ -22,8 +22,8 @@ interface ThemeToggleButtonProps {
 
 export const ThemeToggleButton = ({
   showLabel = false,
-  variant = "circle",
-  start = "center",
+  variant = "circle-blur",
+  start = "top-right",
   url,
   className,
 }: ThemeToggleButtonProps) => {
@@ -155,7 +155,7 @@ export const ThemeToggleButton = ({
       size={showLabel ? "default" : "icon"}
       onClick={handleClick}
       className={cn(
-        "relative overflow-hidden transition-all",
+        "relative overflow-hidden transition-all text-foreground hover:text-[#f8fafc]",
         showLabel && "gap-2",
         className
       )}

@@ -11,6 +11,7 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "../components/ui/popover";
+import { ThemeToggleButton } from "../components/ui/shadcn-io/theme-toggle-button";
 
 const LoginScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -53,14 +54,25 @@ const LoginScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative">
-      <Button
-        onClick={() => navigate(-1)}
-        size="lg"
-        variant="ghost"
-        className="absolute top-4 left-4 text-white hover:bg-white/10 text-xl"
-      >
-        ← Volver
-      </Button>
+      <header className="fixed top-0 left-0 w-full z-50 h-16 md:h-20 px-6 flex items-center justify-between  ">
+        {/* Botón Volver */}
+        <div className="flex items-center">
+          <Button
+            onClick={() => navigate(-1)}
+            size="lg"
+            variant="ghost"
+            className="text-light hover:bg-accent/20 text-lg font-semibold transition-colors"
+          >
+            ← Volver
+          </Button>
+        </div>
+
+        {/* Sección derecha */}
+        <div className="flex items-center gap-2">
+          <ThemeToggleButton className="text-light" />
+        </div>
+      </header>
+
       <BackgroundAnimate />
 
       <div className="w-full max-w-md space-y-8">
@@ -84,12 +96,12 @@ const LoginScreen: React.FC = () => {
               <div>
                 <label
                   htmlFor="email"
-                  className="block text-md font-medium text-gray-600"
+                  className="block text-md font-medium text-gray-600 dark:text-light"
                 >
                   Email
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                  <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400 " />
                   <Input
                     id="email"
                     name="email"
@@ -116,12 +128,12 @@ const LoginScreen: React.FC = () => {
               <div>
                 <label
                   htmlFor="password"
-                  className="block text-md font-medium text-gray-600"
+                  className="block text-md font-medium text-gray-600 dark:text-light"
                 >
                   Contraseña
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                  <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400 " />
                   <Input
                     id="password"
                     name="password"

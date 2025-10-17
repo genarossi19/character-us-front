@@ -5,67 +5,161 @@
   /* Esto genera la clase de utilidad: font-titan */
   --font-fredoka: "Fredoka", system-ui, sans-serif;
 }
-@theme inline {
-  /* Primary brand colors - vibrant and friendly */
-  --color-primary: #ff6b6b;
-  --color-primary-foreground: #ffffff;
 
-  /* Secondary colors - playful palette */
-  --color-secondary: #4ecdc4;
-  --color-secondary-foreground: #ffffff;
+/* --- VARIABLES BASE --- */
+:root {
+  /* Background y foreground generales */
+  --background: #30bfb116;
+  --foreground: #111827;
 
-  /* Accent colors for game elements */
-  --color-accent: #30bfb1;
-  --color-accent-foreground: #ffffff;
+  /* Card y superficie */
+  --card: #ffffff;
+  --card-foreground: #1e293b;
 
-  /* Success/Safe color */
-  --color-success: #96ceb4;
-  --color-success-foreground: #2d5a3d;
+  /* Colores de acento */
+  --accent: #30bfb1;
+  --accent-foreground: #ffffff;
 
-  /* Warning/Suspicious color */
-  --color-warning: #feca57;
-  --color-warning-foreground: #8b4513;
+  /* Primary / secondary / success / warning / danger */
+  --primary: #ff6b6b;
+  --primary-foreground: #ffffff;
 
-  /* Danger/Impostor color */
-  --color-danger: #ff6b6b;
-  --color-danger-foreground: #ffffff;
+  --secondary: #4ecdc4;
+  --secondary-foreground: #ffffff;
 
-  /* Background colors */
-  --color-background: #f8f9ff;
-  --color-foreground: #2d3748;
+  --success: #96ceb4;
+  --success-foreground: #2d5a3d;
 
-  /* Card and surface colors */
-  --color-card: #ffffff;
-  --color-card-foreground: #2d3748;
+  --warning: #feca57;
+  --warning-foreground: #8b4513;
 
-  /* Muted colors */
-  --color-muted: #e2e8f0;
-  --color-muted-foreground: #64748b;
+  --danger: #ff6b6b;
+  --danger-foreground: #ffffff;
 
-  /* Border colors */
-  --color-border: #e2e8f0;
-  --color-input: #e2e8f0;
+  /* Muted y borde */
+  --muted: #e2e8f0;
+  --muted-foreground: #64748b;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
 
-  /* Ring colors for focus states */
-  --color-ring: #45b7d1;
-
-  /* Radius for rounded corners */
+  /* Ring / radius */
+  --ring: #45b7d1;
   --radius: 1rem;
 
-  /* Game-specific colors */
-  --color-impostor: #ff4757;
-  --color-crewmate: #5352ed;
-  --color-chat: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  /* Game-specific */
+  --impostor: #ff4757;
+  --crewmate: #5352ed;
+  --chat: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 
   /* Avatar colors */
-  --color-red: #ff6b6b;
-  --color-blue: #4ecdc4;
-  --color-green: #96ceb4;
-  --color-yellow: #feca57;
-  --color-purple: #a55eea;
-  --color-orange: #ff9f43;
-  --color-pink: #fd79a8;
-  --color-cyan: #00d2d3;
+  --red: #ff6b6b;
+  --blue: #4ecdc4;
+  --green: #96ceb4;
+  --yellow: #feca57;
+  --purple: #a55eea;
+  --orange: #ff9f43;
+  --pink: #fd79a8;
+  --cyan: #00d2d3;
+}
+
+/* --- MODO OSCURO --- */
+.dark {
+  --background: #111828;
+  --foreground: #f8fafc;
+
+  --card: #1a2335;
+  --card-foreground: #e2e8f0;
+
+  --accent: #57d6ce;
+  --accent-foreground: #111827;
+
+  --primary: #ff6b6b;
+  --primary-foreground: #111827;
+
+  --secondary: #3dc7ba;
+  --secondary-foreground: #111827;
+
+  --success: #96ceb4;
+  --success-foreground: #111827;
+
+  --warning: #feca57;
+  --warning-foreground: #111827;
+
+  --danger: #ff6b6b;
+  --danger-foreground: #111827;
+
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --border: #1e293b;
+  --input: #1e293b;
+
+  --ring: #30bfb1;
+  --radius: 1rem;
+
+  --impostor: #ff4757;
+  --crewmate: #5352ed;
+  --chat: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+  --red: #ff6b6b;
+  --blue: #4ecdc4;
+  --green: #96ceb4;
+  --yellow: #feca57;
+  --purple: #a55eea;
+  --orange: #ff9f43;
+  --pink: #fd79a8;
+  --cyan: #00d2d3;
+}
+
+/* --- MAPEO @theme INLINE --- */
+@theme inline {
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+
+  --color-ring: var(--ring);
+  --radius: var(--radius);
+
+  --color-impostor: var(--impostor);
+  --color-crewmate: var(--crewmate);
+  --color-chat: var(--chat);
+
+  --color-red: var(--red);
+  --color-blue: var(--blue);
+  --color-green: var(--green);
+  --color-yellow: var(--yellow);
+  --color-purple: var(--purple);
+  --color-orange: var(--orange);
+  --color-pink: var(--pink);
+  --color-cyan: var(--cyan);
+
+  --color-light: #f8fafc;
+  --color-dark: #111827;
 }
 
 body {
@@ -149,23 +243,34 @@ body {
   left: 0;
   margin: 0;
   padding: 0;
-  background: #5dcec6; /* color por defecto light */
+  background: #4141b9; /* color base modo claro */
   overflow: hidden;
 }
 
-/* Cuando el html tiene class="dark" */
+/* Fondo modo oscuro */
 html.dark .background {
-  background: #4354c8;
+  background: #111828;
 }
 
+/* Formas base (modo claro): un poco más oscuro */
 .background li {
   position: absolute;
   display: block;
   list-style: none;
   width: 20px;
   height: 20px;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.05); /* más oscuro sobre fondo claro */
   animation: animate 12s linear infinite;
+}
+
+/* En modo oscuro: formas un poco más claras */
+html.dark .background li {
+  background: rgba(255, 255, 255, 0.15); /* más claro sobre fondo oscuro */
+}
+
+/* Cuando el html tiene class="dark" */
+html.dark .background {
+  background: #111828;
 }
 
 .background li:nth-child(0) {
@@ -258,4 +363,16 @@ html.dark .background {
   height: 100px;
   bottom: -100px;
   animation-delay: 32s;
+}
+
+/* Chrome, Edge, Safari */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type="number"] {
+  -moz-appearance: textfield;
 }

@@ -73,7 +73,9 @@ const ResultsScreen: React.FC<ResultsScreenProps> = ({
 
               {/* Player Name */}
               <div className="space-y-2">
-                <h2 className="text-2xl font-bold">{eliminatedPlayer.name}</h2>
+                <h2 className="text-2xl font-bold text-foreground">
+                  {eliminatedPlayer.name}
+                </h2>
                 <Badge
                   variant="destructive"
                   className="bg-game-danger/20 text-game-danger border-game-danger/30"

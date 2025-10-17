@@ -26,21 +26,21 @@ const ChatComponent: React.FC<ChatComponentProps> = ({ onClose }) => {
     {
       id: "1",
       sender: "Alex",
-      message: "¿Alguien vio algo sospechoso?",
+      message: "Amarillo",
       timestamp: new Date(Date.now() - 30000),
       avatar: "red",
     },
     {
       id: "2",
       sender: "Maria",
-      message: "Vi a Carlos cerca del laboratorio...",
+      message: "Torpe",
       timestamp: new Date(Date.now() - 20000),
       avatar: "blue",
     },
     {
       id: "3",
       sender: "Carlos",
-      message: "¡Yo estaba haciendo tareas! 😤",
+      message: "Extraordinario",
       timestamp: new Date(Date.now() - 10000),
       avatar: "green",
     },
@@ -48,7 +48,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({ onClose }) => {
 
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [isSending, setIsSending] = useState(false);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -56,7 +56,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({ onClose }) => {
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
-    setIsSending(true);
+
     const message: Message = {
       id: Date.now().toString(),
       sender: "Tú",
@@ -67,26 +67,25 @@ const ChatComponent: React.FC<ChatComponentProps> = ({ onClose }) => {
     };
     setMessages((prev) => [...prev, message]);
     setNewMessage("");
-    setIsSending(false);
   };
 
   const formatTime = (date: Date) =>
     date.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
 
   return (
-    <Card className="flex flex-col h-full w-full bg-gray-800 border border-gray-700 shadow-lg rounded-none">
+    <Card className="flex flex-col h-full w-full bg-[#daf3f8] dark:bg-gray-800 border border-accent dark:border-border shadow-lg rounded-none transition-colors">
       {/* Header */}
-      <CardHeader className="flex items-center justify-between p-4 border-b border-gray-700 h-4">
-        <CardTitle className="text-white text-lg font-bold">
+      <CardHeader className="flex items-center justify-between p-4 border-b border-accent dark:border-border">
+        <CardTitle className="text-foreground text-lg font-bold">
           💬 Chat de la Partida
         </CardTitle>
         {onClose && (
           <AnimateIcon animateOnHover>
             <button
               onClick={onClose}
-              className="hover:cursor-pointer text-white hover:bg-gray-700 h-12 w-12 p-0 items-center justify-center flex rounded-full mb-2"
+              className="hover:cursor-pointer text-foreground hover:bg-accent/20 h-10 w-10 p-0 flex items-center justify-center rounded-full transition-colors"
             >
-              <MessageSquareX className="h-6 w-6" />
+              <MessageSquareX className="h-5 w-5" />
             </button>
           </AnimateIcon>
         )}
@@ -103,8 +102,8 @@ const ChatComponent: React.FC<ChatComponentProps> = ({ onClose }) => {
                 initial={{ opacity: 0, y: 20, scale: 0.8 }}
                 animate={
                   msg.isSelf
-                    ? { opacity: 1, y: [10, -5, 0], scale: [1.2, 0.95, 1] } // bounce rápido solo para tus mensajes
-                    : { opacity: 1, y: 0, scale: 1 } // otros mensajes solo fade-in
+                    ? { opacity: 1, y: [10, -5, 0], scale: [1.2, 0.95, 1] }
+                    : { opacity: 1, y: 0, scale: 1 }
                 }
                 exit={{ opacity: 0, y: -20, scale: 0.8 }}
                 transition={{
@@ -125,7 +124,7 @@ const ChatComponent: React.FC<ChatComponentProps> = ({ onClose }) => {
                         : msg.avatar === "green"
                         ? "bg-green-500"
                         : msg.avatar === "yellow"
-                        ? "bg-yellow-400"
+                        ? "bg-yellow-400 text-gray-900"
                         : "bg-purple-500"
                     }`}
                   >
@@ -134,22 +133,22 @@ const ChatComponent: React.FC<ChatComponentProps> = ({ onClose }) => {
                 )}
                 <div className="flex flex-col max-w-[70%]">
                   {!msg.isSelf && (
-                    <span className="text-gray-300 text-sm font-semibold">
+                    <span className="text-muted-foreground text-sm font-medium">
                       {msg.sender} • {formatTime(msg.timestamp)}
                     </span>
                   )}
                   <div
-                    className={`px-4 py-2 rounded-2xl break-words text-sm ${
+                    className={`px-4 py-2 rounded-2xl break-words text-sm shadow-sm ${
                       msg.isSelf
-                        ? "bg-cyan-500 text-white self-end rounded-br-none"
-                        : "bg-gray-700 text-white rounded-bl-none"
+                        ? "bg-accent text-white self-end rounded-br-none"
+                        : "bg-white dark:bg-gray-700 text-foreground dark:text-white rounded-bl-none border border-border/40"
                     }`}
                   >
                     {msg.message}
                   </div>
                 </div>
                 {msg.isSelf && (
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm bg-cyan-500">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm bg-accent">
                     😊
                   </div>
                 )}
@@ -165,14 +164,14 @@ const ChatComponent: React.FC<ChatComponentProps> = ({ onClose }) => {
             placeholder="Escribe un mensaje..."
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            className="flex-1 rounded-2xl bg-gray-700 border border-gray-600 text-white placeholder:text-gray-400 px-4 py-2"
+            className="flex-1 rounded-2xl bg-gray-100 dark:bg-gray-700 border border-border text-foreground placeholder:text-muted-foreground px-4 py-2 focus-visible:ring-accent/40"
             maxLength={200}
           />
           <AnimateIcon animate completeOnStop>
             <Button
               type="submit"
               disabled={!newMessage.trim()}
-              className="bg-cyan-500 hover:bg-cyan-600 text-white font-bold px-6 rounded-2xl"
+              className="bg-cyan-500 hover:bg-cyan-600 text-white font-bold px-6 rounded-2xl h-11 transition-colors"
             >
               <Send />
             </Button>
