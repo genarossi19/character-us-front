@@ -14,7 +14,6 @@ export default function NavBarLoggued() {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    // lógica de logout mínima (redirección). Puedes ampliar.
     navigate("/login");
   };
 

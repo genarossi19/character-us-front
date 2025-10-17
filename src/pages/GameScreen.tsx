@@ -8,6 +8,7 @@ import { BotMessageSquareIcon } from "../components/animate-ui/icons/bot-message
 import { SquareKanban } from "../components/animate-ui/icons/square-kanban";
 import { motion } from "motion/react";
 import { ThemeToggleButton } from "../components/ui/shadcn-io/theme-toggle-button";
+import { useNavigate } from "react-router";
 
 interface Player {
   id: string;
@@ -19,6 +20,7 @@ interface Player {
 }
 
 const GameScreen: React.FC = () => {
+  const navigate = useNavigate();
   const [gameData] = useState({
     roomCode: "123456",
     roomInfo: {
@@ -58,7 +60,7 @@ const GameScreen: React.FC = () => {
     currentUser: {
       id: "1",
       name: "Alex",
-      avatar: "/avatar1.png",
+      avatar: "/avatar1.webp",
       isAlive: true,
       // Simulacion de impostor
       isImpostor: Math.random() < 0.5,
@@ -68,7 +70,7 @@ const GameScreen: React.FC = () => {
       {
         id: "1",
         name: "Alex",
-        avatar: "/avatar1.png",
+        avatar: "/avatar1.webp",
         isAlive: true,
         isImpostor: true,
         character: "Detective",
@@ -76,7 +78,7 @@ const GameScreen: React.FC = () => {
       {
         id: "2",
         name: "Maria",
-        avatar: "/avatar2.png",
+        avatar: "/avatar2.webp",
         isAlive: true,
         isImpostor: false,
         character: "Detective",
@@ -84,7 +86,7 @@ const GameScreen: React.FC = () => {
       {
         id: "3",
         name: "Carlos",
-        avatar: "/avatar3.png",
+        avatar: "/avatar3.webp",
         isAlive: true,
         isImpostor: true,
         character: "Detective",
@@ -92,7 +94,7 @@ const GameScreen: React.FC = () => {
       {
         id: "4",
         name: "Sofia",
-        avatar: "/avatar4.png",
+        avatar: "/avatar4.webp",
         isAlive: true,
         isImpostor: false,
         character: "Detective",
@@ -184,7 +186,17 @@ const GameScreen: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-secondary/10 dark:bg-background text-white relative">
-      <ThemeToggleButton className="absolute top-4 left-4" start="top-left" />
+      <div className="absolute top-4 left-4">
+        <Button
+          onClick={() => navigate("/")}
+          size="lg"
+          variant="ghost"
+          className="text-foreground hover:bg-accent/20 text-lg font-semibold transition-colors"
+        >
+          ← Salir
+        </Button>
+        <ThemeToggleButton start="top-left" />
+      </div>
       {/* Main Left Area */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 overflow-hidden">
         {/* Espera / Personaje */}
@@ -222,7 +234,7 @@ const GameScreen: React.FC = () => {
           </div>
         )}
 
-        {/* Panel de votación */}
+        {/* Panel de votos */}
         {(phase === "voting" || phase === "voteSummary") && (
           <VotingPanel
             players={players}
@@ -307,14 +319,12 @@ const GameScreen: React.FC = () => {
         )}
       </div>
 
-      {/* Vote button: fixed, two distinct renders so AnimateIcon is NOT mounted during countdown */}
       <div
         className={`fixed z-50 pointer-events-auto top-4 ${
           chatOpen ? "right-[25rem]" : "right-22"
         }`}
       >
         {!voteButtonEnabled ? (
-          // Static disabled button while counting down — NO AnimateIcon wrapper
           <button
             disabled
             className=" w-16 h-16 flex items-center justify-center bg-gray-700 text-gray-200/80 rounded-full shadow-lg"
@@ -323,7 +333,6 @@ const GameScreen: React.FC = () => {
             <span className="text-sm leading-4">{voteCountdown}s</span>
           </button>
         ) : (
-          // Animated button only when enabled
           <AnimateIcon animateOnHover loop>
             <button
               onClick={toggleVotingPanel}
@@ -336,7 +345,6 @@ const GameScreen: React.FC = () => {
         )}
       </div>
 
-      {/* Chat button: only show when sheet is closed */}
       {!chatOpen && (
         <div className="fixed top-4 right-4 z-50 pointer-events-auto">
           <AnimateIcon animateOnHover loop loopDelay={800}>
@@ -352,7 +360,6 @@ const GameScreen: React.FC = () => {
         </div>
       )}
 
-      {/* Chat sheet (fixed to the right). Slides in/out without moving other fixed elements */}
       <div
         className={`fixed top-0 right-0 h-screen w-96 z-40 transform transition-transform duration-300 ${
           chatOpen ? "translate-x-0" : "translate-x-full"

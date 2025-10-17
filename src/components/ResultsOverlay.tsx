@@ -10,7 +10,7 @@ interface Player {
 
 interface ResultsOverlayProps {
   eliminatedPlayer: Player;
-  votes: Record<string, string>; // { voterId: votedForId }
+  votes: Record<string, string>;
   players: Player[];
   onContinue: () => void;
   onBackToLobby: () => void;
@@ -95,7 +95,7 @@ const ResultsOverlay: React.FC<ResultsOverlayProps> = ({
           })}
         </div>
 
-        {/* Eliminado destacado */}
+        {/*eliminado destacado */}
         {eliminatedPlayer && (
           <div className="flex flex-col items-center mt-4">
             <h3 className="text-2xl font-bold text-red-500 mb-2">

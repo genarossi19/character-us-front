@@ -71,7 +71,6 @@ const SignupScreen: React.FC = () => {
       <BackgroundAnimate />
 
       <header className="fixed top-0 left-0 w-full z-50 h-16 md:h-20 px-6 flex items-center justify-between  ">
-        {/* Botón Volver */}
         <div className="flex items-center">
           <Button
             onClick={() => navigate(-1)}
@@ -83,7 +82,6 @@ const SignupScreen: React.FC = () => {
           </Button>
         </div>
 
-        {/* Sección derecha */}
         <div className="flex items-center gap-2">
           <ThemeToggleButton className="text-light" />
         </div>
@@ -91,7 +89,6 @@ const SignupScreen: React.FC = () => {
 
       <div className="w-full max-w-6xl">
         <Card className="shadow-md border-none overflow-hidden flex flex-col md:flex-row min-h-screen md:min-h-[700px] bg-card text-card-foreground">
-          {/* LEFT: Character + glow */}
           <div className="hidden md:flex md:w-1/2 relative flex-col items-center justify-center p-6 animate-bounce-in">
             <div className="relative w-72 h-72">
               <div className="absolute top-1/2 left-1/2 w-96 h-96 rounded-full bg-gradient-to-b from-accent/20 to-transparent -translate-x-1/2 -translate-y-1/2"></div>
@@ -111,7 +108,7 @@ const SignupScreen: React.FC = () => {
             </p>
           </div>
 
-          {/* RIGHT: Form */}
+          {/*  Form */}
           <div className="md:w-1/2 flex flex-col justify-center p-6 md:p-10 min-h-screen md:min-h-[700px] bg-card rounded-tr-lg rounded-br-lg">
             <div className="md:hidden mb-4 flex justify-center">
               <img
@@ -162,7 +159,6 @@ const SignupScreen: React.FC = () => {
                   )}
                 </div>
 
-                {/* Email */}
                 <div>
                   <label
                     htmlFor="email"
@@ -193,7 +189,6 @@ const SignupScreen: React.FC = () => {
                   )}
                 </div>
 
-                {/* Password */}
                 <div>
                   <label
                     htmlFor="password"
@@ -224,7 +219,6 @@ const SignupScreen: React.FC = () => {
                   )}
                 </div>
 
-                {/* Confirm Password */}
                 <div>
                   <label
                     htmlFor="confirmPassword"
@@ -257,7 +251,6 @@ const SignupScreen: React.FC = () => {
                   )}
                 </div>
 
-                {/* Terms */}
                 <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                   <input
                     type="checkbox"
@@ -284,7 +277,6 @@ const SignupScreen: React.FC = () => {
                   </p>
                 )}
 
-                {/* Submit */}
                 <Popover>
                   <PopoverTrigger asChild>
                     <div className="w-full">
@@ -327,14 +319,12 @@ const SignupScreen: React.FC = () => {
                 </Popover>
               </form>
 
-              {/* Divider */}
               <div className="flex items-center my-4">
                 <div className="flex-grow border-t border-muted" />
                 <span className="mx-2 text-muted-foreground text-sm">o</span>
                 <div className="flex-grow border-t border-muted" />
               </div>
 
-              {/* Social signup */}
               <div className="flex flex-col md:flex-row gap-2">
                 <Button
                   variant="outline"
@@ -352,7 +342,6 @@ const SignupScreen: React.FC = () => {
                 </Button>
               </div>
 
-              {/* Redirect login */}
               <p className="mt-6 text-center text-sm text-foreground">
                 ¿Ya tienes cuenta?{" "}
                 <span

@@ -1,15 +1,14 @@
 import { Link } from "react-router";
 import { Button } from "./ui/button";
 import { ThemeToggleButton } from "../components/ui/shadcn-io/theme-toggle-button/index";
-// Navigation links array to be used in both desktop and mobile menus
 
 export default function NavMenu() {
   return (
     <header className=" px-4 md:px-6 bg-gradient-to-br ">
       <div className="flex h-16 items-center justify-between gap-4">
-        {/* Left side */}
+        {/* Parte izquierda*/}
         <div className="flex items-center gap-2">
-          {/* Main nav */}
+          {/* Main  */}
           <div className="flex items-center gap-6">
             <Link to={"/"}>
               <div className="flex items-center gap-4">
@@ -21,7 +20,7 @@ export default function NavMenu() {
             </Link>
           </div>
         </div>
-        {/* Right side */}
+        {/* Parte derecha */}
         <div className="flex items-center gap-2">
           <Button
             asChild

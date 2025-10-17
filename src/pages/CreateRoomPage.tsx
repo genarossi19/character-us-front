@@ -50,7 +50,7 @@ export default function CreateRoomPage() {
           </p>
         </div>
 
-        {/* FORM + VISTA PREVIA */}
+        {/* FORM  */}
         <form
           onSubmit={handleSubmit}
           className="grid grid-cols-1 md:grid-cols-2 gap-10 mt-6 w-full"
@@ -137,7 +137,7 @@ export default function CreateRoomPage() {
                 )}
               </div>
 
-              {/* Categoría */}
+              {/* Categorias */}
               <div className="space-y-3">
                 <Label className="flex items-center gap-3 text-base md:text-lg font-medium text-foreground">
                   <Gamepad2 className="h-6 w-6 text-accent" />
@@ -265,7 +265,7 @@ export default function CreateRoomPage() {
               </div>
             </div>
 
-            {/* BOTONES DE ACCIÓN */}
+            {/* BOTONES DE ACCION */}
             <div className="rounded-xl p-5 bg-card border border-border shadow-sm flex flex-col gap-4 transition-colors">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">

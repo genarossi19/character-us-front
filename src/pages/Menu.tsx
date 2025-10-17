@@ -9,7 +9,7 @@ export default function MenuPage() {
     <div className="bg-background min-h-screen flex flex-col">
       <NavBarLoggued />
 
-      {/* Main content */}
+      {/* Main  */}
       <main className="flex-1 flex flex-col items-center justify-center p-6">
         <div className="max-w-3xl w-full space-y-8">
           <div className="text-center space-y-2">

@@ -71,7 +71,6 @@ const VotingPanel: React.FC<VotingPanelProps> = ({
                 {player.name}
               </p>
 
-              {/* Avatares de votantes (solo en resumen) */}
               {phase === "voteSummary" && votersForThisPlayer.length > 0 && (
                 <div className="flex gap-1">
                   {votersForThisPlayer.map(
@@ -92,7 +91,6 @@ const VotingPanel: React.FC<VotingPanelProps> = ({
                 </div>
               )}
 
-              {/* Marca de votado */}
               {phase === "voting" && hasVoted && (
                 <span className="text-green-400 font-bold">✅</span>
               )}
@@ -100,7 +98,7 @@ const VotingPanel: React.FC<VotingPanelProps> = ({
           );
         })}
 
-      {/* Confirmar voto (solo en votación) */}
+      {/* Confirmar voto (solo en votacion) */}
       {phase === "voting" && selectedVote && (
         <Button
           onClick={confirmVote}
@@ -110,7 +108,7 @@ const VotingPanel: React.FC<VotingPanelProps> = ({
         </Button>
       )}
 
-      {/* Botón cerrar votación */}
+      {/* Boton para cerrar la votacion*/}
       {phase === "voting" && (
         <Button
           onClick={endVoting}

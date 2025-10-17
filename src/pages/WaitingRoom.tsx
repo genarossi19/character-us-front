@@ -15,7 +15,7 @@ import { Link } from "react-router";
 interface Player {
   id: string;
   name: string;
-  avatar: string; // nombre de archivo avatar1..avatar8
+  avatar: string;
   isHost: boolean;
   isReady: boolean;
 }
@@ -24,10 +24,10 @@ interface GameData {
   roomCode: string;
   players: Player[];
   currentUser: { id: string; name: string; isHost: boolean };
-  category: string; // nueva propiedad
-  impostorsKnowEachOther: boolean; // nueva propiedad
-  impostorCount: number; // número de impostores
-  minPlayers: number; // mínimo de jugadores
+  category: string;
+  impostorsKnowEachOther: boolean;
+  impostorCount: number;
+  minPlayers: number;
 }
 
 interface WaitingRoomProps {

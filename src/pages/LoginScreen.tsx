@@ -20,7 +20,7 @@ const LoginScreen: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // prevención adicional: no submit si campos incompletos o contraseña corta
+
     if (!formData.email.trim() || formData.password.length < 8) return;
 
     // login aquí
@@ -55,7 +55,6 @@ const LoginScreen: React.FC = () => {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative">
       <header className="fixed top-0 left-0 w-full z-50 h-16 md:h-20 px-6 flex items-center justify-between  ">
-        {/* Botón Volver */}
         <div className="flex items-center">
           <Button
             onClick={() => navigate(-1)}
@@ -67,7 +66,7 @@ const LoginScreen: React.FC = () => {
           </Button>
         </div>
 
-        {/* Sección derecha */}
+        {/* seccion derecha */}
         <div className="flex items-center gap-2">
           <ThemeToggleButton className="text-light" />
         </div>
@@ -76,7 +75,7 @@ const LoginScreen: React.FC = () => {
       <BackgroundAnimate />
 
       <div className="w-full max-w-md space-y-8">
-        {/* Logo/Brand */}
+        {/* Logo */}
         <div className="text-center space-y-2 animate-bounce-in">
           <div className="w-20 h-20 mx-auto bg-gradient-to-br from-primary to-secondary rounded-3xl flex items-center justify-center shadow-2xl">
             <img className="rounded-xl" src="/logo.webp" alt="logo" />
@@ -92,7 +91,6 @@ const LoginScreen: React.FC = () => {
           </CardTitle>
           <CardContent className="pt-6">
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Email */}
               <div>
                 <label
                   htmlFor="email"
@@ -124,7 +122,6 @@ const LoginScreen: React.FC = () => {
                 )}
               </div>
 
-              {/* Password */}
               <div>
                 <label
                   htmlFor="password"
@@ -199,14 +196,12 @@ const LoginScreen: React.FC = () => {
               </div>
             </form>
 
-            {/* Divider */}
             <div className="flex items-center my-6">
               <div className="flex-grow border-t border-gray-600" />
               <span className="mx-2 text-gray-400 text-sm">o</span>
               <div className="flex-grow border-t border-gray-600" />
             </div>
 
-            {/* Social signup */}
             <div className="flex flex-col md:flex-row gap-2">
               <Button
                 variant="outline"
@@ -224,7 +219,6 @@ const LoginScreen: React.FC = () => {
               </Button>
             </div>
 
-            {/* Redirect signup */}
             <p className="mt-6 text-center text-sm text-gray-400">
               ¿No tienes cuenta?{" "}
               <span

@@ -50,7 +50,6 @@ const QuickJoinScreen: React.FC<QuickJoinScreenProps> = ({ onBack }) => {
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <header className="fixed top-0 left-0 w-full z-50 h-16 md:h-20 px-6 flex items-center justify-between  ">
-        {/* Botón Volver */}
         <div className="flex items-center">
           <Button
             onClick={onBack}
@@ -62,7 +61,6 @@ const QuickJoinScreen: React.FC<QuickJoinScreenProps> = ({ onBack }) => {
           </Button>
         </div>
 
-        {/* Sección derecha */}
         <div className="flex items-center gap-2">
           <Button
             size="lg"

@@ -5,8 +5,7 @@ import { useState } from "react";
 import WaitingRoom from "./pages/WaitingRoom";
 import QuickJoinScreen from "./pages/QuickJoinScreen";
 import GameScreen from "./pages/GameScreen";
-import VotingScreen from "./pages/VotingScreen";
-import ResultsScreen from "./pages/ResultScreen";
+
 import HomePage from "./pages/HomePage";
 import SignupScreen from "./pages/SignupScreen";
 import NotFound from "./pages/NotFound";
@@ -69,7 +68,7 @@ function App() {
       isImpostor: false,
       avatar: "/avatar1.webp",
     },
-    votedPlayer: null, // jugador elegido en la votación
+    votedPlayer: null,
     eliminatedPlayer: {
       id: "2",
       name: "Maria",
@@ -77,7 +76,6 @@ function App() {
       wasImpostor: false,
     },
 
-    // Info de la partida
     category: "Disney",
     impostorCount: 1,
     impostorsKnowEachOther: true,
@@ -126,25 +124,7 @@ function App() {
               />
             }
           />
-          <Route
-            path="/voting-screen"
-            element={
-              <VotingScreen
-                players={gameData.players}
-                onVote={() => navigate("results")}
-              />
-            }
-          />
-          <Route
-            path="/results"
-            element={
-              <ResultsScreen
-                onBackToLobby={() => navigate("/lobby")}
-                eliminatedPlayer={gameData.eliminatedPlayer}
-                onContinue={() => navigate("voting-screen")}
-              />
-            }
-          />
+
           <Route path="/menu" element={<Menu />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
