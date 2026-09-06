@@ -1,0 +1,65 @@
+classDiagram
+    class Usuario {
+        -id: string
+        -nombre: string
+        -email: string
+        -password: string
+        -createdAt: datetime
+        -updatedAt: datetime
+    }
+
+    class Partida {
+        -id: string
+        -codigo: string
+        -categoriaId: string
+        -estadoId: string
+        -impostorCount: int
+        -impostorsKnowEachOther: boolean
+        -minPlayers: int
+        -createdAt: datetime
+        -updatedAt: datetime
+    }
+
+    class Categoria {
+        -id: string
+        -nombre: string
+        -descripcion: string
+        -createdAt: datetime
+        -updatedAt: datetime
+    }
+
+    class Personaje {
+        -id: string
+        -categoriaId: string
+        -nombre: string
+        -imagen: string
+        -createdAt: datetime
+        -updatedAt: datetime
+    }
+
+    class Estado {
+        -id: string
+        -nombre: string
+        -descripcion: string
+        -createdAt: datetime
+        -updatedAt: datetime
+    }
+
+    class JugadorEliminado {
+        -id: string
+        -partidaId: string
+        -usuarioId: string
+        -nombre: string
+        -avatar: string
+        -fueImpostor: boolean
+        -ordenEliminacion: int
+        -razon: string
+        -createdAt: datetime
+    }
+
+    %% Relaciones
+    Usuario "1" -- "*" JugadorEliminado : ""
+    Partida "1" -- "*" JugadorEliminado : ""
+    Partida "1" -- "1" Categoria : ""
+    Partida "1" -- "1" Estado : ""
+    Categoria "1" -- "*" Personaje : ""

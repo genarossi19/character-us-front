@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "../components/ui/button";
 import ChatComponent from "../components/ChatComponent";
+import type { GameMessage } from "../components/ChatComponent";
 import VotingPanel from "../components/VotingPanel";
 import { AnimateIcon } from "../components/animate-ui/icons/icon";
-// import { BotMessageSquare } from "lucide-react"; // not used
-import { BotMessageSquareIcon } from "../components/animate-ui/icons/bot-message-square";
 import { SquareKanban } from "../components/animate-ui/icons/square-kanban";
 import { motion } from "motion/react";
 import { ThemeToggleButton } from "../components/ui/shadcn-io/theme-toggle-button";
@@ -21,6 +20,8 @@ interface Player {
 
 const GameScreen: React.FC = () => {
   const navigate = useNavigate();
+  const [chatMessages, setChatMessages] = useState<GameMessage[]>([]);
+
   const [gameData] = useState({
     roomCode: "123456",
     roomInfo: {
@@ -30,31 +31,11 @@ const GameScreen: React.FC = () => {
       category: "Los Simpsons",
       isHost: true,
       charactersList: [
-        {
-          id: 1,
-          name: "Lisa Simpson",
-          avatar: "/lisa-simpson.webp",
-        },
-        {
-          id: 2,
-          name: "Bart Simpson",
-          avatar: "/bart-simpson.webp",
-        },
-        {
-          id: 3,
-          name: "Homero Simpson",
-          avatar: "/los-simpson.webp",
-        },
-        {
-          id: 4,
-          name: "Maggie Simpson",
-          avatar: "/maggie-simpson.webp",
-        },
-        {
-          id: 5,
-          name: "Marge Simpson",
-          avatar: "/marge-simpson.webp",
-        },
+        { id: 1, name: "Lisa Simpson", avatar: "/lisa-simpson.webp" },
+        { id: 2, name: "Bart Simpson", avatar: "/bart-simpson.webp" },
+        { id: 3, name: "Homero Simpson", avatar: "/los-simpson.webp" },
+        { id: 4, name: "Maggie Simpson", avatar: "/maggie-simpson.webp" },
+        { id: 5, name: "Marge Simpson", avatar: "/marge-simpson.webp" },
       ],
     },
     currentUser: {
@@ -62,7 +43,6 @@ const GameScreen: React.FC = () => {
       name: "Alex",
       avatar: "/avatar1.webp",
       isAlive: true,
-      // Simulacion de impostor
       isImpostor: Math.random() < 0.5,
       character: "Detective",
     },
@@ -104,6 +84,36 @@ const GameScreen: React.FC = () => {
 
   const { currentUser, players, roomInfo } = gameData;
 
+  // Enviar mensaje al chat
+  const handleSendChatMessage = (msg: string | GameMessage) => {
+    const message: GameMessage =
+      typeof msg === "string"
+        ? {
+            id: Date.now().toString(),
+            sender: "Tú",
+            message: msg,
+            timestamp: new Date(),
+            isSelf: true,
+            type: "player",
+          }
+        : msg;
+    setChatMessages((prev) => [...prev, message]);
+  };
+
+  // Mensajes de unión al iniciar
+  useEffect(() => {
+    players.forEach((p) => {
+      handleSendChatMessage({
+        id: Date.now().toString() + p.id,
+        sender: "Sistema",
+        message: `${p.name} se ha unido al chat`,
+        timestamp: new Date(),
+        type: "system",
+        systemType: "joined",
+      });
+    });
+  }, []);
+
   const [phase, setPhase] = useState<
     "waiting" | "voting" | "voteSummary" | "results"
   >("waiting");
@@ -114,7 +124,6 @@ const GameScreen: React.FC = () => {
   const [votes, setVotes] = useState<Record<string, string>>({});
   const [selectedVote, setSelectedVote] = useState<string | null>(null);
   const [eliminatedPlayer, setEliminatedPlayer] = useState<Player | null>(null);
-  const [chatOpen, setChatOpen] = useState(false);
 
   const endVoting = useCallback(() => {
     setPhase("voteSummary");
@@ -135,7 +144,7 @@ const GameScreen: React.FC = () => {
     }, 5000);
   }, [votes, players]);
 
-  // Contador habilitación votación
+  // Contadores
   useEffect(() => {
     if (voteCountdown <= 0) {
       setVoteButtonEnabled(true);
@@ -144,8 +153,6 @@ const GameScreen: React.FC = () => {
     const timer = setTimeout(() => setVoteCountdown(voteCountdown - 1), 1000);
     return () => clearTimeout(timer);
   }, [voteCountdown]);
-
-  // Contador votación
   useEffect(() => {
     if (!votingPanelOpen || votingCountdown <= 0) return;
     const timer = setTimeout(
@@ -172,34 +179,57 @@ const GameScreen: React.FC = () => {
   const confirmVote = () => {
     if (!selectedVote) return;
     setVotes((prev) => ({ ...prev, [currentUser.id]: selectedVote }));
+
+    // Mensaje del sistema: X ha votado
+    handleSendChatMessage({
+      id: Date.now().toString() + "-vote",
+      sender: "Sistema",
+      message: `${currentUser.name} ha votado`,
+      timestamp: new Date(),
+      type: "system",
+      systemType: "voted",
+    });
+
     setSelectedVote(null);
   };
 
-  const [randomCharacterIndex, setrandomCharacterIndex] = useState(0);
-  const randomNumber = Math.floor(
-    Math.random() * roomInfo.charactersList.length
-  );
-
+  // Mensaje de eliminación
   useEffect(() => {
-    setrandomCharacterIndex(randomNumber);
+    if (!eliminatedPlayer) return;
+    handleSendChatMessage({
+      id: Date.now().toString() + "-elim",
+      sender: "Sistema",
+      message: `${eliminatedPlayer.name} ha sido eliminado`,
+      timestamp: new Date(),
+      type: "system",
+      systemType: "eliminated",
+    });
+  }, [eliminatedPlayer]);
+
+  const [randomCharacterIndex, setrandomCharacterIndex] = useState(0);
+  useEffect(() => {
+    setrandomCharacterIndex(
+      Math.floor(Math.random() * roomInfo.charactersList.length)
+    );
   }, []);
 
   return (
-    <div className="flex h-screen bg-secondary/10 dark:bg-background text-white relative">
-      <div className="absolute top-4 left-4">
-        <Button
-          onClick={() => navigate("/")}
-          size="lg"
-          variant="ghost"
-          className="text-foreground hover:bg-accent/20 text-lg font-semibold transition-colors"
-        >
-          ← Salir
-        </Button>
-        <ThemeToggleButton start="top-left" />
-      </div>
-      {/* Main Left Area */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 overflow-hidden">
-        {/* Espera / Personaje */}
+    <div className="flex h-screen bg-secondary/10 dark:bg-background text-white">
+      {/* Lado Izquierdo - Juego */}
+      <div className="flex-1 flex flex-col items-center justify-center p-6 overflow-hidden relative">
+        <div className="absolute top-4 left-4">
+          <Button
+            onClick={() => navigate("/")}
+            size="lg"
+            variant="ghost"
+            className="text-foreground hover:bg-accent/20 text-lg font-semibold transition-colors"
+          >
+            ← Salir
+          </Button>
+          <ThemeToggleButton start="top-left" />
+        </div>
+
+        {/* Contenido principal */}
         {phase === "waiting" && !votingPanelOpen && (
           <div className="flex flex-col items-center gap-4">
             <motion.div
@@ -210,7 +240,7 @@ const GameScreen: React.FC = () => {
               {currentUser.isImpostor ? (
                 <img
                   src={"/impostor.webp"}
-                  alt={roomInfo.charactersList[randomCharacterIndex].name}
+                  alt="Impostor"
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -317,60 +347,39 @@ const GameScreen: React.FC = () => {
             )}
           </div>
         )}
+
+        {/* Botón de votación */}
+        <div className="absolute top-4 right-4 z-20">
+          {!voteButtonEnabled ? (
+            <button
+              disabled
+              className="w-16 h-16 flex items-center justify-center bg-gray-700 text-gray-200/80 rounded-full shadow-lg"
+              aria-label="Votación en espera"
+            >
+              <span className="text-sm leading-4">{voteCountdown}s</span>
+            </button>
+          ) : (
+            <AnimateIcon animateOnHover loop>
+              <button
+                onClick={toggleVotingPanel}
+                className="hover:cursor-pointer w-16 h-16 flex items-center justify-center bg-cyan-500 hover:bg-cyan-600 rounded-full shadow-lg"
+                aria-label="Abrir votación"
+              >
+                <SquareKanban />
+              </button>
+            </AnimateIcon>
+          )}
+        </div>
       </div>
 
-      <div
-        className={`fixed z-50 pointer-events-auto top-4 ${
-          chatOpen ? "right-[25rem]" : "right-22"
-        }`}
-      >
-        {!voteButtonEnabled ? (
-          <button
-            disabled
-            className=" w-16 h-16 flex items-center justify-center bg-gray-700 text-gray-200/80 rounded-full shadow-lg"
-            aria-label="Votación en espera"
-          >
-            <span className="text-sm leading-4">{voteCountdown}s</span>
-          </button>
-        ) : (
-          <AnimateIcon animateOnHover loop>
-            <button
-              onClick={toggleVotingPanel}
-              className="hover:cursor-pointer w-16 h-16 flex items-center justify-center bg-cyan-500 hover:bg-cyan-600 rounded-full shadow-lg"
-              aria-label="Abrir votación"
-            >
-              <SquareKanban />
-            </button>
-          </AnimateIcon>
-        )}
-      </div>
-
-      {!chatOpen && (
-        <div className="fixed top-4 right-4 z-50 pointer-events-auto">
-          <AnimateIcon animateOnHover loop loopDelay={800}>
-            <button
-              onClick={() => setChatOpen(true)}
-              aria-expanded={chatOpen}
-              aria-label="Abrir chat"
-              className="hover:cursor-pointer w-16 h-16 flex items-center justify-center bg-accent hover:bg-secondary text-white rounded-full shadow-lg"
-            >
-              <BotMessageSquareIcon />
-            </button>
-          </AnimateIcon>
-        </div>
-      )}
-
-      <div
-        className={`fixed top-0 right-0 h-screen w-96 z-40 transform transition-transform duration-300 ${
-          chatOpen ? "translate-x-0" : "translate-x-full"
-        }`}
-        aria-hidden={!chatOpen}
-      >
-        <div className="h-full flex flex-col border-l border-white/20 bg-transparent">
-          <div className="flex-1 min-h-0">
-            <ChatComponent onClose={() => setChatOpen(false)} />
-          </div>
-        </div>
+      {/* Chat fijo a la derecha */}
+      <div className="w-96 h-full border-l border-white/20">
+        <ChatComponent
+          messages={chatMessages}
+          onSendMessage={handleSendChatMessage}
+          players={players}
+          currentUser={currentUser}
+        />
       </div>
     </div>
   );

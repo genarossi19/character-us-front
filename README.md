@@ -1,73 +1,74 @@
-# React + TypeScript + Vite
+# CharacterUs Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend de CharacterUs, un juego social del impostor orientado a personajes. En cada ronda todos los jugadores salvo el impostor conocen el personaje elegido; cada participante aporta una palabra relacionada y el impostor intenta pasar inadvertido antes de la votación.
 
-Currently, two official plugins are available:
+## Estado actual
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+El repositorio contiene una interfaz navegable y una simulación local del juego, junto con una capa inicial de integración con el backend. No toda la experiencia visible está conectada todavía:
 
-## React Compiler
+- Login y registro validan formularios, pero no crean una sesión real.
+- Creación de sala, lobby, salas públicas, chat, roles y votación usan datos locales o simulados en las pantallas principales.
+- Los servicios Socket.IO y HTTP existen, pero se ejercitan principalmente desde el diagnóstico manual `/test`.
+- Creación, lobby y juego mantienen modelos de estado independientes; navegar entre ellos no conserva una sala real.
+- Solo el tema visual se persiste en `localStorage` (`vite-ui-theme`).
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Consulta [Arquitectura](docs/ARCHITECTURE.md), [Socket.IO](SOCKET.md) y [Recomendaciones](docs/RECOMMENDATIONS.md) antes de integrar nuevas funcionalidades.
 
-## Expanding the ESLint configuration
+## Stack
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- React 19, TypeScript y Vite 7.
+- React Router 7 con `BrowserRouter`.
+- Tailwind CSS 4, componentes Radix/shadcn y Motion.
+- `socket.io-client` 4 para tiempo real.
+- Backend externo en Express con PostgreSQL/Supabase. Este repositorio no contiene su implementación ni sus migraciones.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Puesta en marcha
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+Vite 7 requiere Node.js `20.19+` o `22.12+`. El lockfile corresponde a npm.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm ci
+cp .env.example .env.local
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+La URL de Vite aparece en la terminal. Para probar la integración actual, el backend debe exponer Socket.IO y la API HTTP en el origen configurado.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```env
+VITE_SOCKET_URL=http://localhost:3000
 ```
+
+`VITE_SOCKET_URL` solo controla Socket.IO y usa `http://localhost:3000` por defecto. La API de categorías está fijada actualmente a `http://localhost:3000/api` en `src/services/api/category.ts`; cambiar solo la variable de Socket.IO no cambia HTTP.
+
+## Comandos
+
+```bash
+npm run dev       # servidor Vite con HMR
+npm run lint      # ESLint sobre todo el repositorio
+npm run build     # TypeScript project build y luego bundle Vite
+npm run preview   # sirve dist/ después de un build exitoso
+```
+
+No hay runner ni script de tests automatizados. `src/test` contiene interfaces de diagnóstico manual compiladas junto con la aplicación.
+
+## Rutas
+
+| Ruta | Función actual |
+| --- | --- |
+| `/` | Landing pública |
+| `/signup`, `/login` | Formularios locales; navegan a `/menu` |
+| `/menu` | Acceso a creación, PIN y salas públicas |
+| `/create` | Configuración local; actualmente navega directo a `/game` |
+| `/join` | Unión simulada; solo acepta el PIN `123456` |
+| `/public-rooms` | Lista local; sus enlaces `/game/:id` no tienen ruta registrada |
+| `/lobby` | Lobby basado en datos mock de `App.tsx` |
+| `/game` | Juego, chat y votación simulados localmente |
+| `/test` | Diagnóstico manual de Socket.IO + categorías HTTP |
+
+También hay navegaciones sin ruta registrada a `/profile`, `/results` y `/voting-screen`. No existen guards de autenticación.
+
+Al desplegar, el hosting debe redirigir rutas desconocidas a `index.html`; de lo contrario, recargar una ruta de `BrowserRouter` devolverá 404.
+
+## Verificación conocida
+
+Al 5 de septiembre de 2026, `npm run lint` y `npm run build` detectan problemas preexistentes. No deben presentarse como una regresión nueva sin comparar el resultado; el detalle y las propuestas están en [docs/RECOMMENDATIONS.md](docs/RECOMMENDATIONS.md).
