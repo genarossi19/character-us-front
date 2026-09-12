@@ -1,24 +1,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { motion, AnimatePresence } from "motion/react";
 import { useRoomStore } from "@/store/useRoomStore";
 import { useSocketRoom } from "@/hooks/useSocketRoom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import BackgroundAnimate from "@/components/BackgroundAnimate";
 import { ThemeToggleButton } from "@/components/ui/shadcn-io/theme-toggle-button";
+import { AVATAR_URLS } from "@/constants/avatars";
+import { fetchCategories, type Category } from "@/services/api/category";
 import { toast } from "sonner";
-
-const avatarOptions = [
-  "/avatar1.webp",
-  "/avatar2.webp",
-  "/avatar3.webp",
-  "/avatar4.webp",
-  "/avatar5.webp",
-  "/avatar6.webp",
-  "/avatar7.webp",
-  "/avatar8.webp",
-];
 
 export default function WaitingRoomV2() {
   const { room, currentPlayer, players } = useRoomStore();
@@ -27,6 +18,11 @@ export default function WaitingRoomV2() {
   const [selectedAvatar, setSelectedAvatar] = useState(
     currentPlayer?.avatarUrl || ""
   );
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    fetchCategories().then(setCategories).catch(() => {});
+  }, []);
 
   const isHost = currentPlayer?.isHost;
   const readyPlayers = players.filter((p) => p.isAlive).length;
@@ -87,6 +83,7 @@ export default function WaitingRoomV2() {
 
   return (
     <div className="min-h-screen p-4 to-primary/5">
+      <BackgroundAnimate />
       <ThemeToggleButton className="absolute top-4 right-4 text-light" />
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
@@ -151,16 +148,12 @@ export default function WaitingRoomV2() {
 
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              <AnimatePresence>
-                {players.map((player) => {
+              {players.map((player) => {
                   const isCurrentPlayer = player.socketId === currentPlayer.socketId;
                   return (
-                    <motion.div
+                    <div
                       key={player.socketId}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      className="flex flex-col items-center space-y-2 p-2 rounded-xl bg-foreground/4 shadow-sm relative"
+                      className="flex flex-col items-center space-y-2 p-2 rounded-xl bg-foreground/4 shadow-sm relative animate-in fade-in zoom-in duration-300"
                     >
                       <div className="relative">
                         <img
@@ -202,10 +195,9 @@ export default function WaitingRoomV2() {
                           ×
                         </button>
                       )}
-                    </motion.div>
+                    </div>
                   );
                 })}
-              </AnimatePresence>
             </div>
 
             {/* Avatar Selection */}
@@ -214,8 +206,8 @@ export default function WaitingRoomV2() {
                 <span className="ml-2 font-semibold">{currentPlayer.username},</span>{" "}
                 Elige tu avatar
               </h3>
-              <div className="flex justify-center gap-4 flex-wrap">
-                {avatarOptions.map((avatar) => {
+              <div className="grid grid-cols-4 lg:grid-cols-8 gap-3 justify-items-center">
+                {AVATAR_URLS.map((avatar) => {
                   const taken = usedAvatars.includes(avatar) && selectedAvatar !== avatar;
                   const isSelected = selectedAvatar === avatar;
                   return (
@@ -255,7 +247,7 @@ export default function WaitingRoomV2() {
             <div className="flex flex-col justify-center items-center bg-primary/10 rounded-lg p-2">
               <p className="text-xs text-muted-foreground">Categoría</p>
               <p className="text-lg font-bold text-primary capitalize">
-                {room.settings.category}
+                {categories.find((c) => c.id === room.settings.category)?.name || room.settings.category}
               </p>
             </div>
             <div className="flex flex-col justify-center items-center bg-game-danger/10 rounded-lg p-2">

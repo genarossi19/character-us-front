@@ -105,14 +105,12 @@ export interface CreateRoomPayload {
   username: string;
   token: string;
   settings: RoomSettings;
-  avatarUrl?: string;
 }
 
 export interface JoinRoomPayload {
   code: number;
   username: string;
   isGuest: boolean;
-  avatarUrl?: string;
   userId?: string;
   password?: string;
 }
@@ -143,7 +141,7 @@ export interface DebateReadyPayload {
 
 export interface ChangeAvatarPayload {
   roomId: string;
-  avatarUrl: string;
+  avatarId: string;
 }
 
 export interface RoomResponse {

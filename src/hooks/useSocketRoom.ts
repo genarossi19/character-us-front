@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { useRoomStore } from "@/store/useRoomStore";
 import { useGameStore } from "@/store/useGameStore";
 import {
@@ -9,6 +9,7 @@ import {
   emitKickPlayer,
   emitChangeAvatar,
   getSocket,
+  isSocketConnected,
   onRoomUpdated,
   onPlayerJoined,
   onPlayerLeft,
@@ -16,6 +17,7 @@ import {
   onRoomClosed,
   onGameStarted,
 } from "@/services/socket";
+import { AVATAR_OPTIONS } from "@/constants/avatars";
 import type {
   AckResponse,
   CreateRoomPayload,
@@ -33,6 +35,12 @@ export class SocketAckError extends Error {
     super(message);
     this.name = "SocketAckError";
     this.code = code;
+  }
+}
+
+function assertConnected(): void {
+  if (!isSocketConnected()) {
+    throw new Error("No hay conexión con el servidor. Verifica tu conexión e intenta de nuevo.");
   }
 }
 
@@ -70,6 +78,12 @@ export function useSocketRoom() {
   const createRoom = useCallback(
     (payload: CreateRoomPayload) =>
       new Promise<Room>((resolve, reject) => {
+        try {
+          assertConnected();
+        } catch (error) {
+          reject(error);
+          return;
+        }
         emitCreateRoom(payload, (response) => {
           try {
             const room = getRoomFromAck(response);
@@ -87,6 +101,12 @@ export function useSocketRoom() {
   const joinRoom = useCallback(
     (payload: JoinRoomPayload) =>
       new Promise<Room>((resolve, reject) => {
+        try {
+          assertConnected();
+        } catch (error) {
+          reject(error);
+          return;
+        }
         emitJoinRoom(payload, (response) => {
           try {
             const room = getRoomFromAck(response);
@@ -139,22 +159,27 @@ export function useSocketRoom() {
     []
   );
 
+  const pendingAvatarRef = useRef<string | null>(null);
+
   const changeAvatar = useCallback(
     (roomId: string, avatarUrl: string) => {
-      const currentPlayerId = useRoomStore.getState().currentPlayer?.socketId;
+      const state = useRoomStore.getState();
+      const currentPlayerId = state.currentPlayer?.socketId;
+      const previousAvatarUrl = state.currentPlayer?.avatarUrl;
+
+      const avatarOption = AVATAR_OPTIONS.find((a) => a.url === avatarUrl);
+      if (!avatarOption) return;
+
+      pendingAvatarRef.current = avatarUrl;
+
       if (currentPlayerId) {
         updatePlayer(currentPlayerId, { avatarUrl });
       }
 
-      emitChangeAvatar({ roomId, avatarUrl }, (response) => {
-        if (!response.success && currentPlayerId) {
-          const previous = useRoomStore.getState().players.find(
-            (p) => p.socketId === currentPlayerId
-          );
-          if (previous) {
-            updatePlayer(currentPlayerId, { avatarUrl: previous.avatarUrl });
-          }
-          throw new SocketAckError(response.code, response.message);
+      emitChangeAvatar({ roomId, avatarId: avatarOption.id }, (response) => {
+        if (!response.success && currentPlayerId && previousAvatarUrl) {
+          pendingAvatarRef.current = null;
+          updatePlayer(currentPlayerId, { avatarUrl: previousAvatarUrl });
         }
       });
     },
@@ -171,6 +196,15 @@ export function useSocketRoom() {
           (player) => player.socketId === currentPlayerId
         );
         if (currentPlayer) setCurrentPlayer(currentPlayer);
+
+        if (pendingAvatarRef.current && currentPlayerId) {
+          updatePlayer(currentPlayerId, { avatarUrl: pendingAvatarRef.current });
+          const updated = useRoomStore.getState().players.find(
+            (p) => p.socketId === currentPlayerId
+          );
+          if (updated) setCurrentPlayer(updated);
+          pendingAvatarRef.current = null;
+        }
       }),
       onPlayerJoined((player: Player) => {
         addPlayer(player);
@@ -203,6 +237,7 @@ export function useSocketRoom() {
     setCurrentPlayer,
     addPlayer,
     removePlayer,
+    updatePlayer,
     resetRoom,
     resetGame,
     setTotalRounds,

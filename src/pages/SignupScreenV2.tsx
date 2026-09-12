@@ -232,7 +232,7 @@ export default function SignupScreenV2() {
             <div className="relative w-72 h-72">
               <div className="absolute top-1/2 left-1/2 w-96 h-96 rounded-full bg-gradient-to-b from-accent/20 to-transparent -translate-x-1/2 -translate-y-1/2" />
               <img
-                src="/avatar3.webp"
+                src="/avatars/detective.webp"
                 alt="Character"
                 className="w-full h-full object-contain relative z-10"
               />

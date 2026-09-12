@@ -15,6 +15,7 @@ export default function LoginScreenV2() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [touched, setTouched] = useState({ email: false, password: false });
+  const [isLoading, setIsLoading] = useState(false);
 
   const emailIsValid = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
   const emailInvalid =
@@ -28,11 +29,14 @@ export default function LoginScreenV2() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formValid) return;
+    setIsLoading(true);
     try {
       await login(email, password);
       navigate("/menu");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo iniciar sesión");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -138,10 +142,10 @@ export default function LoginScreenV2() {
                 type="submit"
                 variant="default"
                 size="lg"
-                disabled={!formValid}
+                disabled={!formValid || isLoading}
                 className="w-full text-white font-semibold text-lg rounded-md"
               >
-                Entrar
+                {isLoading ? "Iniciando..." : "Entrar"}
               </Button>
             </form>
 

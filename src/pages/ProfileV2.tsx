@@ -4,17 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ThemeToggleButton } from "@/components/ui/shadcn-io/theme-toggle-button";
 import { ArrowLeft, User, Mail, Shield, Gamepad2 } from "lucide-react";
-
-const avatars = [
-  "/avatar1.webp",
-  "/avatar2.webp",
-  "/avatar3.webp",
-  "/avatar4.webp",
-  "/avatar5.webp",
-  "/avatar6.webp",
-  "/avatar7.webp",
-  "/avatar8.webp",
-];
+import { AVATAR_URLS } from "@/constants/avatars";
 
 export default function ProfileV2() {
   const navigate = useNavigate();
@@ -138,7 +128,7 @@ export default function ProfileV2() {
                   Cambiar avatar
                 </p>
                 <div className="grid grid-cols-4 gap-3">
-                  {avatars.map((avatar) => (
+                  {AVATAR_URLS.map((avatar) => (
                     <button
                       key={avatar}
                       onClick={() => handleAvatarChange(avatar)}

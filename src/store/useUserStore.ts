@@ -8,6 +8,7 @@ import {
   type AuthUserResponse,
   type SignupPayload,
 } from "@/services/api/auth";
+import { AVATAR_URLS } from "@/constants/avatars";
 import { setAccessToken } from "@/services/auth/accessToken";
 
 export interface AccessTokenClaims {
@@ -79,19 +80,8 @@ function removeStoredSession(): void {
   }
 }
 
-const defaultAvatars = [
-  "/avatar1.webp",
-  "/avatar2.webp",
-  "/avatar3.webp",
-  "/avatar4.webp",
-  "/avatar5.webp",
-  "/avatar6.webp",
-  "/avatar7.webp",
-  "/avatar8.webp",
-];
-
 const getRandomAvatar = () =>
-  defaultAvatars[Math.floor(Math.random() * defaultAvatars.length)];
+  AVATAR_URLS[Math.floor(Math.random() * AVATAR_URLS.length)];
 
 function decodeAccessToken(token: string): AccessTokenClaims {
   try {

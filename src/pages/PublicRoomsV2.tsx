@@ -90,7 +90,6 @@ export default function PublicRoomsV2() {
         code: roomCode,
         username: user.username,
         isGuest: user.isGuest,
-        avatarUrl: user.avatarUrl,
         userId: user.isGuest ? undefined : user.id,
       });
     } catch (error) {
@@ -129,7 +128,7 @@ export default function PublicRoomsV2() {
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-accent/20 transition">
                 <img
-                  src={user?.avatarUrl || "/avatar1.webp"}
+                  src={user?.avatarUrl || "/avatars/astronaut.webp"}
                   alt="avatar"
                   className="w-10 h-10 rounded-full border-2 border-accent shadow"
                 />
