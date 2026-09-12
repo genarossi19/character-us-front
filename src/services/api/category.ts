@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:3000/api";
+import { API_BASE_URL } from "./client";
 
 export interface Category {
   id: string;
@@ -17,7 +17,7 @@ export interface Character {
 
 export async function fetchCategories(): Promise<Category[]> {
   try {
-    const response = await fetch(`${API_BASE}/category`);
+    const response = await fetch(`${API_BASE_URL}/category`);
     if (!response.ok) {
       throw new Error(`Failed to fetch categories: ${response.statusText}`);
     }
@@ -31,7 +31,7 @@ export async function fetchCategories(): Promise<Category[]> {
 
 export async function fetchCategoryById(id: string): Promise<Category | null> {
   try {
-    const response = await fetch(`${API_BASE}/category/${id}`);
+    const response = await fetch(`${API_BASE_URL}/category/${id}`);
     if (!response.ok) {
       throw new Error(`Failed to fetch category: ${response.statusText}`);
     }
@@ -47,7 +47,7 @@ export async function fetchCharactersByCategory(
 ): Promise<Character[]> {
   try {
     const response = await fetch(
-      `${API_BASE}/character/category/${categoryId}`
+      `${API_BASE_URL}/character/category/${categoryId}`
     );
     if (!response.ok) {
       throw new Error(`Failed to fetch characters: ${response.statusText}`);
@@ -67,7 +67,7 @@ export async function fetchRandomCharacterByCategory(
   categoryId: string
 ): Promise<Character | null> {
   try {
-    const response = await fetch(`${API_BASE}/character/random/${categoryId}`);
+    const response = await fetch(`${API_BASE_URL}/character/random/${categoryId}`);
     if (!response.ok) {
       throw new Error(
         `Failed to fetch random character: ${response.statusText}`

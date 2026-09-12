@@ -9,21 +9,24 @@ import {
 } from "./ui/dropdown-menu";
 import { User, LogOut } from "lucide-react";
 import { ThemeToggleButton } from "./ui/shadcn-io/theme-toggle-button";
+import { useUserStore } from "@/store/useUserStore";
 
 export default function NavBarLoggued() {
   const navigate = useNavigate();
+  const { user, logout } = useUserStore();
 
   const handleLogout = () => {
+    logout();
     navigate("/login");
   };
 
   return (
     <header className="fixed top-0 left-0 w-full z-50 h-16 md:h-20 px-6 flex items-center justify-between bg-card shadow-sm">
       <div className="flex items-center gap-6">
-        <Link to={"/"}>
+        <Link to="/menu">
           <div className="flex items-center gap-4">
             <img className="h-12 w-12 rounded-md" src="/logo.webp" alt="" />
-            <span className="text-5xl font-extrabold bg-gradient-to-b from-accent/60 via-accent/80 to-accent bg-clip-text text-transparent">
+            <span className="hidden text-3xl font-extrabold bg-gradient-to-b from-accent/60 via-accent/80 to-accent bg-clip-text text-transparent sm:inline md:text-5xl">
               CharacterUs
             </span>
           </div>
@@ -35,12 +38,12 @@ export default function NavBarLoggued() {
           <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-accent/20 transition">
               <img
-                src="/avatar1.webp"
-                alt="avatar"
+                src={user?.avatarUrl || "/avatar1.webp"}
+                alt={`Perfil de ${user?.username || "Jugador"}`}
                 className="w-10 h-10 rounded-full border-2 border-accent shadow"
               />
-              <span className="font-semibold text-lg text-foreground">
-                Alex
+              <span className="hidden font-semibold text-lg text-foreground lg:inline">
+                {user?.username || "Jugador"}
               </span>
             </button>
           </DropdownMenuTrigger>

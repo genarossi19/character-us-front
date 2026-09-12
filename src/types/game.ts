@@ -1,24 +1,31 @@
 // ============================================
-// Tipos canónicos del dominio CharacterUs
+// Contrato de dominio con CharacterUs Server
 // ============================================
 
-// --- Identidad ---
-
 export interface Player {
-  id: string;
+  socketId: string;
+  userId: string | null;
   username: string;
-  avatar: string;
+  avatarUrl: string;
   isHost: boolean;
   isGuest: boolean;
   isAlive: boolean;
   isOnline: boolean;
+  hasVoted: boolean;
+  isDebateReady: boolean;
 }
-
-// --- Sala ---
 
 export type RoomPrivacy = "public" | "private";
 export type RoomMode = "classic" | "anonymous" | "special";
 export type RoomStatus = "waiting" | "playing" | "finished";
+export type GamePhase =
+  | "waiting"
+  | "character"
+  | "word"
+  | "debate"
+  | "voting"
+  | "results"
+  | "finished";
 
 export interface RoomSettings {
   category: string;
@@ -28,33 +35,26 @@ export interface RoomSettings {
   privacy: RoomPrivacy;
   mode: RoomMode;
   impostorsKnowEachOther: boolean;
+  visibleVotes: boolean;
+  password?: string;
 }
 
 export interface Room {
   id: string;
-  code: string;
+  code: number;
   hostId: string;
   name: string;
   settings: RoomSettings;
   players: Player[];
   status: RoomStatus;
+  gamePhase: GamePhase;
+  currentRound: number;
 }
-
-// --- Juego ---
-
-export type GamePhase =
-  | "character"
-  | "word"
-  | "turn"
-  | "debate"
-  | "voting"
-  | "results"
-  | "gameEnd";
 
 export interface Character {
   id: string;
-  name: string;
-  imageUrl: string;
+  name: string | null;
+  imageUrl: string | null;
   category: string;
 }
 
@@ -63,23 +63,17 @@ export interface WordHint {
   username: string;
   word: string;
   revealed: boolean;
+  skipped: boolean;
 }
 
-export interface Vote {
-  voterId: string;
-  targetId: string;
-}
-
-// Duraciones de fase en milisegundos (fijas)
+// Duraciones controladas por el servidor. El cliente no debe avanzar fases.
 export const PHASE_DURATIONS = {
-  character: 6000,
-  word: 45000,
-  debate: 90000,
-  voting: 20000,
-  results: 5000,
+  character: 6_000,
+  word: 0,
+  debate: 40_000,
+  voting: 40_000,
+  results: 5_000,
 } as const;
-
-// --- Chat ---
 
 export type ChatMessageType = "player" | "ghost" | "system";
 
@@ -92,12 +86,11 @@ export interface ChatMessage {
   timestamp: number;
 }
 
-// --- Resultados ---
-
 export interface RoundResult {
   round: number;
   eliminatedPlayer: Player | null;
   wasImpostor: boolean;
+  wasJoker: boolean;
   votes: Record<string, string>;
   wordHints: WordHint[];
 }
@@ -108,17 +101,20 @@ export interface GameResult {
   players: Player[];
 }
 
-// --- Payloads Socket.IO ---
-
 export interface CreateRoomPayload {
   username: string;
+  token: string;
   settings: RoomSettings;
+  avatarUrl?: string;
 }
 
 export interface JoinRoomPayload {
-  code: string;
+  code: number;
   username: string;
   isGuest: boolean;
+  avatarUrl?: string;
+  userId?: string;
+  password?: string;
 }
 
 export interface SubmitWordPayload {
@@ -141,15 +137,71 @@ export interface KickPlayerPayload {
   targetId: string;
 }
 
-// --- Responses Socket.IO ---
+export interface DebateReadyPayload {
+  roomId: string;
+}
+
+export interface ChangeAvatarPayload {
+  roomId: string;
+  avatarUrl: string;
+}
 
 export interface RoomResponse {
   room: Room;
 }
 
-export interface ErrorResponse {
-  message: string;
-  code?: string;
+export interface AckSuccess<T = void> {
+  success: true;
+  data?: T;
 }
 
-export type AckCallback<T = void> = (response?: T | ErrorResponse) => void;
+export interface AckError {
+  success: false;
+  message: string;
+  code: string;
+}
+
+export type AckResponse<T = void> = AckSuccess<T> | AckError;
+export type AckCallback<T = void> = (response: AckResponse<T>) => void;
+
+export interface CharacterAssignment {
+  character: Character | null;
+  isImpostor: boolean;
+  impostorIds?: string[];
+}
+
+export interface PhaseChanged {
+  phase: GamePhase;
+  data?: Record<string, unknown>;
+}
+
+export interface TurnChanged {
+  playerId: string;
+  username: string;
+  turnIndex: number;
+  total: number;
+}
+
+export interface WordHintRevealed {
+  playerId: string;
+  username: string;
+  word: string;
+  skipped: boolean;
+}
+
+export interface VoteUpdate {
+  votes: Record<string, string>;
+  voterId: string;
+  targetId?: string;
+  visible: boolean;
+}
+
+export interface DebateReadyUpdate {
+  readyPlayers: string[];
+  total: number;
+}
+
+export interface ReconnectTimeout {
+  playerId: string;
+  secondsLeft: number;
+}

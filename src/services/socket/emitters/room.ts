@@ -3,6 +3,8 @@ import type {
   JoinRoomPayload,
   RoomResponse,
   KickPlayerPayload,
+  DebateReadyPayload,
+  ChangeAvatarPayload,
   AckCallback,
 } from "@/types/game";
 import { getSocket } from "../socket";
@@ -33,7 +35,7 @@ export const emitLeaveRoom = (
 
 export const emitStartGame = (
   roomId: string,
-  callback?: AckCallback<void>
+  callback?: AckCallback<RoomResponse>
 ): void => {
   const socket = getSocket();
   socket.emit("startGame", { roomId }, callback);
@@ -45,4 +47,20 @@ export const emitKickPlayer = (
 ): void => {
   const socket = getSocket();
   socket.emit("kickPlayer", payload, callback);
+};
+
+export const emitDebateReady = (
+  payload: DebateReadyPayload,
+  callback?: AckCallback
+): void => {
+  const socket = getSocket();
+  socket.emit("debateReady", payload, callback);
+};
+
+export const emitChangeAvatar = (
+  payload: ChangeAvatarPayload,
+  callback?: AckCallback
+): void => {
+  const socket = getSocket();
+  socket.emit("changeAvatar", payload, callback);
 };

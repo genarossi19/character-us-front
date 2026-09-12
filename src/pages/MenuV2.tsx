@@ -42,7 +42,7 @@ export default function MenuV2() {
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-accent/20 transition">
                 <img
-                  src={user?.avatar || "/avatar1.webp"}
+                  src={user?.avatarUrl || "/avatar1.webp"}
                   alt="avatar"
                   className="w-10 h-10 rounded-full border-2 border-accent shadow"
                 />

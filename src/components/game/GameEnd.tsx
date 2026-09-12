@@ -68,7 +68,7 @@ export default function GameEnd() {
             {result.eliminatedPlayer ? (
               <div className="flex items-center gap-2">
                 <img
-                  src={result.eliminatedPlayer.avatar}
+                  src={result.eliminatedPlayer.avatarUrl}
                   alt={result.eliminatedPlayer.username}
                   className="w-8 h-8 rounded-full object-cover"
                 />

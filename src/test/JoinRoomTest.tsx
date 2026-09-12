@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { emitJoinRoom } from "../services/socket/emitters/room";
+import type { Room } from "../types/game";
 
 export function JoinRoomTest() {
   const [gamePin, setGamePin] = useState<string>("");
   const [joined, setJoined] = useState(false);
-  const [roomInfo, setRoomInfo] = useState<Record<string, unknown> | null>(
-    null
-  );
+  const [roomInfo, setRoomInfo] = useState<Room | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,21 +21,15 @@ export function JoinRoomTest() {
     const pinNumber = parseInt(gamePin, 10);
 
     emitJoinRoom(
-      { gamePin: pinNumber, username: "TestPlayer2" },
+      { code: pinNumber, username: "TestPlayer2", isGuest: true },
       (response) => {
         setLoading(false);
-        if (response && typeof response === "object" && "success" in response) {
-          const resp = response as Record<string, unknown>;
-          if (resp.success) {
+        if (response.success) {
             setJoined(true);
-            setRoomInfo(resp);
+            setRoomInfo(response.data?.room || null);
             console.log("✅ Unido a sala:", response);
-          } else {
-            setError(String(resp.message) || "Error al unirse");
-            console.error("❌ Error:", response);
-          }
         } else {
-          setError("Error al unirse");
+          setError(response.message || "Error al unirse");
         }
       }
     );

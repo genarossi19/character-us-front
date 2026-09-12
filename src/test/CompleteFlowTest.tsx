@@ -7,6 +7,8 @@ import {
   emitStartGame,
 } from "../services/socket/emitters/room";
 import { fetchCategories, type Category } from "../services/api/category";
+import type { Room } from "../types/game";
+import { useUserStore } from "../store/useUserStore";
 
 interface Player {
   socketId: string;
@@ -29,6 +31,7 @@ export function CompleteFlowTest() {
   );
   const [hostCategoryId, setHostCategoryId] = useState<string>("");
   const [hostGamePin, setHostGamePin] = useState<number | null>(null);
+  const [hostRoomId, setHostRoomId] = useState<string | null>(null);
   const [hostPlayers, setHostPlayers] = useState<Player[]>([]);
   const [hostLoading, setHostLoading] = useState(false);
   const [hostError, setHostError] = useState<string | null>(null);
@@ -36,6 +39,8 @@ export function CompleteFlowTest() {
     string,
     unknown
   > | null>(null);
+  const user = useUserStore((state) => state.user);
+  const token = useUserStore((state) => state.token);
 
   // ========== FLUJO GUEST (UNIRSE SALA) ==========
   const [guestState, setGuestState] = useState<"idle" | "joined" | "started">(
@@ -94,12 +99,12 @@ export function CompleteFlowTest() {
   }, []);
 
   // Listeners para actualizar jugadores
-  useSocketListener<{ players: Player[] }>("updatePlayers", (data) => {
+  useSocketListener<Room>("roomUpdated", (room) => {
     if (hostState === "created" || hostState === "started") {
-      setHostPlayers(data.players || []);
+      setHostPlayers(room.players);
     }
     if (guestState === "joined" || guestState === "started") {
-      setGuestPlayers(data.players || []);
+      setGuestPlayers(room.players);
     }
   });
 
@@ -114,6 +119,11 @@ export function CompleteFlowTest() {
 
   // ========== HANDLERS HOST ==========
   const handleCreateRoom = () => {
+    if (!user || user.isGuest || !token) {
+      setHostError("Inicia sesión con una cuenta registrada para crear una sala.");
+      return;
+    }
+
     if (!hostCategoryId) {
       setHostError("Selecciona una categoría");
       return;
@@ -122,27 +132,41 @@ export function CompleteFlowTest() {
     setHostLoading(true);
     setHostError(null);
 
-    const payload = { username: "Host", categoryId: hostCategoryId };
-    console.log("📌 Creando sala con:", payload);
+    const payload = {
+      username: user.username,
+      token,
+      settings: {
+        category: hostCategoryId,
+        impostorCount: 1,
+        totalRounds: 3,
+        maxPlayers: 10,
+        privacy: "public" as const,
+        mode: "classic" as const,
+        impostorsKnowEachOther: false,
+        visibleVotes: false,
+      },
+    };
+    console.log("📌 Creando sala para:", payload.username);
 
     emitCreateRoom(payload, (response) => {
       setHostLoading(false);
-      if (response && "gamePin" in response) {
-        const resp = response as unknown as { gamePin: number };
-        console.log("✅ Sala creada con PIN:", resp.gamePin);
-        setHostGamePin(resp.gamePin);
+      if (response.success && response.data?.room) {
+        const room = response.data.room;
+        console.log("✅ Sala creada con PIN:", room.code);
+        setHostGamePin(room.code);
+        setHostRoomId(room.id);
         setHostState("created");
         setHostSocketId(currentSocketId);
-        setHostPlayers([{ socketId: currentSocketId, username: "Host" }]);
+        setHostPlayers(room.players);
       } else {
-        setHostError("Error al crear sala");
+        setHostError(response.success ? "Respuesta de sala inválida" : response.message);
       }
     });
   };
 
   const handleStartGame = () => {
-    if (!hostGamePin) {
-      setHostError("No hay gamePin");
+    if (!hostRoomId) {
+      setHostError("No hay roomId");
       return;
     }
 
@@ -150,26 +174,18 @@ export function CompleteFlowTest() {
     setHostError(null);
 
     console.log(
-      "🎮 Iniciando juego con PIN:",
-      hostGamePin,
-      "Categoría:",
-      hostCategoryId
+      "🎮 Iniciando juego con roomId:",
+      hostRoomId
     );
 
-    emitStartGame(
-      { gamePin: hostGamePin, categoryId: hostCategoryId },
-      (response) => {
+    emitStartGame(hostRoomId, (response) => {
         setHostLoading(false);
-        if (response && typeof response === "object" && "success" in response) {
+        if (response.success) {
           console.log("✅ Juego iniciado");
         } else {
-          const msg =
-            (response as unknown as Record<string, unknown>)?.message ||
-            "Error al iniciar";
-          setHostError(String(msg));
+          setHostError(response.message);
         }
-      }
-    );
+      });
   };
 
   // ========== HANDLERS GUEST ==========
@@ -185,17 +201,14 @@ export function CompleteFlowTest() {
     const pinNumber = parseInt(guestPin, 10);
     console.log("🚪 Uniéndose a sala con PIN:", pinNumber);
 
-    emitJoinRoom({ gamePin: pinNumber, username: "Guest" }, (response) => {
+    emitJoinRoom({ code: pinNumber, username: "Guest", isGuest: true }, (response) => {
       setGuestLoading(false);
-      if (response && typeof response === "object" && "success" in response) {
+      if (response.success && response.data?.room) {
         console.log("✅ Unido a sala");
         setGuestState("joined");
-        setGuestPlayers([{ socketId: currentSocketId, username: "Guest" }]);
+        setGuestPlayers(response.data.room.players);
       } else {
-        const msg =
-          (response as unknown as Record<string, unknown>)?.message ||
-          "Error al unirse";
-        setGuestError(String(msg));
+        setGuestError(response.success ? "Respuesta de sala inválida" : response.message);
       }
     });
   };
@@ -393,7 +406,7 @@ export function CompleteFlowTest() {
           {hostState === "idle" && (
             <button
               onClick={handleCreateRoom}
-              disabled={hostLoading || !socketReady || !hostCategoryId}
+              disabled={hostLoading || !socketReady || !hostCategoryId || !user || user.isGuest || !token}
               style={{
                 width: "100%",
                 padding: "12px",

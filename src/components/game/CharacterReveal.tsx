@@ -11,7 +11,7 @@ export default function CharacterReveal() {
     return () => clearTimeout(timer);
   }, []);
 
-  if (!character) return null;
+  if (!isImpostor && !character) return null;
 
   return (
     <div className="flex flex-col items-center justify-center h-full gap-6">
@@ -25,8 +25,8 @@ export default function CharacterReveal() {
           >
             <div className="w-64 h-64 rounded-full overflow-hidden border-4 border-accent shadow-2xl">
               <img
-                src={isImpostor ? "/impostor.webp" : character.imageUrl}
-                alt={isImpostor ? "Impostor" : character.name}
+                src={isImpostor ? "/impostor.webp" : character?.imageUrl || "/logo.webp"}
+                alt={isImpostor ? "Impostor" : character?.name || "Personaje"}
                 className="w-full h-full object-cover"
               />
             </div>
@@ -39,7 +39,7 @@ export default function CharacterReveal() {
                 isImpostor ? "text-red-500" : "text-foreground"
               }`}
             >
-              {isImpostor ? "Eres el Impostor" : character.name}
+              {isImpostor ? "Eres el Impostor" : character?.name}
             </motion.h2>
 
             <motion.p

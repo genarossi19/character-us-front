@@ -1,66 +1,209 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
+import { z } from "zod";
 import { useUserStore } from "@/store/useUserStore";
+import { ApiError } from "@/services/api/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Mail, Lock, User, CheckCircle } from "lucide-react";
 import BackgroundAnimate from "@/components/BackgroundAnimate";
 import { ThemeToggleButton } from "@/components/ui/shadcn-io/theme-toggle-button";
+import { toast } from "sonner";
+
+const usernamePattern = /^[a-zA-Z0-9_]+$/;
+
+const signupSchema = z
+  .object({
+    username: z
+      .string()
+      .min(1, "Ingresa un nombre de usuario.")
+      .max(30, "El nombre de usuario no puede superar 30 caracteres.")
+      .regex(
+        usernamePattern,
+        "El nombre de usuario solo puede contener letras, números y guiones bajos (_). No uses espacios."
+      ),
+    email: z.email("Ingresa un email válido."),
+    password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres."),
+    confirmPassword: z.string(),
+    acceptedTerms: z.literal(true, {
+      error: "Debes aceptar los términos.",
+    }),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    error: "Las contraseñas no coinciden.",
+    path: ["confirmPassword"],
+  });
+
+type SignupFormData = Omit<z.input<typeof signupSchema>, "acceptedTerms"> & {
+  acceptedTerms: boolean;
+};
+type SignupField = keyof SignupFormData;
+type SignupErrors = Partial<Record<SignupField, string>>;
+
+const signupFields: SignupField[] = [
+  "username",
+  "email",
+  "password",
+  "confirmPassword",
+  "acceptedTerms",
+];
+
+function toSignupErrors(error: z.ZodError): SignupErrors {
+  const fieldErrors = error.flatten().fieldErrors as Partial<
+    Record<SignupField, string[] | undefined>
+  >;
+
+  return signupFields.reduce<SignupErrors>((errors, field) => {
+    const message = fieldErrors[field]?.[0];
+    if (message) errors[field] = message;
+    return errors;
+  }, {});
+}
+
+function humanizeFieldError(field: SignupField, message: string): string {
+  const normalized = message.toLowerCase();
+  const isTechnicalValidation =
+    normalized.includes("invalid string") ||
+    normalized.includes("must match pattern") ||
+    normalized.includes("too small") ||
+    normalized.includes("too big") ||
+    normalized.includes("must contain") ||
+    normalized.includes("required") ||
+    normalized.includes("invalid_type") ||
+    normalized.includes("invalid email") ||
+    normalized.includes("expected ");
+
+  if (field === "username") {
+    if (
+      normalized.includes("pattern") ||
+      normalized.includes("whitespace") ||
+      normalized.includes("space")
+    ) {
+      return "El nombre de usuario solo puede contener letras, números y guiones bajos (_). No uses espacios.";
+    }
+    if (normalized.includes("too small") || normalized.includes("minimum")) {
+      return "Ingresa un nombre de usuario.";
+    }
+    if (normalized.includes("too big") || normalized.includes("maximum")) {
+      return "El nombre de usuario no puede superar 30 caracteres.";
+    }
+  }
+
+  if (field === "email" && isTechnicalValidation) {
+    return "Ingresa un email válido.";
+  }
+
+  if (field === "password" && isTechnicalValidation) {
+    return "La contraseña debe tener al menos 8 caracteres.";
+  }
+
+  if (field === "confirmPassword" && isTechnicalValidation) {
+    return "Las contraseñas no coinciden.";
+  }
+
+  if (field === "acceptedTerms") {
+    return "Debes aceptar los términos para crear tu cuenta.";
+  }
+
+  return isTechnicalValidation
+    ? "Revisa este campo e inténtalo nuevamente."
+    : message;
+}
+
+function humanizeSignupError(error: unknown): string {
+  if (!(error instanceof ApiError)) {
+    return "No se pudo crear la cuenta. Inténtalo nuevamente.";
+  }
+
+  const message = error.message.toLowerCase();
+
+  if (error.status === 0) {
+    return "No pudimos conectar con el servidor. Revisa tu conexión e inténtalo nuevamente.";
+  }
+
+  if (message.includes("pattern") || message.includes("invalid string")) {
+    return "El nombre de usuario solo puede contener letras, números y guiones bajos (_). No uses espacios.";
+  }
+
+  if (message.includes("invalid email")) {
+    return "Ingresa un email válido.";
+  }
+
+  if (
+    message.includes("too small") ||
+    message.includes("too big") ||
+    message.includes("must contain") ||
+    message.includes("required") ||
+    message.includes("invalid_type") ||
+    message.includes("expected ")
+  ) {
+    return "Revisa los datos ingresados e inténtalo nuevamente.";
+  }
+
+  return error.message;
+}
 
 export default function SignupScreenV2() {
   const navigate = useNavigate();
   const signup = useUserStore((s) => s.signup);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<SignupFormData>({
     username: "",
     email: "",
     password: "",
     confirmPassword: "",
+    acceptedTerms: false,
   });
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [touched, setTouched] = useState({
-    username: false,
-    email: false,
-    password: false,
-    confirmPassword: false,
-  });
+  const [errors, setErrors] = useState<SignupErrors>({});
+  const [submitting, setSubmitting] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const field = e.target.name as Exclude<SignupField, "acceptedTerms">;
+    setFormData((current) => ({ ...current, [field]: e.target.value }));
+    setErrors((current) => ({ ...current, [field]: undefined }));
   };
 
-  const emailIsValid = (email: string) =>
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-
-  const usernameInvalid =
-    !formData.username.trim() &&
-    (touched.username || formData.username.length > 0);
-  const emailInvalid =
-    !emailIsValid(formData.email) &&
-    (touched.email || formData.email.length > 0);
-  const passwordInvalid =
-    formData.password.length > 0 &&
-    formData.password.length < 8 &&
-    (touched.password || formData.password.length > 0);
-  const confirmInvalid =
-    formData.confirmPassword.length > 0 &&
-    formData.confirmPassword !== formData.password &&
-    (touched.confirmPassword || formData.confirmPassword.length > 0);
-  const termsInvalid = !acceptedTerms && touched.username;
-
-  const isFormValid = () =>
-    formData.username.trim().length > 0 &&
-    emailIsValid(formData.email) &&
-    formData.password.length >= 8 &&
-    formData.password === formData.confirmPassword &&
-    acceptedTerms;
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFormValid()) return;
-    signup(formData.username, formData.email, formData.password);
-    navigate("/menu");
+    const validation = signupSchema.safeParse(formData);
+
+    if (!validation.success) {
+      setErrors(toSignupErrors(validation.error));
+      return;
+    }
+
+    const payload = {
+      username: validation.data.username,
+      email: validation.data.email,
+      password: validation.data.password,
+      confirmPassword: validation.data.confirmPassword,
+    };
+
+    setSubmitting(true);
+    try {
+      await signup(payload);
+      navigate("/menu", { replace: true });
+    } catch (error) {
+      if (error instanceof ApiError && error.fieldErrors) {
+        const fieldErrors = Object.entries(error.fieldErrors).reduce<SignupErrors>(
+          (current, [field, messages]) => {
+            if (signupFields.includes(field as SignupField) && messages[0]) {
+              current[field as SignupField] = humanizeFieldError(
+                field as SignupField,
+                messages[0]
+              );
+            }
+            return current;
+          },
+          {}
+        );
+        setErrors(fieldErrors);
+      }
+      toast.error(humanizeSignupError(error));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -122,7 +265,7 @@ export default function SignupScreenV2() {
             </CardTitle>
 
             <CardContent className="pt-2">
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form noValidate onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label
                     htmlFor="username"
@@ -138,18 +281,17 @@ export default function SignupScreenV2() {
                       placeholder="Jugador123"
                       value={formData.username}
                       onChange={handleInputChange}
-                      onBlur={() =>
-                        setTouched({ ...touched, username: true })
-                      }
-                      aria-invalid={usernameInvalid}
+                      maxLength={30}
+                      aria-invalid={Boolean(errors.username)}
+                      aria-describedby={errors.username ? "username-error" : undefined}
                       className={`pl-10 placeholder:text-muted-foreground ${
-                        usernameInvalid ? "border-red-400" : ""
+                        errors.username ? "border-red-400" : ""
                       }`}
                     />
                   </div>
-                  {usernameInvalid && (
-                    <p className="mt-1 text-sm text-red-400">
-                      Ingresa un nombre de usuario.
+                  {errors.username && (
+                    <p id="username-error" className="mt-1 text-sm text-red-400" role="alert">
+                      {errors.username}
                     </p>
                   )}
                 </div>
@@ -170,16 +312,16 @@ export default function SignupScreenV2() {
                       placeholder="jugador@email.com"
                       value={formData.email}
                       onChange={handleInputChange}
-                      onBlur={() => setTouched({ ...touched, email: true })}
-                      aria-invalid={emailInvalid}
+                      aria-invalid={Boolean(errors.email)}
+                      aria-describedby={errors.email ? "email-error" : undefined}
                       className={`pl-10 placeholder:text-muted-foreground ${
-                        emailInvalid ? "border-red-400" : ""
+                        errors.email ? "border-red-400" : ""
                       }`}
                     />
                   </div>
-                  {emailInvalid && (
-                    <p className="mt-1 text-sm text-red-400">
-                      Ingresa un email válido.
+                  {errors.email && (
+                    <p id="email-error" className="mt-1 text-sm text-red-400" role="alert">
+                      {errors.email}
                     </p>
                   )}
                 </div>
@@ -200,18 +342,16 @@ export default function SignupScreenV2() {
                       placeholder="********"
                       value={formData.password}
                       onChange={handleInputChange}
-                      onBlur={() =>
-                        setTouched({ ...touched, password: true })
-                      }
-                      aria-invalid={passwordInvalid}
+                      aria-invalid={Boolean(errors.password)}
+                      aria-describedby={errors.password ? "password-error" : undefined}
                       className={`pl-10 placeholder:text-muted-foreground ${
-                        passwordInvalid ? "border-red-400" : ""
+                        errors.password ? "border-red-400" : ""
                       }`}
                     />
                   </div>
-                  {passwordInvalid && (
-                    <p className="mt-1 text-sm text-red-400">
-                      La contraseña debe tener al menos 8 caracteres.
+                  {errors.password && (
+                    <p id="password-error" className="mt-1 text-sm text-red-400" role="alert">
+                      {errors.password}
                     </p>
                   )}
                 </div>
@@ -232,18 +372,22 @@ export default function SignupScreenV2() {
                       placeholder="********"
                       value={formData.confirmPassword}
                       onChange={handleInputChange}
-                      onBlur={() =>
-                        setTouched({ ...touched, confirmPassword: true })
+                      aria-invalid={Boolean(errors.confirmPassword)}
+                      aria-describedby={
+                        errors.confirmPassword ? "confirm-password-error" : undefined
                       }
-                      aria-invalid={confirmInvalid}
                       className={`pl-10 placeholder:text-muted-foreground ${
-                        confirmInvalid ? "border-red-400" : ""
+                        errors.confirmPassword ? "border-red-400" : ""
                       }`}
                     />
                   </div>
-                  {confirmInvalid && (
-                    <p className="mt-1 text-sm text-red-400">
-                      Las contraseñas no coinciden.
+                  {errors.confirmPassword && (
+                    <p
+                      id="confirm-password-error"
+                      className="mt-1 text-sm text-red-400"
+                      role="alert"
+                    >
+                      {errors.confirmPassword}
                     </p>
                   )}
                 </div>
@@ -253,13 +397,18 @@ export default function SignupScreenV2() {
                     type="checkbox"
                     id="terms"
                     className={`rounded text-primary ${
-                      termsInvalid ? "ring-2 ring-red-400" : ""
+                      errors.acceptedTerms ? "ring-2 ring-red-400" : ""
                     }`}
-                    checked={acceptedTerms}
+                    checked={formData.acceptedTerms}
                     onChange={(e) => {
-                      setAcceptedTerms(e.target.checked);
-                      setTouched({ ...touched, username: true });
+                      setFormData((current) => ({
+                        ...current,
+                        acceptedTerms: e.target.checked,
+                      }));
+                      setErrors((current) => ({ ...current, acceptedTerms: undefined }));
                     }}
+                    aria-invalid={Boolean(errors.acceptedTerms)}
+                    aria-describedby={errors.acceptedTerms ? "terms-error" : undefined}
                   />
                   <label htmlFor="terms">
                     Acepto los{" "}
@@ -268,15 +417,20 @@ export default function SignupScreenV2() {
                     </span>
                   </label>
                 </div>
+                {errors.acceptedTerms && (
+                  <p id="terms-error" className="mt-1 text-sm text-red-400" role="alert">
+                    {errors.acceptedTerms}
+                  </p>
+                )}
 
                 <Button
                   type="submit"
                   variant="default"
                   size="lg"
-                  disabled={!isFormValid()}
+                  disabled={submitting}
                   className="w-full font-semibold text-lg rounded-md bg-primary hover:bg-primary/90"
                 >
-                  Registrarse
+                  {submitting ? "Registrando..." : "Registrarse"}
                 </Button>
               </form>
 

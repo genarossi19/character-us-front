@@ -12,9 +12,9 @@ interface DebateChatProps {
 }
 
 export default function DebateChat({ showHintsOnly = false }: DebateChatProps) {
-  const { wordHints, chatMessages, timer } = useGameStore();
+  const { wordHints, chatMessages, readyPlayerIds, readyPlayersTotal } = useGameStore();
   const currentPlayer = useRoomStore((s) => s.currentPlayer);
-  const { sendChatMessage } = useSocketGame();
+  const { sendChatMessage, debateReady } = useSocketGame();
 
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -86,9 +86,17 @@ export default function DebateChat({ showHintsOnly = false }: DebateChatProps) {
   if (showHintsOnly) {
     return (
       <div className="flex flex-col gap-4">
-        <div className="bg-accent/10 border border-accent/20 rounded-full px-4 py-1 text-sm font-mono font-bold text-foreground text-center">
-          Debate: {timer}s
+        <div className="bg-accent/10 border border-accent/20 rounded-full px-4 py-1 text-sm font-medium text-foreground text-center">
+          Listos: {readyPlayerIds.length} / {readyPlayersTotal}
         </div>
+        {currentPlayer?.isAlive && (
+          <Button
+            onClick={debateReady}
+            disabled={readyPlayerIds.includes(currentPlayer.socketId)}
+          >
+            {readyPlayerIds.includes(currentPlayer.socketId) ? "Listo" : "Marcar listo"}
+          </Button>
+        )}
         {hintsPanel}
       </div>
     );
@@ -109,7 +117,7 @@ export default function DebateChat({ showHintsOnly = false }: DebateChatProps) {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
               className={`flex ${
-                msg.senderId === currentPlayer?.id
+                msg.senderId === currentPlayer?.socketId
                   ? "justify-end"
                   : "justify-start"
               }`}
@@ -127,7 +135,7 @@ export default function DebateChat({ showHintsOnly = false }: DebateChatProps) {
               ) : msg.type === "ghost" ? (
                 <div
                   className={`max-w-[75%] px-3 py-2 rounded-lg text-sm ${
-                    msg.senderId === currentPlayer?.id
+                    msg.senderId === currentPlayer?.socketId
                       ? "bg-purple-500/20 border border-purple-500/30 text-purple-300"
                       : "bg-purple-500/10 border border-purple-500/20 text-purple-400"
                   } italic opacity-70`}
@@ -139,12 +147,12 @@ export default function DebateChat({ showHintsOnly = false }: DebateChatProps) {
               ) : (
                 <div
                   className={`max-w-[75%] px-4 py-2 rounded-2xl text-sm shadow-sm ${
-                    msg.senderId === currentPlayer?.id
+                    msg.senderId === currentPlayer?.socketId
                       ? "bg-accent text-white rounded-br-none"
                       : "bg-white dark:bg-gray-700 text-foreground dark:text-white rounded-bl-none border border-border/40"
                   }`}
                 >
-                  {msg.senderId !== currentPlayer?.id && (
+                  {msg.senderId !== currentPlayer?.socketId && (
                     <span className="font-medium text-xs block mb-1">
                       {msg.senderName} • {formatTime(msg.timestamp)}
                     </span>
@@ -168,7 +176,7 @@ export default function DebateChat({ showHintsOnly = false }: DebateChatProps) {
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           className="flex-1"
-          maxLength={200}
+          maxLength={500}
         />
         <Button
           type="submit"

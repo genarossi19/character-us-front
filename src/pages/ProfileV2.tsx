@@ -22,7 +22,7 @@ export default function ProfileV2() {
 
   const handleAvatarChange = (avatar: string) => {
     if (!user) return;
-    setUser({ ...user, avatar });
+    setUser({ ...user, avatarUrl: avatar });
   };
 
   const handleLogout = () => {
@@ -75,7 +75,7 @@ export default function ProfileV2() {
               <div className="flex flex-col items-center space-y-4">
                 <div className="relative">
                   <img
-                    src={user.avatar}
+                    src={user.avatarUrl}
                     alt="Avatar"
                     className="w-24 h-24 rounded-full border-4 border-accent shadow-lg"
                   />
@@ -143,7 +143,7 @@ export default function ProfileV2() {
                       key={avatar}
                       onClick={() => handleAvatarChange(avatar)}
                       className={`relative rounded-full overflow-hidden border-2 transition-all hover:scale-110 ${
-                        user.avatar === avatar
+                        user.avatarUrl === avatar
                           ? "border-accent shadow-lg scale-110"
                           : "border-transparent hover:border-accent/50"
                       }`}
@@ -153,7 +153,7 @@ export default function ProfileV2() {
                         alt={`Avatar ${avatar}`}
                         className="w-full h-full object-cover aspect-square"
                       />
-                      {user.avatar === avatar && (
+                      {user.avatarUrl === avatar && (
                         <div className="absolute inset-0 bg-accent/20" />
                       )}
                     </button>

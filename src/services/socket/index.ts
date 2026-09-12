@@ -8,6 +8,8 @@ export {
   emitLeaveRoom,
   emitStartGame,
   emitKickPlayer,
+  emitDebateReady,
+  emitChangeAvatar,
 } from "./emitters/room";
 
 // Game emitters
@@ -39,4 +41,6 @@ export {
   onGameEnded,
   onChatMessage,
   onGameStarted,
+  onDebateReadyUpdate,
+  onReconnectTimeout,
 } from "./listeners/gameListeners";

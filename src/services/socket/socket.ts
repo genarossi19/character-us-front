@@ -30,8 +30,6 @@ export const getSocket = (): Socket => {
       reconnectionAttempts: Infinity,
       transports: ["websocket"],
       autoConnect: true,
-      secure: false,
-      rejectUnauthorized: false,
       closeOnBeforeunload: true,
     });
 

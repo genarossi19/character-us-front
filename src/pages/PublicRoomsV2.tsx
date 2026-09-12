@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import { useUserStore } from "@/store/useUserStore";
 import { useSocketRoom } from "@/hooks/useSocketRoom";
-import { useRoomStore } from "@/store/useRoomStore";
 import {
   Card,
   CardContent,
@@ -31,7 +30,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggleButton } from "@/components/ui/shadcn-io/theme-toggle-button";
 import { Users, Gamepad2, Search, LogOut, User } from "lucide-react";
+import { toast } from "sonner";
 
+// TODO: Replace when the backend exposes a public-room listing contract.
 const mockRooms = [
   {
     id: "1",
@@ -42,7 +43,7 @@ const mockRooms = [
     currentPlayers: 5,
     maxPlayers: 8,
     img: "/disney.webp",
-    code: "123456",
+    code: 123456,
   },
   {
     id: "2",
@@ -53,7 +54,7 @@ const mockRooms = [
     currentPlayers: 0,
     maxPlayers: 8,
     img: "/clash-royale.webp",
-    code: "789012",
+    code: 789012,
   },
   {
     id: "3",
@@ -64,7 +65,7 @@ const mockRooms = [
     currentPlayers: 4,
     maxPlayers: 6,
     img: "/los-simpson.webp",
-    code: "345678",
+    code: 345678,
   },
 ];
 
@@ -72,7 +73,6 @@ export default function PublicRoomsV2() {
   const navigate = useNavigate();
   const { user, logout } = useUserStore();
   const { joinRoom } = useSocketRoom();
-  const setCurrentPlayer = useRoomStore((s) => s.setCurrentPlayer);
   const [search, setSearch] = useState("");
   const [modeFilter, setModeFilter] = useState("all");
   const [showEmpty, setShowEmpty] = useState(true);
@@ -82,26 +82,20 @@ export default function PublicRoomsV2() {
     navigate("/login");
   };
 
-  const handleJoinRoom = (roomCode: string) => {
+  const handleJoinRoom = async (roomCode: number) => {
     if (!user) return;
 
-    setCurrentPlayer({
-      id: user.id,
-      username: user.username,
-      avatar: user.avatar,
-      isHost: false,
-      isGuest: user.isGuest,
-      isAlive: true,
-      isOnline: true,
-    });
-
-    joinRoom({
-      code: roomCode,
-      username: user.username,
-      isGuest: user.isGuest,
-    });
-
-    navigate("/lobby");
+    try {
+      await joinRoom({
+        code: roomCode,
+        username: user.username,
+        isGuest: user.isGuest,
+        avatarUrl: user.avatarUrl,
+        userId: user.isGuest ? undefined : user.id,
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo unir a la sala");
+    }
   };
 
   const filteredRooms = mockRooms.filter((room) => {
@@ -135,7 +129,7 @@ export default function PublicRoomsV2() {
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-accent/20 transition">
                 <img
-                  src={user?.avatar || "/avatar1.webp"}
+                  src={user?.avatarUrl || "/avatar1.webp"}
                   alt="avatar"
                   className="w-10 h-10 rounded-full border-2 border-accent shadow"
                 />

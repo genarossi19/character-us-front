@@ -5,6 +5,7 @@ import {
   emitSubmitWord,
   emitVotePlayer,
   emitSendChatMessage,
+  emitDebateReady,
   onCharacterAssigned,
   onPhaseChanged,
   onTurnChanged,
@@ -15,22 +16,22 @@ import {
   onRoundResults,
   onGameEnded,
   onChatMessage,
+  onDebateReadyUpdate,
+  onReconnectTimeout,
 } from "@/services/socket";
 import type {
-  GamePhase,
   ChatMessage,
   RoundResult,
   GameResult,
 } from "@/types/game";
 
 export function useSocketGame() {
-  const game = useGameStore();
   const room = useRoomStore((s) => s.room);
 
   const submitWord = useCallback(
     (word: string) => {
       if (!room) return;
-      emitSubmitWord({ roomId: room.id, word });
+      emitSubmitWord({ roomId: room.id, word: word.slice(0, 20) });
     },
     [room]
   );
@@ -46,70 +47,89 @@ export function useSocketGame() {
   const sendChatMessage = useCallback(
     (message: string) => {
       if (!room) return;
-      emitSendChatMessage({ roomId: room.id, message });
+      emitSendChatMessage({ roomId: room.id, message: message.slice(0, 500) });
     },
     [room]
   );
 
-  // --- Listeners ---
-  useEffect(() => {
-    const cleanups = [
-      onCharacterAssigned((data) => {
-        game.setCharacter(data.character, data.isImpostor);
-      }),
-
-      onPhaseChanged((data) => {
-        game.setPhase(data.phase as GamePhase);
-      }),
-
-      onTurnChanged((data) => {
-        game.setCurrentTurnPlayer(data.playerId);
-      }),
-
-      onWordHintRevealed((data) => {
-        game.addWordHint({
-          playerId: data.playerId,
-          username: data.username,
-          word: "",
-          revealed: false,
-        });
-      }),
-
-      onAllWordsSubmitted((data) => {
-        game.setWordHints(data.hints);
-      }),
-
-      onVoteUpdate((data) => {
-        game.setVotes(data.votes);
-      }),
-
-      onPlayerEliminated((data) => {
-        game.setEliminatedPlayer(data.player, data.wasImpostor);
-        // Actualizar estado del jugador eliminado
-        const roomStore = useRoomStore.getState();
-        roomStore.updatePlayer(data.player.id, { isAlive: false });
-      }),
-
-      onRoundResults((result: RoundResult) => {
-        game.addRoundResult(result);
-      }),
-
-      onGameEnded((result: GameResult) => {
-        game.setWinner(result.winner);
-        game.setPhase("gameEnd");
-      }),
-
-      onChatMessage((message: ChatMessage) => {
-        game.addChatMessage(message);
-      }),
-    ];
-
-    return () => cleanups.forEach((fn) => fn());
-  }, [game]);
+  const debateReady = useCallback(() => {
+    if (!room) return;
+    emitDebateReady({ roomId: room.id });
+  }, [room]);
 
   return {
     submitWord,
     votePlayer,
     sendChatMessage,
+    debateReady,
   };
+}
+
+export function useSocketGameEvents() {
+  useEffect(() => {
+    const cleanups = [
+      onCharacterAssigned((data) => {
+        // The server sends null to impostors; never infer or fetch the character.
+        useGameStore.getState().setCharacter(data.character, data.isImpostor);
+      }),
+
+      onPhaseChanged((data) => {
+        useGameStore.getState().setPhase(data.phase);
+      }),
+
+      onTurnChanged((data) => {
+        useGameStore.getState().setCurrentTurnPlayer(data.playerId);
+      }),
+
+      onWordHintRevealed((data) => {
+        useGameStore.getState().addWordHint({
+          playerId: data.playerId,
+          username: data.username,
+          word: data.word,
+          revealed: true,
+          skipped: data.skipped,
+        });
+      }),
+
+      onAllWordsSubmitted((data) => {
+        useGameStore.getState().setWordHints(data.hints);
+      }),
+
+      onVoteUpdate((data) => {
+        const game = useGameStore.getState();
+        game.setVotes(data.votes);
+        game.setVotesVisible(data.visible);
+        useRoomStore.getState().updatePlayer(data.voterId, { hasVoted: true });
+      }),
+
+      onPlayerEliminated((data) => {
+        useGameStore.getState().setEliminatedPlayer(data.player, data.wasImpostor);
+        useRoomStore.getState().updatePlayer(data.player.socketId, { isAlive: false });
+      }),
+
+      onRoundResults((result: RoundResult) => {
+        useGameStore.getState().addRoundResult(result);
+      }),
+
+      onGameEnded((result: GameResult) => {
+        const game = useGameStore.getState();
+        game.setWinner(result.winner);
+        game.setRoundResults(result.rounds);
+        game.setPhase("finished");
+      }),
+
+      onChatMessage((message: ChatMessage) => {
+        useGameStore.getState().addChatMessage(message);
+      }),
+      onDebateReadyUpdate((data) => {
+        useGameStore.getState().setDebateReady(data.readyPlayers, data.total);
+      }),
+      onReconnectTimeout((data) => {
+        useGameStore.getState().setReconnectTimeout(data.playerId, data.secondsLeft);
+      }),
+    ];
+
+    return () => cleanups.forEach((fn) => fn());
+  }, []);
+
 }

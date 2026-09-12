@@ -1,16 +1,15 @@
 # Socket.IO en CharacterUs
 
-Referencia de la infraestructura existente en el frontend. Describe el código actual, no implica que las pantallas de producto ya estén integradas con el backend.
+Referencia de la integración Socket.IO actual. Los contratos de esta capa se alinean con `backend.md`.
 
 ## Alcance actual
 
 - `src/services/socket/socket.ts` crea una instancia singleton de `Socket` al primer `getSocket()`.
-- `src/services/socket/emitters/` agrupa emisiones de sala y juego.
-- `src/services/socket/listeners/` registra listeners y devuelve funciones de desuscripción.
-- `src/hooks/` ofrece wrappers React sobre la conexión, emisión y escucha.
-- Las páginas `/create`, `/join`, `/lobby` y `/game` todavía no usan estos servicios.
-- `/test` es un diagnóstico manual. Usa `createRoom`, `joinRoom`, `startGame`, `updatePlayers` y `gameStarted` contra un backend real.
-- No existe un contrato ni un evento de chat implementado en esta capa.
+- `src/types/game.ts` es la fuente única de tipos de dominio Socket.IO.
+- `src/services/socket/emitters/` y `listeners/` separan las emisiones de las suscripciones.
+- Las pantallas V2 `/create`, `/join`, `/lobby` y `/game` usan esta capa.
+- `useSocketGameEvents` se monta en `App.tsx` para no perder eventos, como `characterAssigned`, durante la navegación a `/game`.
+- `/test` es un diagnóstico manual y debe usar este mismo contrato.
 
 ## Conexión
 
@@ -18,58 +17,60 @@ Referencia de la infraestructura existente en el frontend. Describe el código a
 VITE_SOCKET_URL=http://localhost:3000
 ```
 
-Si falta la variable, se usa `http://localhost:3000`. La configuración fuerza transporte WebSocket, conecta automáticamente y reintenta sin límite. `disconnectSocket()` elimina la instancia para que el siguiente `getSocket()` cree una nueva.
-
-El cliente configura actualmente `secure: false` y `rejectUnauthorized: false`. Estas opciones y la política de transporte deben revisarse antes de un despliegue HTTPS, no copiarse como una decisión de producción asumida.
+Si falta la variable, se usa `http://localhost:3000`. La configuración fuerza `transports: ["websocket"]`, conecta automáticamente y reintenta sin límite. `disconnectSocket()` elimina la instancia para que el siguiente `getSocket()` cree una nueva.
 
 ## Contratos declarados
 
-Los tipos están en `src/services/socket/types.ts`. Deben sincronizarse con el backend; no hay generación compartida de contratos.
+No hay generación compartida de contratos. Al cambiar el backend se debe actualizar `src/types/game.ts`, sus emitters y listeners asociados.
+
+Todos los acknowledgements responden con una de estas formas:
+
+```ts
+{ success: true, data?: T }
+{ success: false, message: string, code: string }
+```
 
 ### Emisiones de sala
 
-| Evento | Función | Payload declarado | Ack declarado |
+| Evento | Función | Payload | Ack |
 | --- | --- | --- | --- |
-| `createRoom` | `emitCreateRoom` | `{ username, categoryId }` | `{ internalId, gamePin }` o error |
-| `joinRoom` | `emitJoinRoom` | `{ gamePin, username }` | `{ internalId, room }` o error |
-| `leaveRoom` | `emitLeaveRoom` | `{ internalId }` | vacío o error |
-| `getRoomInfo` | `emitGetRoomInfo` | `{ internalId }` | `Room` o error |
-| `startGame` | `emitters/room.ts` | `{ gamePin, categoryId }` | `{ success, message? }` o error |
+| `createRoom` | `emitCreateRoom` | `{ username, token, settings, avatarUrl? }` | `Ack<{ room }>` |
+| `joinRoom` | `emitJoinRoom` | `{ code, username, isGuest, avatarUrl?, userId?, password? }` | `Ack<{ room }>` |
+| `leaveRoom` | `emitLeaveRoom` | `{ roomId }` | `Ack<void>` |
+| `startGame` | `emitStartGame` | `{ roomId }` | `Ack<{ room }>` |
+| `kickPlayer` | `emitKickPlayer` | `{ roomId, targetId }` | `Ack<void>` |
+| `debateReady` | `emitDebateReady` | `{ roomId }` | `Ack<void>` |
+| `changeAvatar` | `emitChangeAvatar` | `{ roomId, avatarUrl }` | `Ack<void>` |
+
+`Room.id` es el UUID para acciones posteriores; `Room.code` es el PIN numérico de seis dígitos para unirse.
 
 ### Emisiones de juego
 
-| Evento | Función | Payload emitido |
+| Evento | Función | Payload |
 | --- | --- | --- |
-| `startGame` | `emitters/game.ts` | `{ internalId, gamePin, categoryId }` |
-| `assignCharacter` | `emitAssignCharacter` | `{ internalId, characterId }` |
-| `votePlayer` | `emitVotePlayer` | `{ internalId, targetSocketId }` |
-| `endGame` | `emitEndGame` | `{ internalId }` |
+| `submitWord` | `emitSubmitWord` | `{ roomId, word }` |
+| `votePlayer` | `emitVotePlayer` | `{ roomId, targetId }` |
+| `sendChatMessage` | `emitSendChatMessage` | `{ roomId, message }` |
 
-Hay dos funciones llamadas `emitStartGame` con contratos distintos. El barrel `src/services/socket/index.ts` reexporta ambas y actualmente produce un error TypeScript por exportación ambigua. Hasta unificar el contrato con el backend, importa explícitamente desde `emitters/room` o `emitters/game` y no adivines cuál corresponde.
+### Eventos escuchados
 
-### Eventos escuchados por helpers
+- Sala: `roomUpdated`, `playerJoined`, `playerLeft`, `playerKicked`, `roomClosed`. `roomUpdated` también se emite tras un cambio de avatar.
+- Juego: `gameStarted`, `characterAssigned`, `phaseChanged`, `turnChanged`, `wordHintRevealed`, `allWordsSubmitted`, `debateReadyUpdate`, `voteUpdate`, `playerEliminated`, `roundResults`, `gameEnded`, `chatMessage`, `reconnectTimeout`.
 
-- Sala: `playerJoined`, `playerLeft`, `roomUpdated`, `roomDeleted`, `roomError`.
-- Juego: `gameStarted`, `charactersAssigned`, `playerEliminated`, `voteUpdated`, `gameEnded`, `gameError`.
-- El diagnóstico usa además `updatePlayers`, evento que no aparece en los listeners de dominio.
-
-Los listeners retornan una función de cleanup y deben desuscribir exactamente el callback registrado.
+Los listeners retornan una función de cleanup y desuscriben el mismo callback que registraron.
 
 ## Uso diagnóstico
 
-1. Ejecuta el backend en el origen configurado; la carga de categorías requiere además `GET http://localhost:3000/api/category`.
-2. Ejecuta `npm run dev` y abre `/test`.
-3. Usa dos pestañas para representar host e invitado; el singleton crea una conexión por pestaña, no dos identidades dentro de una sola pestaña.
-4. Selecciona una categoría, crea la sala, copia el PIN en la segunda pestaña, une al invitado e inicia la partida.
-5. Revisa los payloads mostrados y la consola. La pantalla no contiene assertions ni produce un resultado automático pass/fail.
+1. Inicia sesión en la pestaña anfitriona; el diagnóstico toma username y token de `useUserStore`.
+2. Ejecuta el backend en el origen configurado; la carga de categorías requiere `GET /api/category`.
+3. Ejecuta `npm run dev` y abre `/test` en dos pestañas.
+4. Selecciona una categoría UUID, crea una sala, copia el código en la segunda pestaña, une al invitado e inicia la partida.
+5. Revisa los payloads y la consola. La pantalla no contiene assertions ni produce un resultado automático pass/fail.
 
-## Limitaciones a respetar
+## Límites de seguridad y recuperación
 
-- `useSocket()` devuelve `null` en el primer render y llenar su ref no provoca un render nuevo.
-- `useSocketConnected()` es un snapshot; no se suscribe a `connect`/`disconnect`.
-- Los hooks de listeners dependen de objetos/callbacks y del array `dependencies` por identidad, por lo que callbacks inline pueden provocar altas y bajas en cada render.
-- `useSocketEmit()` acepta cualquier nombre de evento y usa `any` para el ack; no conserva la relación tipada evento/payload/respuesta.
-- `Map` en `voteUpdated` presupone una forma que Socket.IO/JSON no reconstruye automáticamente como `Map`; debe validarse contra el payload real del backend.
-- Los callbacks del diagnóstico esperan en algunos puntos `{ success }`, mientras los tipos de `joinRoom` declaran `{ internalId, room }`. Verifica el backend antes de corregir uno de los lados.
-
-Estas limitaciones están registradas como propuestas, no como autorización para cambiar contratos. Consulta `docs/RECOMMENDATIONS.md`.
+- Los roles y el personaje son privados y autoritativos: `characterAssigned.character` es `null` para el impostor y el cliente nunca intenta obtenerlo.
+- `visibleVotes` decide la presentación: con `false` se muestra que un jugador votó, no su objetivo.
+- El socket no se autentica durante el handshake. La sesión JWT HTTP se persiste por pestaña en `sessionStorage`, se valida con `GET /api/auth/me` y se envía exclusivamente en `createRoom.token`; no se adjunta a query string, logs ni `auth` del handshake. El backend valida token, usuario, emisor y audiencia antes de crear la sala.
+- `AUTH_REQUIRED` y `AUTH_INVALID` limpian la sesión y redirigen a login. `USERNAME_MISMATCH` nunca debe resolverse con un input editable: el cliente usa siempre `session.user.username`.
+- El backend no define todavía un reingreso de sala desde una página recargada. El aviso `reconnectTimeout` se muestra durante la partida, pero no reemplaza ese contrato pendiente.

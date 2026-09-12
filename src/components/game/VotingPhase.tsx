@@ -6,18 +6,20 @@ import { useSocketGame } from "@/hooks/useSocketGame";
 import { Button } from "@/components/ui/button";
 
 export default function VotingPhase() {
-  const { votes, timer } = useGameStore();
+  const { votes, votesVisible } = useGameStore();
   const players = useRoomStore((s) => s.players);
   const currentPlayer = useRoomStore((s) => s.currentPlayer);
+  const room = useRoomStore((s) => s.room);
   const { votePlayer } = useSocketGame();
 
   const [selectedVote, setSelectedVote] = useState<string | null>(null);
   const [hasVoted, setHasVoted] = useState(false);
+  const visibleVotes = votesVisible ?? room?.settings.visibleVotes ?? false;
 
   const alivePlayers = players.filter(
-    (p) => p.isAlive && p.id !== currentPlayer?.id
+    (p) => p.isAlive && p.socketId !== currentPlayer?.socketId
   );
-  const userVote = currentPlayer ? votes[currentPlayer.id] : undefined;
+  const userVote = currentPlayer ? votes[currentPlayer.socketId] : undefined;
 
   const handleVote = () => {
     if (!selectedVote || hasVoted || userVote) return;
@@ -43,25 +45,22 @@ export default function VotingPhase() {
         </p>
       </motion.div>
 
-      {/* Countdown */}
-      <div className="text-5xl font-bold text-red-500 font-mono">{timer}s</div>
-
       {/* Lista de jugadores */}
       <div className="w-full max-w-2xl space-y-3">
         {alivePlayers.map((player) => {
-          const isSelected = selectedVote === player.id;
+          const isSelected = selectedVote === player.socketId;
           const votesForThisPlayer = Object.values(votes).filter(
-            (v) => v === player.id
+            (v) => v === player.socketId
           ).length;
 
           return (
             <motion.div
-              key={player.id}
+              key={player.socketId}
               whileHover={!hasVoted && !userVote ? { scale: 1.02 } : {}}
               whileTap={!hasVoted && !userVote ? { scale: 0.98 } : {}}
               onClick={() => {
                 if (!hasVoted && !userVote) {
-                  setSelectedVote(player.id);
+                  setSelectedVote(player.socketId);
                 }
               }}
               className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-colors ${
@@ -76,7 +75,7 @@ export default function VotingPhase() {
             >
               <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white/30">
                 <img
-                  src={player.avatar}
+                  src={player.avatarUrl}
                   alt={player.username}
                   className="w-full h-full object-cover"
                 />
@@ -84,12 +83,15 @@ export default function VotingPhase() {
               <p className="flex-1 text-lg font-semibold text-foreground">
                 {player.username}
               </p>
-              {votesForThisPlayer > 0 && (
+              {visibleVotes && votesForThisPlayer > 0 && (
                 <div className="bg-muted px-3 py-1 rounded-full text-sm font-medium text-muted-foreground">
                   {votesForThisPlayer} voto{votesForThisPlayer > 1 ? "s" : ""}
                 </div>
               )}
-              {(hasVoted || userVote) && userVote === player.id && (
+              {!visibleVotes && player.hasVoted && (
+                <span className="text-muted-foreground text-sm">Ha votado</span>
+              )}
+              {(hasVoted || userVote) && userVote === player.socketId && (
                 <span className="text-green-500 font-bold">✅ Tu voto</span>
               )}
             </motion.div>

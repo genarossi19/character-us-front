@@ -6,39 +6,40 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import BackgroundAnimate from "@/components/BackgroundAnimate";
 import { ThemeToggleButton } from "@/components/ui/shadcn-io/theme-toggle-button";
 import { useSocketRoom } from "@/hooks/useSocketRoom";
-import { useRoomStore } from "@/store/useRoomStore";
+import { useUserStore } from "@/store/useUserStore";
+import { toast } from "sonner";
 
 export default function QuickJoinScreenV2() {
   const navigate = useNavigate();
   const { joinRoom } = useSocketRoom();
-  const setCurrentPlayer = useRoomStore((s) => s.setCurrentPlayer);
+  const user = useUserStore((s) => s.user);
+  const isLoggedIn = useUserStore((s) => s.isLoggedIn);
 
   const [roomCode, setRoomCode] = useState("");
   const [username, setUsername] = useState("");
   const [joining, setJoining] = useState(false);
+  const [password, setPassword] = useState("");
 
-  const isValid = roomCode.length === 6 && username.trim().length >= 2;
+  const playerName = isLoggedIn && user ? user.username : username.trim();
+  const isValid = roomCode.length === 6 && playerName.length >= 2;
 
-  const handleJoin = () => {
+  const handleJoin = async () => {
     if (!isValid) return;
     setJoining(true);
-
-    // Crear jugador invitado temporal
-    setCurrentPlayer({
-      id: `guest-${Date.now()}`,
-      username: username.trim(),
-      avatar: `/avatar${Math.floor(Math.random() * 8) + 1}.webp`,
-      isHost: false,
-      isGuest: true,
-      isAlive: true,
-      isOnline: true,
-    });
-
-    joinRoom({
-      code: roomCode,
-      username: username.trim(),
-      isGuest: true,
-    });
+    try {
+      await joinRoom({
+        code: Number(roomCode),
+        username: isLoggedIn && user ? user.username : username.trim(),
+        isGuest: !isLoggedIn,
+        avatarUrl: user?.avatarUrl,
+        userId: isLoggedIn ? user?.id : undefined,
+        password: password || undefined,
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo unir a la sala");
+    } finally {
+      setJoining(false);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -97,11 +98,28 @@ export default function QuickJoinScreenV2() {
               </label>
               <Input
                 id="username"
-                value={username}
+                value={isLoggedIn && user ? user.username : username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="¿Cómo te llamas?"
                 maxLength={20}
+                disabled={isLoggedIn}
                 className="text-center text-foreground"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-muted-foreground mb-1"
+              >
+                Contraseña (si la sala es privada)
+              </label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                maxLength={100}
               />
             </div>
 

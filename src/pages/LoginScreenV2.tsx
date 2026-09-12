@@ -7,6 +7,7 @@ import BackgroundAnimate from "@/components/BackgroundAnimate";
 import { Input } from "@/components/ui/input";
 import { Mail, Lock } from "lucide-react";
 import { ThemeToggleButton } from "@/components/ui/shadcn-io/theme-toggle-button";
+import { toast } from "sonner";
 
 export default function LoginScreenV2() {
   const navigate = useNavigate();
@@ -20,15 +21,19 @@ export default function LoginScreenV2() {
     !emailIsValid(email) && (touched.email || email.length > 0);
   const passwordInvalid =
     password.length > 0 &&
-    password.length < 8 &&
+    password.length < 6 &&
     (touched.password || password.length > 0);
-  const formValid = emailIsValid(email) && password.length >= 8;
+  const formValid = emailIsValid(email) && password.length >= 6;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formValid) return;
-    login(email, password);
-    navigate("/menu");
+    try {
+      await login(email, password);
+      navigate("/menu");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo iniciar sesión");
+    }
   };
 
   return (
@@ -124,7 +129,7 @@ export default function LoginScreenV2() {
                 </div>
                 {passwordInvalid && (
                   <p className="mt-1 text-sm text-red-400">
-                    La contraseña debe tener al menos 8 caracteres.
+                    La contraseña debe tener al menos 6 caracteres.
                   </p>
                 )}
               </div>

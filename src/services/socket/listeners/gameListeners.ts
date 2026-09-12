@@ -1,6 +1,11 @@
 import type {
-  Character,
-  GamePhase,
+  CharacterAssignment,
+  PhaseChanged,
+  TurnChanged,
+  WordHintRevealed,
+  VoteUpdate,
+  DebateReadyUpdate,
+  ReconnectTimeout,
   WordHint,
   ChatMessage,
   Player,
@@ -11,7 +16,7 @@ import type {
 import { getSocket } from "../socket";
 
 export const onCharacterAssigned = (
-  callback: (data: { character: Character; isImpostor: boolean }) => void
+  callback: (data: CharacterAssignment) => void
 ): (() => void) => {
   const socket = getSocket();
   socket.on("characterAssigned", callback);
@@ -19,7 +24,7 @@ export const onCharacterAssigned = (
 };
 
 export const onPhaseChanged = (
-  callback: (data: { phase: GamePhase; data?: Record<string, unknown> }) => void
+  callback: (data: PhaseChanged) => void
 ): (() => void) => {
   const socket = getSocket();
   socket.on("phaseChanged", callback);
@@ -27,7 +32,7 @@ export const onPhaseChanged = (
 };
 
 export const onTurnChanged = (
-  callback: (data: { playerId: string; username: string; turnIndex: number; total: number }) => void
+  callback: (data: TurnChanged) => void
 ): (() => void) => {
   const socket = getSocket();
   socket.on("turnChanged", callback);
@@ -35,7 +40,7 @@ export const onTurnChanged = (
 };
 
 export const onWordHintRevealed = (
-  callback: (data: { playerId: string; username: string }) => void
+  callback: (data: WordHintRevealed) => void
 ): (() => void) => {
   const socket = getSocket();
   socket.on("wordHintRevealed", callback);
@@ -51,7 +56,7 @@ export const onAllWordsSubmitted = (
 };
 
 export const onVoteUpdate = (
-  callback: (data: { votes: Record<string, string>; voterId: string; targetId: string }) => void
+  callback: (data: VoteUpdate) => void
 ): (() => void) => {
   const socket = getSocket();
   socket.on("voteUpdate", callback);
@@ -88,6 +93,22 @@ export const onChatMessage = (
   const socket = getSocket();
   socket.on("chatMessage", callback);
   return () => socket.off("chatMessage", callback);
+};
+
+export const onDebateReadyUpdate = (
+  callback: (data: DebateReadyUpdate) => void
+): (() => void) => {
+  const socket = getSocket();
+  socket.on("debateReadyUpdate", callback);
+  return () => socket.off("debateReadyUpdate", callback);
+};
+
+export const onReconnectTimeout = (
+  callback: (data: ReconnectTimeout) => void
+): (() => void) => {
+  const socket = getSocket();
+  socket.on("reconnectTimeout", callback);
+  return () => socket.off("reconnectTimeout", callback);
 };
 
 export const onGameStarted = (

@@ -6,10 +6,11 @@ export default function RoundResults() {
   const { eliminatedPlayer, wasImpostor, currentRound, totalRounds, votes } =
     useGameStore();
   const players = useRoomStore((s) => s.players);
+  const visibleVotes = useRoomStore((s) => s.room?.settings.visibleVotes ?? false);
 
   const votedPlayers = Object.entries(votes).map(([voterId, targetId]) => {
-    const voter = players.find((p) => p.id === voterId);
-    const target = players.find((p) => p.id === targetId);
+    const voter = players.find((p) => p.socketId === voterId);
+    const target = players.find((p) => p.socketId === targetId);
     return { voter, target };
   });
 
@@ -40,7 +41,7 @@ export default function RoundResults() {
             </h3>
             <div className="w-40 h-40 rounded-full overflow-hidden border-4 border-red-500 shadow-2xl">
               <img
-                src={eliminatedPlayer.avatar}
+                src={eliminatedPlayer.avatarUrl}
                 alt={eliminatedPlayer.username}
                 className="w-full h-full object-cover"
               />
@@ -76,7 +77,7 @@ export default function RoundResults() {
       </AnimatePresence>
 
       {/* Votos */}
-      <motion.div
+      {visibleVotes && <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
@@ -94,7 +95,7 @@ export default function RoundResults() {
               >
                 <div className="flex items-center gap-2">
                   <img
-                    src={voter.avatar}
+                    src={voter.avatarUrl}
                     alt={voter.username}
                     className="w-8 h-8 rounded-full object-cover"
                   />
@@ -108,7 +109,7 @@ export default function RoundResults() {
                     {target.username}
                   </span>
                   <img
-                    src={target.avatar}
+                    src={target.avatarUrl}
                     alt={target.username}
                     className="w-8 h-8 rounded-full object-cover"
                   />
@@ -117,7 +118,7 @@ export default function RoundResults() {
             ) : null
           )}
         </div>
-      </motion.div>
+      </motion.div>}
 
       <p className="text-sm text-muted-foreground">
         Siguiente ronda en unos segundos...

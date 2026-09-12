@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export default function WordSubmission() {
-  const { currentTurnPlayerId, wordHints, timer } = useGameStore();
+  const { currentTurnPlayerId, wordHints } = useGameStore();
   const currentPlayer = useRoomStore((s) => s.currentPlayer);
   const players = useRoomStore((s) => s.players);
   const { submitWord } = useSocketGame();
@@ -15,9 +15,9 @@ export default function WordSubmission() {
   const [word, setWord] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
-  const isMyTurn = currentTurnPlayerId === currentPlayer?.id;
+  const isMyTurn = currentTurnPlayerId === currentPlayer?.socketId;
   const currentTurnPlayer = players.find(
-    (p) => p.id === currentTurnPlayerId
+    (p) => p.socketId === currentTurnPlayerId
   );
 
   const handleSubmit = useCallback(() => {
@@ -77,7 +77,7 @@ export default function WordSubmission() {
             onChange={(e) => setWord(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Escribe tu palabra..."
-            maxLength={30}
+            maxLength={20}
             className="text-center text-xl h-14 border-2 border-accent focus:border-accent"
             autoFocus
           />
@@ -135,12 +135,12 @@ export default function WordSubmission() {
       <div className="flex flex-wrap gap-2 justify-center">
         {players.map((player) => {
           const hasSubmitted = wordHints.some(
-            (h) => h.playerId === player.id
+            (h) => h.playerId === player.socketId
           );
-          const isCurrentPlayer = player.id === currentPlayer?.id;
+          const isCurrentPlayer = player.socketId === currentPlayer?.socketId;
           return (
             <div
-              key={player.id}
+              key={player.socketId}
               className={`px-3 py-1 rounded-full text-sm font-medium ${
                 hasSubmitted
                   ? "bg-green-500/20 text-green-500 border border-green-500/30"
@@ -155,10 +155,6 @@ export default function WordSubmission() {
         })}
       </div>
 
-      {/* Countdown */}
-      <div className="text-4xl font-bold text-accent font-mono">
-        {timer}s
-      </div>
     </div>
   );
 }

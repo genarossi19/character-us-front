@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
 import { useRoomStore } from "@/store/useRoomStore";
@@ -9,10 +9,24 @@ import { Badge } from "@/components/ui/badge";
 import { ThemeToggleButton } from "@/components/ui/shadcn-io/theme-toggle-button";
 import { toast } from "sonner";
 
+const avatarOptions = [
+  "/avatar1.webp",
+  "/avatar2.webp",
+  "/avatar3.webp",
+  "/avatar4.webp",
+  "/avatar5.webp",
+  "/avatar6.webp",
+  "/avatar7.webp",
+  "/avatar8.webp",
+];
+
 export default function WaitingRoomV2() {
   const { room, currentPlayer, players } = useRoomStore();
-  const { leaveRoom, startGame, kickPlayer } = useSocketRoom();
+  const { leaveRoom, startGame, kickPlayer, changeAvatar } = useSocketRoom();
   const navigate = useNavigate();
+  const [selectedAvatar, setSelectedAvatar] = useState(
+    currentPlayer?.avatarUrl || ""
+  );
 
   const isHost = currentPlayer?.isHost;
   const readyPlayers = players.filter((p) => p.isAlive).length;
@@ -25,14 +39,22 @@ export default function WaitingRoomV2() {
     }
   }, [room, navigate]);
 
-  const handleStart = () => {
+  const handleStart = async () => {
     if (!room || !canStartGame) return;
-    startGame(room.id);
+    try {
+      await startGame(room.id);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo iniciar la partida");
+    }
   };
 
-  const handleLeave = () => {
+  const handleLeave = async () => {
     if (!room) return;
-    leaveRoom(room.id);
+    try {
+      await leaveRoom(room.id);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo salir de la sala");
+    }
   };
 
   const handleKick = (playerId: string) => {
@@ -43,8 +65,22 @@ export default function WaitingRoomV2() {
 
   const handleCopyCode = () => {
     if (!room) return;
-    navigator.clipboard.writeText(room.code);
+    navigator.clipboard.writeText(String(room.code));
     toast.success("Código copiado al portapapeles");
+  };
+
+  const usedAvatars = players
+    .filter((p) => p.socketId !== currentPlayer?.socketId)
+    .map((p) => p.avatarUrl);
+
+  const handleSelectAvatar = (avatar: string) => {
+    if (!room || usedAvatars.includes(avatar)) return;
+    setSelectedAvatar(avatar);
+    try {
+      changeAvatar(room.id, avatar);
+    } catch {
+      toast.error("No se pudo cambiar el avatar");
+    }
   };
 
   if (!room || !currentPlayer) return null;
@@ -117,10 +153,10 @@ export default function WaitingRoomV2() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               <AnimatePresence>
                 {players.map((player) => {
-                  const isCurrentPlayer = player.id === currentPlayer.id;
+                  const isCurrentPlayer = player.socketId === currentPlayer.socketId;
                   return (
                     <motion.div
-                      key={player.id}
+                      key={player.socketId}
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.8 }}
@@ -128,7 +164,7 @@ export default function WaitingRoomV2() {
                     >
                       <div className="relative">
                         <img
-                          src={player.avatar}
+                          src={player.avatarUrl}
                           alt={player.username}
                           className={`object-cover rounded-full ${
                             isCurrentPlayer ? "w-28 h-28" : "w-24 h-24"
@@ -159,7 +195,7 @@ export default function WaitingRoomV2() {
                       {/* Botón de kick (solo host, no a sí mismo) */}
                       {isHost && !isCurrentPlayer && (
                         <button
-                          onClick={() => handleKick(player.id)}
+                          onClick={() => handleKick(player.socketId)}
                           className="absolute top-1 right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs hover:bg-red-600 transition-colors"
                           title="Expulsar jugador"
                         >
@@ -170,6 +206,42 @@ export default function WaitingRoomV2() {
                   );
                 })}
               </AnimatePresence>
+            </div>
+
+            {/* Avatar Selection */}
+            <div className="mt-8">
+              <h3 className="text-md font-medium text-center text-muted-foreground mb-3">
+                <span className="ml-2 font-semibold">{currentPlayer.username},</span>{" "}
+                Elige tu avatar
+              </h3>
+              <div className="flex justify-center gap-4 flex-wrap">
+                {avatarOptions.map((avatar) => {
+                  const taken = usedAvatars.includes(avatar) && selectedAvatar !== avatar;
+                  const isSelected = selectedAvatar === avatar;
+                  return (
+                    <button
+                      key={avatar}
+                      onClick={() => handleSelectAvatar(avatar)}
+                      disabled={taken}
+                      className={`w-20 h-20 rounded-full border-4 transition-all ${
+                        isSelected
+                          ? "border-game-accent scale-110"
+                          : "border-border hover:scale-105"
+                      } ${
+                        taken
+                          ? "opacity-40 cursor-not-allowed"
+                          : "cursor-pointer"
+                      }`}
+                    >
+                      <img
+                        src={avatar}
+                        alt="avatar"
+                        className="w-full h-full rounded-full object-cover"
+                      />
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </CardContent>
         </Card>

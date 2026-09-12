@@ -32,20 +32,26 @@ export const useRoomStore = create<RoomState>((set) => ({
   setPlayers: (players) => set({ players }),
 
   addPlayer: (player) =>
-    set((state) => ({
-      players: [...state.players, player],
-      room: state.room
-        ? { ...state.room, players: [...state.room.players, player] }
-        : null,
-    })),
+    set((state) => {
+      if (state.players.some((existing) => existing.socketId === player.socketId)) {
+        return state;
+      }
+
+      return {
+        players: [...state.players, player],
+        room: state.room
+          ? { ...state.room, players: [...state.room.players, player] }
+          : null,
+      };
+    }),
 
   removePlayer: (playerId) =>
     set((state) => ({
-      players: state.players.filter((p) => p.id !== playerId),
+      players: state.players.filter((p) => p.socketId !== playerId),
       room: state.room
         ? {
             ...state.room,
-            players: state.room.players.filter((p) => p.id !== playerId),
+            players: state.room.players.filter((p) => p.socketId !== playerId),
           }
         : null,
     })),
@@ -53,13 +59,13 @@ export const useRoomStore = create<RoomState>((set) => ({
   updatePlayer: (playerId, updates) =>
     set((state) => ({
       players: state.players.map((p) =>
-        p.id === playerId ? { ...p, ...updates } : p
+        p.socketId === playerId ? { ...p, ...updates } : p
       ),
       room: state.room
         ? {
             ...state.room,
             players: state.room.players.map((p) =>
-              p.id === playerId ? { ...p, ...updates } : p
+              p.socketId === playerId ? { ...p, ...updates } : p
             ),
           }
         : null,

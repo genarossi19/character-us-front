@@ -6,11 +6,11 @@ Frontend de CharacterUs, un juego social del impostor orientado a personajes. En
 
 El repositorio contiene una interfaz navegable y una simulación local del juego, junto con una capa inicial de integración con el backend. No toda la experiencia visible está conectada todavía:
 
-- Login y registro validan formularios, pero no crean una sesión real.
-- Creación de sala, lobby, salas públicas, chat, roles y votación usan datos locales o simulados en las pantallas principales.
-- Los servicios Socket.IO y HTTP existen, pero se ejercitan principalmente desde el diagnóstico manual `/test`.
-- Creación, lobby y juego mantienen modelos de estado independientes; navegar entre ellos no conserva una sala real.
-- Solo el tema visual se persiste en `localStorage` (`vite-ui-theme`).
+- Login y registro consumen `/api/auth` mediante un cliente Axios público. La sesión se conserva por pestaña en `sessionStorage`, se valida contra `GET /api/auth/me` al restaurarse y permite crear salas solo a usuarios autenticados por el backend.
+- Las pantallas V2 de crear, unirse, lobby y juego consumen el contrato Socket.IO de `backend.md`.
+- El backend conserva la autoridad sobre sala, fases, turnos, personaje, votos y resultados. El cliente no avanza fases con timers propios.
+- Las salas públicas siguen siendo mock hasta que el backend exponga un contrato para listarlas.
+- Recargar una ruta de lobby o juego no recupera la sala: el backend aún no define un evento de reingreso/reconexión del cliente.
 
 Consulta [Arquitectura](docs/ARCHITECTURE.md), [Socket.IO](SOCKET.md) y [Recomendaciones](docs/RECOMMENDATIONS.md) antes de integrar nuevas funcionalidades.
 
@@ -19,6 +19,7 @@ Consulta [Arquitectura](docs/ARCHITECTURE.md), [Socket.IO](SOCKET.md) y [Recomen
 - React 19, TypeScript y Vite 7.
 - React Router 7 con `BrowserRouter`.
 - Tailwind CSS 4, componentes Radix/shadcn y Motion.
+- Axios para HTTP, Zustand para sesión persistida, Zod para formularios y `jwt-decode` para claims de acceso.
 - `socket.io-client` 4 para tiempo real.
 - Backend externo en Express con PostgreSQL/Supabase. Este repositorio no contiene su implementación ni sus migraciones.
 
@@ -36,9 +37,10 @@ La URL de Vite aparece en la terminal. Para probar la integración actual, el ba
 
 ```env
 VITE_SOCKET_URL=http://localhost:3000
+VITE_API_URL=http://localhost:3000/api
 ```
 
-`VITE_SOCKET_URL` solo controla Socket.IO y usa `http://localhost:3000` por defecto. La API de categorías está fijada actualmente a `http://localhost:3000/api` en `src/services/api/category.ts`; cambiar solo la variable de Socket.IO no cambia HTTP.
+`VITE_SOCKET_URL` controla Socket.IO y `VITE_API_URL` controla HTTP. Ambos tienen valores locales por defecto.
 
 ## Comandos
 
@@ -56,16 +58,16 @@ No hay runner ni script de tests automatizados. `src/test` contiene interfaces d
 | Ruta | Función actual |
 | --- | --- |
 | `/` | Landing pública |
-| `/signup`, `/login` | Formularios locales; navegan a `/menu` |
+| `/signup`, `/login` | Registro e inicio de sesión con JWT contra la API |
 | `/menu` | Acceso a creación, PIN y salas públicas |
-| `/create` | Configuración local; actualmente navega directo a `/game` |
-| `/join` | Unión simulada; solo acepta el PIN `123456` |
-| `/public-rooms` | Lista local; sus enlaces `/game/:id` no tienen ruta registrada |
-| `/lobby` | Lobby basado en datos mock de `App.tsx` |
-| `/game` | Juego, chat y votación simulados localmente |
+| `/create` | Consulta categorías y crea una sala vía Socket.IO; valida sesión HTTP y envía el JWT solo en `createRoom` |
+| `/join` | Unión por código de seis dígitos vía Socket.IO |
+| `/public-rooms` | Lista mock temporal; la unión usa Socket.IO |
+| `/lobby` | Lobby sincronizado por eventos Socket.IO |
+| `/game` | Fases, pistas, chat, votos y resultados dirigidos por Socket.IO |
 | `/test` | Diagnóstico manual de Socket.IO + categorías HTTP |
 
-También hay navegaciones sin ruta registrada a `/profile`, `/results` y `/voting-screen`. No existen guards de autenticación.
+`/profile` está registrada. La sesión HTTP se restaura por pestaña solo después de que `GET /api/auth/me` confirme el token. No hay recuperación de sesión de sala. El socket permanece sin autenticación de handshake; el backend autoriza la creación de sala mediante el token del payload `createRoom`.
 
 Al desplegar, el hosting debe redirigir rutas desconocidas a `index.html`; de lo contrario, recargar una ruta de `BrowserRouter` devolverá 404.
 

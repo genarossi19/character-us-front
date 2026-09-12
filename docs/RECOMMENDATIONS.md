@@ -1,13 +1,13 @@
 # Recomendaciones técnicas
 
-Hallazgos del 5 de septiembre de 2026. Son propuestas para discutir y priorizar; no se aplicaron cambios funcionales ni de estructura durante la auditoría.
+Hallazgos del 5 de septiembre de 2026. La integración inicial posterior unificó los contratos Socket.IO en `src/types/game.ts`, conectó el flujo V2 y añadió JWT para login/registro; los puntos pendientes siguen vigentes cuando apliquen.
 
 ## Estado de verificación
 
-Con Node.js `v24.12.0` y las dependencias instaladas:
+Con Node.js `v24.12.0` y las dependencias instaladas, verificado el 10 de septiembre de 2026:
 
-- `npm run lint`: falla con 12 errores y 2 warnings.
-- `npm run build`: falla durante `tsc -b`; Vite no llega a generar el bundle.
+- `npm run lint`: falla con 11 errores y 2 warnings.
+- `npm run build`: falla durante `tsc -b` con 7 errores preexistentes; Vite no llega a generar el bundle.
 - No existe `npm test` ni una suite automatizada.
 
 Los errores no provienen de un único punto. Incluyen contratos de props incompatibles, aliases TypeScript no resueltos, exports duplicados, tipos incompletos en diagnósticos, imports/variables sin uso y reglas ESLint de Fast Refresh sobre primitives compartidas.
@@ -16,29 +16,30 @@ Los errores no provienen de un único punto. Incluyen contratos de props incompa
 
 1. Corregir la ubicación de `baseUrl` y `paths` en `tsconfig.app.json`: hoy están fuera de `compilerOptions`, mientras Vite sí conoce el alias `@`. Esta diferencia bloquea imports válidos en desarrollo.
 2. Resolver los contratos obsoletos entre `App.tsx` y `CreateRoomPage`, `QuickJoinScreen` y `GameScreen`. Primero decidir si `App` controla el flujo o si cada página es autónoma; no silenciar props sin decidir `create -> lobby -> game` frente a `create -> game`.
-3. Unificar los dos exports `emitStartGame` de `emitters/room.ts` y `emitters/game.ts` después de confirmar el payload real del backend. El barrel actual no compila por nombre ambiguo.
+3. Mantener los diagnósticos bajo el contrato canónico cuando el backend evolucione; no introducir payloads Socket.IO alternativos.
 4. Decidir si `src/test` debe seguir dentro del build de producción. `CreateRoomTest.tsx` ya incumple el `CreateRoomPayload` que exige `categoryId`.
 5. Resolver errores directos restantes: setter sin uso en `App.tsx`, evento con `any` implícito en `CreateRoomPage`, imports React sin uso y `any` explícitos.
 6. Ajustar ESLint para los archivos generados/compartidos de shadcn y Animate UI, o separar sus exports no-componentes. Aplicar una convención consciente en vez de editar cada vendor primitive sin necesidad.
 
 ## Prioridad 1: integrar una sala real
 
-1. Definir un modelo canónico para sala, jugador, identidad de cuenta, identidad de socket, configuración y fase. Actualmente hay formas incompatibles en `App.tsx`, `WaitingRoom.tsx`, `GameScreen.tsx`, `VotingPanel.tsx`, `services/socket/types.ts` y los diagnósticos.
-2. Acordar qué estado es autoritativo en el backend, qué es UI local y cómo se recupera una sesión después de refresh o reconexión.
+1. Mantener `src/types/game.ts` como el modelo canónico para el flujo V2. Los componentes V1 siguen siendo prototipo aislado.
+2. Acordar cómo se recupera una sesión de sala después de refresh o reconexión.
 3. Hacer que la ruta represente una sala real o documentar por qué la identidad queda implícita. Hoy `/game/:id` se enlaza, pero solo `/game` existe.
 4. Reconciliar destinos inexistentes: `/profile`, `/results` y `/voting-screen`.
-5. Conectar progresivamente las páginas a la capa de integración. Empezar por un corte vertical verificable `crear/unirse -> lobby`, no por un store global que replique todos los mocks.
-6. No asignar personaje o rol aleatoriamente en el cliente una vez conectado al backend; son datos privados y autoritativos del servidor.
+5. Cuando el backend publique una lista de salas, reemplazar el mock de `/public-rooms` sin mezclar su modelo local con los tipos de sala.
+6. Definir cómo se asigna `RoomPublic.name`: el contrato actual lo devuelve, pero `createRoom` no acepta un nombre de sala.
+7. No asignar personaje o rol aleatoriamente en el cliente una vez conectado al backend; son datos privados y autoritativos del servidor.
 
 ## Prioridad 1: robustecer Socket.IO
 
-1. Compartir o generar contratos de eventos con el backend para que nombre, payload y ack no diverjan. Hoy el diagnóstico usa `updatePlayers`, los helpers declaran `playerJoined`, y `joinRoom` se interpreta con respuestas distintas.
+1. Compartir o generar contratos de eventos con el backend para que nombres, payloads y acknowledgements no vuelvan a divergir.
 2. Hacer reactivos `useSocket()` y `useSocketConnected()` antes de usarlos como fuente de UI. Actualmente el primero entrega `null` inicialmente sin rerender y el segundo solo toma un snapshot.
 3. Evitar churn de listeners por identidades nuevas en cada render y conservar el cleanup exacto ya implementado.
 4. Tipar evento, payload y ack como una relación, eliminando strings libres y `any` en `useSocketEmit()`.
 5. Validar el payload de votos: un `Map` no se rehidrata automáticamente desde datos serializados.
 6. Revisar transporte solo WebSocket, reintentos infinitos y opciones TLS antes de producción.
-7. Diseñar eventos de chat, historial, identidad de mensaje y reconexión; hoy el chat de la UI no utiliza Socket.IO.
+7. Diseñar recuperación de sesión de sala para reconexión. El chat y el aviso `reconnectTimeout` ya usan Socket.IO.
 
 ## Prioridad 1: consolidar juego y chat
 
@@ -57,6 +58,8 @@ Los errores no provienen de un único punto. Incluyen contratos de props incompa
 5. Resolver la navegación de salas públicas y el formato exacto del PIN. `type="number"` con `maxLength` no garantiza seis dígitos.
 6. Adaptar `GameScreen` a móvil: el chat fijo de `w-96` compite con el tablero dentro de `h-screen` sin breakpoint.
 7. Configurar la base HTTP por entorno y definir una estrategia de error que diferencie lista vacía de fallo de red.
+8. Si el backend evoluciona a cookies `HttpOnly`, reemplazar el JWT accesible desde JavaScript por `withCredentials`, CORS con credenciales y un endpoint de sesión; no intentar crear una cookie `HttpOnly` desde el frontend.
+9. Mantener pruebas manuales de `createRoom` con token válido, token vencido y ausencia de token; cada ack de autenticación debe limpiar `sessionStorage` y no reintentar con el mismo JWT.
 
 ## Pruebas sugeridas
 
