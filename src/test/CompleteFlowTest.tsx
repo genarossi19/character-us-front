@@ -156,7 +156,7 @@ export function CompleteFlowTest() {
         setHostGamePin(room.code);
         setHostRoomId(room.id);
         setHostState("created");
-        setHostSocketId(currentSocketId);
+        setHostSocketId(response.data.session?.playerId || currentSocketId);
         setHostPlayers(room.players);
       } else {
         setHostError(response.success ? "Respuesta de sala inválida" : response.message);
@@ -201,7 +201,7 @@ export function CompleteFlowTest() {
     const pinNumber = parseInt(guestPin, 10);
     console.log("🚪 Uniéndose a sala con PIN:", pinNumber);
 
-    emitJoinRoom({ code: pinNumber, username: "Guest", isGuest: true }, (response) => {
+    emitJoinRoom({ code: pinNumber, username: "Guest" }, (response) => {
       setGuestLoading(false);
       if (response.success && response.data?.room) {
         console.log("✅ Unido a sala");

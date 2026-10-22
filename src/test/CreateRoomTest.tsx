@@ -37,10 +37,10 @@ export function CreateRoomTest() {
       if (response.success && response.data?.room) {
         setGamePin(response.data.room.code);
         setInternalId(response.data.room.id);
-        console.log("✅ Sala creada:", response);
+        console.log("✅ Sala creada:", response.data.room.code);
       } else {
         setError(response.success ? "Respuesta de sala inválida" : response.message);
-        console.error("❌ Error:", response);
+        console.error("❌ Error:", response.success ? "Respuesta de sala inválida" : response.message);
       }
     });
   };

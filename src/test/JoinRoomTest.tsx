@@ -21,13 +21,13 @@ export function JoinRoomTest() {
     const pinNumber = parseInt(gamePin, 10);
 
     emitJoinRoom(
-      { code: pinNumber, username: "TestPlayer2", isGuest: true },
+      { code: pinNumber, username: "TestPlayer2" },
       (response) => {
         setLoading(false);
         if (response.success) {
             setJoined(true);
             setRoomInfo(response.data?.room || null);
-            console.log("✅ Unido a sala:", response);
+            console.log("✅ Unido a sala:", response.data?.room.code);
         } else {
           setError(response.message || "Error al unirse");
         }
