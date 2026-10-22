@@ -6,6 +6,7 @@ import {
   emitVotePlayer,
   emitSendChatMessage,
   emitDebateReady,
+  isSocketConnected,
   onCharacterAssigned,
   onPhaseChanged,
   onTurnChanged,
@@ -29,9 +30,28 @@ export function useSocketGame() {
   const room = useRoomStore((s) => s.room);
 
   const submitWord = useCallback(
-    (word: string) => {
-      if (!room) return;
-      emitSubmitWord({ roomId: room.id, word: word.slice(0, 20) });
+    async (word: string): Promise<void> => {
+      const trimmedWord = word.trim();
+      if (!room) throw new Error("No estás en una sala.");
+      if (!trimmedWord || trimmedWord.length > 20) {
+        throw new Error("La palabra debe tener entre 1 y 20 caracteres.");
+      }
+      if (!isSocketConnected()) throw new Error("No hay conexión con el servidor.");
+      const playerId = useRoomStore.getState().currentPlayer?.socketId;
+      await new Promise<void>((resolve, reject) => {
+        emitSubmitWord({ roomId: room.id, word: trimmedWord }, (response) => {
+          if (!response.success) {
+            reject(Object.assign(new Error(response.message), { code: response.code }));
+            return;
+          }
+          const game = useGameStore.getState();
+          if (useRoomStore.getState().room?.id === room.id &&
+              game.phase === "word" && game.currentTurnPlayerId === playerId) {
+            game.setHasSubmittedWord(true);
+          }
+          resolve();
+        });
+      });
     },
     [room]
   );
@@ -71,6 +91,7 @@ export function useSocketGameEvents() {
       onCharacterAssigned((data) => {
         // The server sends null to impostors; never infer or fetch the character.
         useGameStore.getState().setCharacter(data.character, data.isImpostor);
+        useGameStore.setState({ impostorIds: data.impostorIds ?? [] });
       }),
 
       onPhaseChanged((data) => {
@@ -79,20 +100,30 @@ export function useSocketGameEvents() {
 
       onTurnChanged((data) => {
         useGameStore.getState().setCurrentTurnPlayer(data.playerId);
+        useGameStore.setState({ turnIndex: data.turnIndex, totalTurns: data.total });
       }),
 
       onWordHintRevealed((data) => {
-        useGameStore.getState().addWordHint({
+        const game = useGameStore.getState();
+        game.addWordHint({
           playerId: data.playerId,
           username: data.username,
           word: data.word,
           revealed: true,
           skipped: data.skipped,
         });
+        if (data.playerId === useRoomStore.getState().currentPlayer?.socketId) {
+          game.setHasSubmittedWord(true);
+        }
       }),
 
       onAllWordsSubmitted((data) => {
-        useGameStore.getState().setWordHints(data.hints);
+        const game = useGameStore.getState();
+        game.setWordHints(data.hints);
+        game.setCurrentTurnPlayer(null);
+        game.setHasSubmittedWord(data.hints.some(
+          (hint) => hint.playerId === useRoomStore.getState().currentPlayer?.socketId
+        ));
       }),
 
       onVoteUpdate((data) => {
@@ -100,6 +131,10 @@ export function useSocketGameEvents() {
         game.setVotes(data.votes);
         game.setVotesVisible(data.visible);
         useRoomStore.getState().updatePlayer(data.voterId, { hasVoted: true });
+        useGameStore.setState({ voterIds: [...new Set([...game.voterIds, data.voterId])] });
+        if (data.voterId === useRoomStore.getState().currentPlayer?.socketId) {
+          useGameStore.setState({ hasVoted: true, ...(data.targetId ? { votedFor: data.targetId } : {}) });
+        }
       }),
 
       onPlayerEliminated((data) => {

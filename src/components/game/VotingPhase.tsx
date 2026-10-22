@@ -6,23 +6,24 @@ import { useSocketGame } from "@/hooks/useSocketGame";
 import { Button } from "@/components/ui/button";
 
 export default function VotingPhase() {
-  const { votes, votesVisible } = useGameStore();
+  const { votes, votesVisible, hasVoted: confirmedVote, votedFor } = useGameStore();
   const players = useRoomStore((s) => s.players);
   const currentPlayer = useRoomStore((s) => s.currentPlayer);
   const room = useRoomStore((s) => s.room);
   const { votePlayer } = useSocketGame();
 
   const [selectedVote, setSelectedVote] = useState<string | null>(null);
-  const [hasVoted, setHasVoted] = useState(false);
+  const [submittedVote, setHasVoted] = useState(false);
+  const hasVoted = confirmedVote || submittedVote;
   const visibleVotes = votesVisible ?? room?.settings.visibleVotes ?? false;
 
   const alivePlayers = players.filter(
     (p) => p.isAlive && p.socketId !== currentPlayer?.socketId
   );
-  const userVote = currentPlayer ? votes[currentPlayer.socketId] : undefined;
+  const userVote = votedFor ?? (currentPlayer ? votes[currentPlayer.socketId] : undefined);
 
   const handleVote = () => {
-    if (!selectedVote || hasVoted || userVote) return;
+    if (!selectedVote || !currentPlayer?.isAlive || hasVoted || userVote) return;
     votePlayer(selectedVote);
     setHasVoted(true);
   };
@@ -59,7 +60,7 @@ export default function VotingPhase() {
               whileHover={!hasVoted && !userVote ? { scale: 1.02 } : {}}
               whileTap={!hasVoted && !userVote ? { scale: 0.98 } : {}}
               onClick={() => {
-                if (!hasVoted && !userVote) {
+                if (currentPlayer?.isAlive && !hasVoted && !userVote) {
                   setSelectedVote(player.socketId);
                 }
               }}
