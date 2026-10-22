@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,18 +14,28 @@ type Step = "code" | "password" | "name";
 const JOIN_TIMEOUT_MS = 20_000;
 
 export default function QuickJoinScreenV2() {
+  const { code } = useParams();
+  return <JoinRoomForm key={code ?? "manual"} initialCode={code} />;
+}
+
+function JoinRoomForm({ initialCode }: { initialCode?: string }) {
   const navigate = useNavigate();
   const { joinRoom } = useSocketRoom();
   const user = useUserStore((s) => s.user);
   const isLoggedIn = useUserStore((s) => s.isLoggedIn);
+  const token = useUserStore((s) => s.token);
+  const isSessionReady = useUserStore((s) => s.isSessionReady);
+  const validInitialCode = Boolean(initialCode && /^[1-9]\d{5}$/.test(initialCode));
 
-  const [step, setStep] = useState<Step>("code");
-  const [roomCode, setRoomCode] = useState("");
+  const [step, setStep] = useState<Step>(validInitialCode ? "name" : "code");
+  const [roomCode, setRoomCode] = useState(validInitialCode ? initialCode! : "");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [joining, setJoining] = useState(false);
   const [needsPassword, setNeedsPassword] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(
+    initialCode && !validInitialCode ? "El enlace debe contener un código de sala de seis dígitos." : null
+  );
   const abortRef = useRef<AbortController | null>(null);
 
   const clearError = () => setErrorMsg(null);
@@ -44,21 +54,20 @@ export default function QuickJoinScreenV2() {
         controller.signal.addEventListener("abort", () => clearTimeout(id));
       });
 
-      return Promise.race([joinRoom(payload), timeoutPromise]);
+      return Promise.race([joinRoom(payload), timeoutPromise]).finally(() => controller.abort());
     },
     [joinRoom]
   );
 
   const handleCodeSubmit = async () => {
-    if (roomCode.length !== 6) return;
+    if (roomCode.length !== 6 || joining || !isSessionReady) return;
     clearError();
     setJoining(true);
     try {
       await joinWithTimeout({
         code: Number(roomCode),
-        username: isLoggedIn && user ? user.username : "temp",
-        isGuest: !isLoggedIn,
-        userId: isLoggedIn ? user?.id : undefined,
+        username: isLoggedIn && user ? user.username : username.trim(),
+        token: isLoggedIn ? token || undefined : undefined,
       });
     } catch (error) {
       const msg = error instanceof Error ? error.message : "";
@@ -89,14 +98,18 @@ export default function QuickJoinScreenV2() {
   };
 
   const handlePasswordSubmit = async () => {
+    if (joining || !isSessionReady || !password) return;
+    if (!isLoggedIn && username.trim().length < 2) {
+      setStep("name");
+      return;
+    }
     clearError();
     setJoining(true);
     try {
       await joinWithTimeout({
         code: Number(roomCode),
-        username: isLoggedIn && user ? user.username : "temp",
-        isGuest: !isLoggedIn,
-        userId: isLoggedIn ? user?.id : undefined,
+        username: isLoggedIn && user ? user.username : username.trim(),
+        token: isLoggedIn ? token || undefined : undefined,
         password,
       });
     } catch (error) {
@@ -129,7 +142,8 @@ export default function QuickJoinScreenV2() {
   };
 
   const handleNameSubmit = async () => {
-    const playerName = username.trim();
+    if (joining || !isSessionReady) return;
+    const playerName = isLoggedIn && user ? user.username : username.trim();
     if (playerName.length < 2) return;
     clearError();
     setJoining(true);
@@ -137,8 +151,7 @@ export default function QuickJoinScreenV2() {
       await joinWithTimeout({
         code: Number(roomCode),
         username: playerName,
-        isGuest: !isLoggedIn,
-        userId: isLoggedIn ? user?.id : undefined,
+        token: isLoggedIn ? token || undefined : undefined,
         password: needsPassword ? password : undefined,
       });
     } catch (error) {
@@ -240,7 +253,7 @@ export default function QuickJoinScreenV2() {
                     setStep("name");
                   }
                 }}
-                disabled={roomCode.length !== 6 || joining}
+                disabled={roomCode.length !== 6 || joining || !isSessionReady}
                 variant="secondary"
                 className="h-12"
               >
@@ -257,7 +270,9 @@ export default function QuickJoinScreenV2() {
           <CardContent>
             <div className="flex flex-col gap-4">
               <ErrorBanner />
-              <div>
+              {isLoggedIn ? (
+                <p className="text-center text-muted-foreground">Entrarás como {user?.username}</p>
+              ) : <div>
                 <label
                   htmlFor="username"
                   className="block text-sm font-medium text-muted-foreground mb-1"
@@ -277,10 +292,10 @@ export default function QuickJoinScreenV2() {
                   autoFocus
                   className="text-center text-foreground"
                 />
-              </div>
+              </div>}
               <Button
                 onClick={handleNameSubmit}
-                disabled={username.trim().length < 2 || joining}
+                disabled={(!isLoggedIn && username.trim().length < 2) || joining || !isSessionReady}
                 variant="secondary"
                 className="h-12"
               >
@@ -320,7 +335,7 @@ export default function QuickJoinScreenV2() {
               </div>
               <Button
                 onClick={handlePasswordSubmit}
-                disabled={password.length === 0 || joining}
+                disabled={password.length === 0 || joining || !isSessionReady}
                 variant="secondary"
                 className="h-12"
               >
@@ -339,7 +354,7 @@ export default function QuickJoinScreenV2() {
       case "code":
         return "Ingresar a una Sala";
       case "name":
-        return "¿Cómo te llamas?";
+        return isLoggedIn ? "Unirse a la sala" : "¿Cómo te llamas?";
       case "password":
         return "Sala Privada";
     }
@@ -350,7 +365,7 @@ export default function QuickJoinScreenV2() {
       case "code":
         return undefined;
       case "name":
-        return "Ingresa tu nombre para unirte a la partida";
+        return isLoggedIn ? "Continúa para ingresar a la partida" : "Ingresa tu nombre para unirte a la partida";
       case "password":
         return "Esta sala requiere una contraseña";
     }
@@ -407,6 +422,7 @@ export default function QuickJoinScreenV2() {
             <span className="text-3xl font-fredoka font-bold">
               {getTitle()}
             </span>
+            {step !== "code" && <span className="text-muted-foreground">Sala {roomCode}</span>}
             {getSubtitle() && (
               <span className="text-sm text-muted-foreground -mt-2">
                 {getSubtitle()}

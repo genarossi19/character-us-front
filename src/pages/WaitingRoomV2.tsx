@@ -10,14 +10,14 @@ import { ThemeToggleButton } from "@/components/ui/shadcn-io/theme-toggle-button
 import { AVATAR_URLS } from "@/constants/avatars";
 import { fetchCategories, type Category } from "@/services/api/category";
 import { toast } from "sonner";
+import RoomInvite from "@/components/RoomInvite";
 
 export default function WaitingRoomV2() {
   const { room, currentPlayer, players } = useRoomStore();
   const { leaveRoom, startGame, kickPlayer, changeAvatar } = useSocketRoom();
   const navigate = useNavigate();
-  const [selectedAvatar, setSelectedAvatar] = useState(
-    currentPlayer?.avatarUrl || ""
-  );
+  const selectedAvatar = currentPlayer?.avatarUrl;
+  const [changingAvatar, setChangingAvatar] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
@@ -30,10 +30,10 @@ export default function WaitingRoomV2() {
     isHost && players.length >= 3 && room?.status === "waiting";
 
   useEffect(() => {
-    if (!room) {
-      navigate("/menu");
+    if (!room || !currentPlayer) {
+      navigate("/join", { replace: true });
     }
-  }, [room, navigate]);
+  }, [room, currentPlayer, navigate]);
 
   const handleStart = async () => {
     if (!room || !canStartGame) return;
@@ -69,13 +69,15 @@ export default function WaitingRoomV2() {
     .filter((p) => p.socketId !== currentPlayer?.socketId)
     .map((p) => p.avatarUrl);
 
-  const handleSelectAvatar = (avatar: string) => {
-    if (!room || usedAvatars.includes(avatar)) return;
-    setSelectedAvatar(avatar);
+  const handleSelectAvatar = async (avatar: string) => {
+    if (!room || changingAvatar || avatar === selectedAvatar || usedAvatars.includes(avatar)) return;
+    setChangingAvatar(true);
     try {
-      changeAvatar(room.id, avatar);
-    } catch {
-      toast.error("No se pudo cambiar el avatar");
+      await changeAvatar(room.id, avatar);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo cambiar el avatar");
+    } finally {
+      setChangingAvatar(false);
     }
   };
 
@@ -92,7 +94,8 @@ export default function WaitingRoomV2() {
             <h1 className="text-4xl font-bold text-balance text-white">
               Sala de Espera
             </h1>
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex flex-wrap items-center justify-center gap-5">
+              <div className="flex flex-col items-center gap-2">
               <span className="text-white text-3xl">Código:</span>
               <button
                 onClick={handleCopyCode}
@@ -101,6 +104,8 @@ export default function WaitingRoomV2() {
                 {room.code}
               </button>
               <span className="text-white/60 text-sm">(click para copiar)</span>
+              </div>
+              <RoomInvite code={room.code} />
             </div>
             <p className="text-white/80 text-lg">{room.name}</p>
           </div>
@@ -208,13 +213,15 @@ export default function WaitingRoomV2() {
               </h3>
               <div className="grid grid-cols-4 lg:grid-cols-8 gap-3 justify-items-center">
                 {AVATAR_URLS.map((avatar) => {
-                  const taken = usedAvatars.includes(avatar) && selectedAvatar !== avatar;
+                  const taken = usedAvatars.includes(avatar);
                   const isSelected = selectedAvatar === avatar;
                   return (
                     <button
                       key={avatar}
                       onClick={() => handleSelectAvatar(avatar)}
-                      disabled={taken}
+                      disabled={taken || changingAvatar}
+                      aria-pressed={isSelected}
+                      aria-label={taken ? "Avatar ocupado" : "Seleccionar avatar"}
                       className={`w-20 h-20 rounded-full border-4 transition-all ${
                         isSelected
                           ? "border-game-accent scale-110"

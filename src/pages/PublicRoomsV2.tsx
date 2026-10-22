@@ -71,7 +71,7 @@ const mockRooms = [
 
 export default function PublicRoomsV2() {
   const navigate = useNavigate();
-  const { user, logout } = useUserStore();
+  const { user, logout, token } = useUserStore();
   const { joinRoom } = useSocketRoom();
   const [search, setSearch] = useState("");
   const [modeFilter, setModeFilter] = useState("all");
@@ -89,8 +89,7 @@ export default function PublicRoomsV2() {
       await joinRoom({
         code: roomCode,
         username: user.username,
-        isGuest: user.isGuest,
-        userId: user.isGuest ? undefined : user.id,
+        token: token || undefined,
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo unir a la sala");
