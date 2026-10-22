@@ -110,8 +110,7 @@ export interface CreateRoomPayload {
 export interface JoinRoomPayload {
   code: number;
   username: string;
-  isGuest: boolean;
-  userId?: string;
+  token?: string;
   password?: string;
 }
 
@@ -144,8 +143,46 @@ export interface ChangeAvatarPayload {
   avatarId: string;
 }
 
+export interface RenewRoomInactivityPayload {
+  roomId: string;
+}
+
+export interface RenewRoomInactivityResponse {
+  expiresAt: string | number;
+}
+
 export interface RoomResponse {
   room: Room;
+  session?: RoomSession;
+}
+
+// Private per-tab recovery credential. Never embed in public room DTOs or URLs.
+export interface RoomSession {
+  roomId: string;
+  playerId: string;
+  resumeToken: string;
+}
+
+export interface RoomSnapshot {
+  serverTime: number;
+  room: Room;
+  playerId: string;
+  phaseExpiresAt: number | null;
+  turnExpiresAt: number | null;
+  currentTurnPlayerId: string | null;
+  turnIndex: number;
+  totalTurns: number;
+  wordHints: WordHint[];
+  characterAssignment: CharacterAssignment | null;
+  hasSubmittedWord: boolean;
+  hasVoted: boolean;
+  votedFor: string | null;
+  isDebateReady: boolean;
+  votes: Record<string, string>;
+  voterIds: string[];
+  readyPlayerIds: string[];
+  chatMessages: ChatMessage[];
+  roundResults: RoundResult[];
 }
 
 export interface AckSuccess<T = void> {
@@ -202,4 +239,19 @@ export interface DebateReadyUpdate {
 export interface ReconnectTimeout {
   playerId: string;
   secondsLeft: number;
+}
+
+export interface RoomInactivityWarningEvent {
+  roomId: string;
+  expiresAt: string | number;
+  remainingMs: number;
+}
+
+export interface RoomInactivityRenewedEvent {
+  roomId: string;
+  expiresAt: string | number;
+}
+
+export interface RoomClosedEvent {
+  reason: string;
 }

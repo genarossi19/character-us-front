@@ -25,7 +25,13 @@ const initialState = {
 export const useRoomStore = create<RoomState>((set) => ({
   ...initialState,
 
-  setRoom: (room) => set({ room, players: room.players }),
+  setRoom: (room) => set((state) => ({
+    room,
+    players: room.players,
+    currentPlayer: room.players.find(
+      (player) => player.socketId === state.currentPlayer?.socketId
+    ) ?? null,
+  })),
 
   setCurrentPlayer: (player) => set({ currentPlayer: player }),
 
@@ -58,6 +64,9 @@ export const useRoomStore = create<RoomState>((set) => ({
 
   updatePlayer: (playerId, updates) =>
     set((state) => ({
+      currentPlayer: state.currentPlayer?.socketId === playerId
+        ? { ...state.currentPlayer, ...updates }
+        : state.currentPlayer,
       players: state.players.map((p) =>
         p.socketId === playerId ? { ...p, ...updates } : p
       ),
