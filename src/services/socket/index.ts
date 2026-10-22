@@ -10,6 +10,7 @@ export {
   emitKickPlayer,
   emitDebateReady,
   emitChangeAvatar,
+  emitRenewRoomInactivity,
 } from "./emitters/room";
 
 // Game emitters
@@ -26,6 +27,8 @@ export {
   onPlayerLeft,
   onPlayerKicked,
   onRoomClosed,
+  onRoomInactivityWarning,
+  onRoomInactivityRenewed,
 } from "./listeners/roomListeners";
 
 // Game listeners

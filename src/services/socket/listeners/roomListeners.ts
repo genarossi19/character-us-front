@@ -1,40 +1,48 @@
-import type { Room, Player } from "@/types/game";
-import { getSocket } from "../socket";
+import type {
+  Player,
+  Room,
+  RoomClosedEvent,
+  RoomInactivityRenewedEvent,
+  RoomInactivityWarningEvent,
+} from "@/types/game";
+import { onServerEvent } from "../eventDelivery";
 
 export const onRoomUpdated = (callback: (room: Room) => void): (() => void) => {
-  const socket = getSocket();
-  socket.on("roomUpdated", callback);
-  return () => socket.off("roomUpdated", callback);
+  return onServerEvent("roomUpdated", callback);
 };
 
 export const onPlayerJoined = (
   callback: (player: Player) => void
 ): (() => void) => {
-  const socket = getSocket();
-  socket.on("playerJoined", callback);
-  return () => socket.off("playerJoined", callback);
+  return onServerEvent("playerJoined", callback);
 };
 
 export const onPlayerLeft = (
   callback: (playerId: string) => void
 ): (() => void) => {
-  const socket = getSocket();
-  socket.on("playerLeft", callback);
-  return () => socket.off("playerLeft", callback);
+  return onServerEvent("playerLeft", callback);
 };
 
 export const onPlayerKicked = (
   callback: (playerId: string) => void
 ): (() => void) => {
-  const socket = getSocket();
-  socket.on("playerKicked", callback);
-  return () => socket.off("playerKicked", callback);
+  return onServerEvent("playerKicked", callback);
 };
 
 export const onRoomClosed = (
-  callback: (data: { reason: string }) => void
+  callback: (data: RoomClosedEvent) => void
 ): (() => void) => {
-  const socket = getSocket();
-  socket.on("roomClosed", callback);
-  return () => socket.off("roomClosed", callback);
+  return onServerEvent("roomClosed", callback);
+};
+
+export const onRoomInactivityWarning = (
+  callback: (data: RoomInactivityWarningEvent) => void
+): (() => void) => {
+  return onServerEvent("roomInactivityWarning", callback);
+};
+
+export const onRoomInactivityRenewed = (
+  callback: (data: RoomInactivityRenewedEvent) => void
+): (() => void) => {
+  return onServerEvent("roomInactivityRenewed", callback);
 };
