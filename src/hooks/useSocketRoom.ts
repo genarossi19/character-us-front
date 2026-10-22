@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { useRoomStore } from "@/store/useRoomStore";
 import { useGameStore } from "@/store/useGameStore";
 import {
@@ -8,21 +8,14 @@ import {
   emitStartGame,
   emitKickPlayer,
   emitChangeAvatar,
-  getSocket,
   isSocketConnected,
-  onRoomUpdated,
-  onPlayerJoined,
-  onPlayerLeft,
-  onPlayerKicked,
-  onRoomClosed,
-  onGameStarted,
 } from "@/services/socket";
+import { useRoomSessionStore } from "@/store/useRoomSessionStore";
 import { AVATAR_OPTIONS } from "@/constants/avatars";
 import type {
   AckResponse,
   CreateRoomPayload,
   JoinRoomPayload,
-  Player,
   Room,
   RoomResponse,
 } from "@/types/game";
@@ -45,34 +38,33 @@ function assertConnected(): void {
 }
 
 export function useSocketRoom() {
-  const { setRoom, setCurrentPlayer, addPlayer, removePlayer, updatePlayer, reset: resetRoom } =
+  const { setRoom, setCurrentPlayer, reset: resetRoom } =
     useRoomStore();
-  const { setTotalRounds, setCurrentRound, setPhase, resetGame } = useGameStore();
+  const { resetGame } = useGameStore();
   const navigate = useNavigate();
 
   const commitRoom = useCallback(
-    (room: Room, username: string) => {
+    (data: RoomResponse) => {
+      const { room, session } = data;
+      if (!session || session.roomId !== room.id) throw new Error("El servidor no devolvió una sesión recuperable.");
+      const player = room.players.find((candidate) => candidate.socketId === session.playerId);
+      if (!player) throw new Error("El jugador no está en la sala recibida.");
+      useRoomSessionStore.getState().saveSession(session);
+      resetGame();
       setRoom(room);
-      const socketId = getSocket().id;
-      const player =
-        room.players.find((candidate) => candidate.socketId === socketId) ||
-        room.players.find((candidate) => candidate.username === username);
-
-      if (player) {
-        setCurrentPlayer(player);
-      }
+      setCurrentPlayer(player);
     },
-    [setCurrentPlayer, setRoom]
+    [setCurrentPlayer, setRoom, resetGame]
   );
 
-  const getRoomFromAck = (response: AckResponse<RoomResponse>): Room => {
+  const getRoomFromAck = (response: AckResponse<RoomResponse>): RoomResponse => {
     if (!response.success) {
       throw new SocketAckError(response.code, response.message);
     }
     if (!response.data?.room) {
       throw new Error("El servidor no devolvió la sala creada");
     }
-    return response.data.room;
+    return response.data;
   };
 
   const createRoom = useCallback(
@@ -86,10 +78,10 @@ export function useSocketRoom() {
         }
         emitCreateRoom(payload, (response) => {
           try {
-            const room = getRoomFromAck(response);
-            commitRoom(room, payload.username);
+            const data = getRoomFromAck(response);
+            commitRoom(data);
             navigate("/lobby");
-            resolve(room);
+            resolve(data.room);
           } catch (error) {
             reject(error);
           }
@@ -109,10 +101,10 @@ export function useSocketRoom() {
         }
         emitJoinRoom(payload, (response) => {
           try {
-            const room = getRoomFromAck(response);
-            commitRoom(room, payload.username);
+            const data = getRoomFromAck(response);
+            commitRoom(data);
             navigate("/lobby");
-            resolve(room);
+            resolve(data.room);
           } catch (error) {
             reject(error);
           }
@@ -131,6 +123,7 @@ export function useSocketRoom() {
           }
           resetRoom();
           resetGame();
+          useRoomSessionStore.getState().clearSession();
           navigate("/menu");
           resolve();
         });
@@ -143,7 +136,7 @@ export function useSocketRoom() {
       new Promise<Room>((resolve, reject) => {
         emitStartGame(roomId, (response) => {
           try {
-            resolve(getRoomFromAck(response));
+            resolve(getRoomFromAck(response).room);
           } catch (error) {
             reject(error);
           }
@@ -159,93 +152,34 @@ export function useSocketRoom() {
     []
   );
 
-  const pendingAvatarRef = useRef<string | null>(null);
-
   const changeAvatar = useCallback(
-    (roomId: string, avatarUrl: string) => {
+    async (roomId: string, avatarUrl: string): Promise<void> => {
+      assertConnected();
       const state = useRoomStore.getState();
       const currentPlayerId = state.currentPlayer?.socketId;
-      const previousAvatarUrl = state.currentPlayer?.avatarUrl;
-
       const avatarOption = AVATAR_OPTIONS.find((a) => a.url === avatarUrl);
-      if (!avatarOption) return;
-
-      pendingAvatarRef.current = avatarUrl;
-
-      if (currentPlayerId) {
-        updatePlayer(currentPlayerId, { avatarUrl });
+      if (!avatarOption) throw new Error("Avatar no válido");
+      if (state.room?.id !== roomId || !currentPlayerId) {
+        throw new Error("No estás en esta sala");
+      }
+      if (state.players.some((player) =>
+        player.socketId !== currentPlayerId && player.avatarUrl === avatarUrl
+      )) {
+        throw new Error("Este avatar ya está en uso");
       }
 
-      emitChangeAvatar({ roomId, avatarId: avatarOption.id }, (response) => {
-        if (!response.success && currentPlayerId && previousAvatarUrl) {
-          pendingAvatarRef.current = null;
-          updatePlayer(currentPlayerId, { avatarUrl: previousAvatarUrl });
-        }
+      await new Promise<void>((resolve, reject) => {
+        emitChangeAvatar({ roomId, avatarId: avatarOption.id }, (response) => {
+          if (!response.success) {
+            reject(new SocketAckError(response.code, response.message));
+            return;
+          }
+          resolve();
+        });
       });
     },
-    [updatePlayer]
+    []
   );
-
-  // --- Listeners ---
-  useEffect(() => {
-    const cleanups = [
-      onRoomUpdated((room: Room) => {
-        const currentPlayerId = useRoomStore.getState().currentPlayer?.socketId;
-        setRoom(room);
-        const currentPlayer = room.players.find(
-          (player) => player.socketId === currentPlayerId
-        );
-        if (currentPlayer) setCurrentPlayer(currentPlayer);
-
-        if (pendingAvatarRef.current && currentPlayerId) {
-          updatePlayer(currentPlayerId, { avatarUrl: pendingAvatarRef.current });
-          const updated = useRoomStore.getState().players.find(
-            (p) => p.socketId === currentPlayerId
-          );
-          if (updated) setCurrentPlayer(updated);
-          pendingAvatarRef.current = null;
-        }
-      }),
-      onPlayerJoined((player: Player) => {
-        addPlayer(player);
-      }),
-      onPlayerLeft((playerId: string) => {
-        removePlayer(playerId);
-      }),
-      onPlayerKicked(() => {
-        resetRoom();
-        resetGame();
-        navigate("/menu");
-      }),
-      onRoomClosed(() => {
-        resetRoom();
-        resetGame();
-        navigate("/menu");
-      }),
-      onGameStarted((data) => {
-        commitRoom(data.room, useRoomStore.getState().currentPlayer?.username || "");
-        setTotalRounds(data.totalRounds);
-        setCurrentRound(data.room.currentRound);
-        setPhase(data.room.gamePhase);
-        navigate("/game");
-      }),
-    ];
-
-    return () => cleanups.forEach((fn) => fn());
-  }, [
-    setRoom,
-    setCurrentPlayer,
-    addPlayer,
-    removePlayer,
-    updatePlayer,
-    resetRoom,
-    resetGame,
-    setTotalRounds,
-    setCurrentRound,
-    setPhase,
-    commitRoom,
-    navigate,
-  ]);
 
   return {
     createRoom,

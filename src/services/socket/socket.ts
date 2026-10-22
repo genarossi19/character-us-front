@@ -40,11 +40,8 @@ export const getSocket = (): Socket => {
 
     socketInstance.on("disconnect", (reason) => {
       console.log("❌ Socket desconectado:", reason);
-      if (reason === "io server disconnect") {
-        // El servidor desconectó el socket, intentar reconectar
-        console.log("🔄 Intentando reconectar...");
-        socketInstance?.connect();
-      }
+      // A server disconnect can revoke an older connection after resumeRoom.
+      // Leave it disconnected to avoid two tabs repeatedly taking the player.
     });
 
     socketInstance.on("connect_error", (error) => {
