@@ -17,7 +17,7 @@ Referencia de la integración Socket.IO actual. Los contratos de esta capa se al
 VITE_SOCKET_URL=http://localhost:3000
 ```
 
-Si falta la variable, se usa `http://localhost:3000`. La configuración fuerza `transports: ["websocket"]`, conecta automáticamente y reintenta sin límite. `disconnectSocket()` elimina la instancia para que el siguiente `getSocket()` cree una nueva.
+Si falta la variable, se usa `http://localhost:3000`. La configuración fuerza `transports: ["websocket"]`, conecta automáticamente y reintenta sin límite ante fallos de transporte. Una desconexión explícita del servidor no dispara otro `connect()` automático: puede revocar una conexión reemplazada y requiere reintento manual. `disconnectSocket()` elimina la instancia para que el siguiente `getSocket()` cree una nueva.
 
 ## Contratos declarados
 
@@ -34,15 +34,28 @@ Todos los acknowledgements responden con una de estas formas:
 
 | Evento | Función | Payload | Ack |
 | --- | --- | --- | --- |
-| `createRoom` | `emitCreateRoom` | `{ username, token, settings, avatarUrl? }` | `Ack<{ room }>` |
-| `joinRoom` | `emitJoinRoom` | `{ code, username, isGuest, avatarUrl?, userId?, password? }` | `Ack<{ room }>` |
+| `createRoom` | `emitCreateRoom` | `{ username, token, settings }` | `Ack<{ room, session }>` |
+| `joinRoom` | `emitJoinRoom` | `{ code, username, token?, password? }` | `Ack<{ room, session }>` |
 | `leaveRoom` | `emitLeaveRoom` | `{ roomId }` | `Ack<void>` |
 | `startGame` | `emitStartGame` | `{ roomId }` | `Ack<{ room }>` |
 | `kickPlayer` | `emitKickPlayer` | `{ roomId, targetId }` | `Ack<void>` |
 | `debateReady` | `emitDebateReady` | `{ roomId }` | `Ack<void>` |
-| `changeAvatar` | `emitChangeAvatar` | `{ roomId, avatarUrl }` | `Ack<void>` |
+| `changeAvatar` | `emitChangeAvatar` | `{ roomId, avatarId }` | `Ack<void>` |
+| `renewRoomInactivity` | `emitRenewRoomInactivity` | `{ roomId }` | `Ack<{ expiresAt }>` |
+| `resumeRoom` | Controlador global de recuperación | `{ roomId, resumeToken }` | `Ack<RoomSnapshot>` (timeout 5 s) |
+| `getGameState` | Sincronización de conexión ya vinculada | `{ roomId }` | `Ack<RoomSnapshot>` (timeout 5 s) |
 
 `Room.id` es el UUID para acciones posteriores; `Room.code` es el PIN numérico de seis dígitos para unirse.
+
+`session` contiene `{ roomId, playerId, resumeToken }` y se guarda exclusivamente en `sessionStorage` por pestaña (`characterus.room-session`). `playerId` permanece estable tras recargar aunque el DTO lo llame `socketId`. La recuperación nunca utiliza el nuevo ID de transporte para localizar al jugador. No loguear acks completos de creación/unión porque incluyen una credencial privada.
+
+En cada `connect`, si hay credencial, se emite `resumeRoom` después de registrar listeners de sala y juego. Mientras espera, la pantalla “Recuperando partida” bloquea rutas y acciones. Los paquetes previos al ack se descartan; el snapshot se aplica sin intercalar otros paquetes y después se procesan los eventos siguientes. Se restaura el estado privado de personaje, pistas, voto propio, votantes, preparación, chat, resultados, ronda y vencimientos. Nunca se recupera usando `joinRoom` ni se vuelve a emitir `startGame`.
+
+Un timeout o error transitorio conserva la credencial. `INVALID_SESSION` y `ROOM_NOT_FOUND` limpian la credencial y vuelven a `/join`; `ALREADY_IN_ROOM` intenta `getGameState` y solo acepta la misma identidad guardada. `NOT_IN_ROOM` o un snapshot de otra identidad muestran error sin reemplazar la sesión. Salir con ack satisfactorio, `playerKicked` del jugador local o `roomClosed` limpian credencial y stores. La gracia del backend es de 60 segundos desde la desconexión; los contadores nunca se reinician en el cliente.
+
+`joinRoom` acepta un `token` opcional. Sin token, el backend registra al jugador como invitado y solo le permite unirse por código y participar de esa partida. El cliente nunca envía `isGuest` ni `userId`: el servidor los deriva de la sesión validada.
+
+La ruta `/join/:code` y el QR del lobby usan este mismo `joinRoom`: omiten la escritura del código y solicitan nombre al invitado. Si el servidor rechaza por contraseña, se solicita y se reenvía conservando código y nombre. El enlace no contiene contraseña ni token y no omite la validación de acceso del backend.
 
 ### Emisiones de juego
 
@@ -52,12 +65,22 @@ Todos los acknowledgements responden con una de estas formas:
 | `votePlayer` | `emitVotePlayer` | `{ roomId, targetId }` |
 | `sendChatMessage` | `emitSendChatMessage` | `{ roomId, message }` |
 
+### Palabras por turno
+
+`submitWord` recibe una palabra de 1 a 20 caracteres después de `trim()` y un ack de éxito/error. El emisor espera hasta 5 segundos: el input no se vacía ni se marca enviado antes de confirmar éxito. Ante rechazo, la UI muestra `message` y conserva el texto; ante timeout pide revisar el estado de partida. Errores del servidor: `INVALID_PAYLOAD`, `INVALID_WORD`, `ROOM_NOT_FOUND`, `PLAYER_NOT_FOUND`, `INVALID_PHASE`, `PLAYER_NOT_ALIVE`, `INVALID_TURN` y `ALREADY_SUBMITTED`.
+
+El servidor publica a todos, incluido el autor, `wordHintRevealed: { playerId, username, word, skipped }` y después `turnChanged: { playerId, username, turnIndex, total }`. `playerId` es siempre el `socketId`. Cada pista se muestra de inmediato durante `word` y se inserta/actualiza por ese ID. El evento del propio jugador deshabilita su input aunque el ack aún esté en tránsito.
+
+Al terminar el último turno llegan `allWordsSubmitted: { hints }` y `phaseChanged: { phase: "debate" }`. El frontend reemplaza las pistas, limpia el turno y las mantiene visibles durante debate. Solo las limpia al comenzar otra ronda. Al vencer los 60 segundos del turno, el backend publica `"Sin palabra"` con `skipped: true` y avanza; el cliente no genera esa transición por su cuenta.
+
 ### Eventos escuchados
 
-- Sala: `roomUpdated`, `playerJoined`, `playerLeft`, `playerKicked`, `roomClosed`. `roomUpdated` también se emite tras un cambio de avatar.
+- Sala: `roomUpdated`, `playerJoined`, `playerLeft`, `playerKicked`, `roomClosed`, `roomInactivityWarning`, `roomInactivityRenewed`. `roomUpdated` también se emite tras un cambio de avatar.
 - Juego: `gameStarted`, `characterAssigned`, `phaseChanged`, `turnChanged`, `wordHintRevealed`, `allWordsSubmitted`, `debateReadyUpdate`, `voteUpdate`, `playerEliminated`, `roundResults`, `gameEnded`, `chatMessage`, `reconnectTimeout`.
 
 Los listeners retornan una función de cleanup y desuscriben el mismo callback que registraron.
+
+El contrato actual de `changeAvatar` se verificó en `character-us-server/src/sockets/handlers/room.handlers.ts`: usa `avatarId` (`avatar-1` a `avatar-8`), valida disponibilidad y emite la sala completa en `roomUpdated`. La UI refleja ese estado confirmado y propaga errores del ack (incluidos `AVATAR_TAKEN`, `INVALID_AVATAR`, `GAME_IN_PROGRESS` y `GUEST_ACTION_FORBIDDEN`). El emisor deja de esperar después de 10 segundos y permite reintentar. El servidor asigna un avatar aleatorio disponible al crear/unirse; el avatar de perfil no determina el de sala.
 
 ## Uso diagnóstico
 
@@ -71,6 +94,8 @@ Los listeners retornan una función de cleanup y desuscriben el mismo callback q
 
 - Los roles y el personaje son privados y autoritativos: `characterAssigned.character` es `null` para el impostor y el cliente nunca intenta obtenerlo.
 - `visibleVotes` decide la presentación: con `false` se muestra que un jugador votó, no su objetivo.
+- La UI restringe `/menu`, `/create`, `/public-rooms` y `/profile` a una sesión autenticada; un visitante solo inicia el flujo Socket.IO con `joinRoom` desde `/join`. El backend debe seguir validando el token de `createRoom`, pues los controles de ruta del cliente no sustituyen la autorización del servidor.
+- Cinco minutos antes del timeout, `roomInactivityWarning` envía `{ roomId, expiresAt, remainingMs }`. El frontend muestra el contador sin cerrar la sala por cuenta propia y solo muestra la acción de renovación al anfitrión. `renewRoomInactivity` responde con `{ success: true, data: { expiresAt } }` o los códigos `NOT_HOST`, `ROOM_NOT_WAITING` y `ROOM_NOT_FOUND`; `roomInactivityRenewed` oculta el aviso para todos y `roomClosed` limpia el estado con el `reason` enviado por el backend.
 - El socket no se autentica durante el handshake. La sesión JWT HTTP se persiste por pestaña en `sessionStorage`, se valida con `GET /api/auth/me` y se envía exclusivamente en `createRoom.token`; no se adjunta a query string, logs ni `auth` del handshake. El backend valida token, usuario, emisor y audiencia antes de crear la sala.
 - `AUTH_REQUIRED` y `AUTH_INVALID` limpian la sesión y redirigen a login. `USERNAME_MISMATCH` nunca debe resolverse con un input editable: el cliente usa siempre `session.user.username`.
-- El backend no define todavía un reingreso de sala desde una página recargada. El aviso `reconnectTimeout` se muestra durante la partida, pero no reemplaza ese contrato pendiente.
+- `resumeRoom` permite recuperar cuentas e invitados durante la gracia de 60 segundos del backend, sin crear un segundo jugador. La credencial no autentica HTTP ni habilita otras funciones de cuenta. Las salas viven en un único proceso; reiniciar el backend o vencer la gracia impide recuperar la sesión.

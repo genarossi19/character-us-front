@@ -8,7 +8,7 @@ Con Node.js `v24.12.0` y las dependencias instaladas, verificado el 10 de septie
 
 - `npm run lint`: falla con 11 errores y 2 warnings.
 - `npm run build`: falla durante `tsc -b` con 7 errores preexistentes; Vite no llega a generar el bundle.
-- No existe `npm test` ni una suite automatizada.
+- No existe `npm test`. Posteriormente se añadió una regresión automatizada focalizada: `node --test tests/word-flow.test.mjs`.
 
 Los errores no provienen de un único punto. Incluyen contratos de props incompatibles, aliases TypeScript no resueltos, exports duplicados, tipos incompletos en diagnósticos, imports/variables sin uso y reglas ESLint de Fast Refresh sobre primitives compartidas.
 
@@ -24,12 +24,13 @@ Los errores no provienen de un único punto. Incluyen contratos de props incompa
 ## Prioridad 1: integrar una sala real
 
 1. Mantener `src/types/game.ts` como el modelo canónico para el flujo V2. Los componentes V1 siguen siendo prototipo aislado.
-2. Acordar cómo se recupera una sesión de sala después de refresh o reconexión.
-3. Hacer que la ruta represente una sala real o documentar por qué la identidad queda implícita. Hoy `/game/:id` se enlaza, pero solo `/game` existe.
-4. Reconciliar destinos inexistentes: `/profile`, `/results` y `/voting-screen`.
-5. Cuando el backend publique una lista de salas, reemplazar el mock de `/public-rooms` sin mezclar su modelo local con los tipos de sala.
-6. Definir cómo se asigna `RoomPublic.name`: el contrato actual lo devuelve, pero `createRoom` no acepta un nombre de sala.
-7. No asignar personaje o rol aleatoriamente en el cliente una vez conectado al backend; son datos privados y autoritativos del servidor.
+2. Conservar el límite de acceso actual: visitantes sin sesión solo se unen con código; el backend debe rechazar cualquier creación de sala sin un JWT válido aunque se eludan rutas del cliente.
+3. Mantener el contrato de recuperación ya implementado: credencial privada por pestaña, identidad estable, snapshot previo a habilitar acciones y limpieza solo ante invalidación definitiva o salida explícita exitosa.
+4. Hacer que la ruta represente una sala real o documentar por qué la identidad queda implícita. Hoy `/game/:id` se enlaza, pero solo `/game` existe.
+5. Reconciliar destinos inexistentes: `/results` y `/voting-screen`.
+6. Cuando el backend publique una lista de salas, reemplazar el mock de `/public-rooms` sin mezclar su modelo local con los tipos de sala.
+7. Definir cómo se asigna `RoomPublic.name`: el contrato actual lo devuelve, pero `createRoom` no acepta un nombre de sala.
+8. No asignar personaje o rol aleatoriamente en el cliente una vez conectado al backend; son datos privados y autoritativos del servidor.
 
 ## Prioridad 1: robustecer Socket.IO
 
@@ -39,7 +40,8 @@ Los errores no provienen de un único punto. Incluyen contratos de props incompa
 4. Tipar evento, payload y ack como una relación, eliminando strings libres y `any` en `useSocketEmit()`.
 5. Validar el payload de votos: un `Map` no se rehidrata automáticamente desde datos serializados.
 6. Revisar transporte solo WebSocket, reintentos infinitos y opciones TLS antes de producción.
-7. Diseñar recuperación de sesión de sala para reconexión. El chat y el aviso `reconnectTimeout` ya usan Socket.IO.
+7. Verificar recuperación real en dos navegadores durante lobby, palabra, debate y votación, con cuentas e invitados. El cliente ya usa `resumeRoom`/`getGameState`; la continuidad tras reiniciar o distribuir el backend requiere persistencia compartida del servidor.
+8. Mantener el timeout de inactividad como autoridad exclusiva del backend. El cliente solo debe representar `roomInactivityWarning`, solicitar `renewRoomInactivity` en nombre del anfitrión y reaccionar a `roomInactivityRenewed` o `roomClosed`.
 
 ## Prioridad 1: consolidar juego y chat
 
@@ -62,6 +64,14 @@ Los errores no provienen de un único punto. Incluyen contratos de props incompa
 9. Mantener pruebas manuales de `createRoom` con token válido, token vencido y ausencia de token; cada ack de autenticación debe limpiar `sessionStorage` y no reintentar con el mismo JWT.
 
 ## Pruebas sugeridas
+
+`node --test tests/*.test.mjs` incluye la regresión de recuperación: identidad estable distinta del transporte, asignación privada, pistas, voto oculto sin doble envío, ronda/vencimientos, timeout/reintento, limpieza definitiva, descarte de eventos previos al snapshot, acks obsoletos y creación/unión/salida. Son pruebas con socket y dependencias de UI simuladas, sin Supabase ni clientes reales. Verificar también recarga dentro y fuera de los 60 segundos de gracia y reinicio del backend.
+
+Palabras por turno: `node --test tests/word-flow.test.mjs` cubre publicación inmediata para anfitrión e invitado, pistas repetidas, avance de turno, omisión por timeout, resumen final, conservación en debate, limpieza en nueva ronda, ack exitoso/rechazo/timeout, input retenido y cleanup de listeners. Verificar además en dos navegadores que cada palabra aparece antes de que termine la ronda y que solo escribe el jugador del turno.
+
+Para invitaciones, abrir `/join/:code` como invitado y usuario autenticado, probar salas con y sin contraseña y verificar que un reintento conserva el nombre del invitado. Escanear el QR desde un celular en la misma red, incluso cuando el anfitrión abrió el lobby desde `localhost`, y probar un enlace con código inválido o sala inexistente.
+
+Para avatares, verificar con dos jugadores que el avatar aleatorio inicial coincide entre selector y tarjeta, que `roomUpdated` refleja el cambio en ambas pestañas y que un avatar ocupado se deshabilita. Ante rechazo del servidor o timeout, conservar la selección confirmada y mostrar el error. El backend actual prohíbe cambiar avatar a invitados; permitirlo requiere cambiar esa autorización en el backend.
 
 Cuando el build vuelva a estar verde, introducir primero cobertura sobre límites de alto riesgo:
 

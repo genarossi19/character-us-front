@@ -10,9 +10,12 @@ Las pantallas V2 de creación, unión, lobby y juego están conectadas al contra
 
 - `src/main.tsx` monta React en `StrictMode`, `BrowserRouter` y el toaster global.
 - `src/App.tsx` declara todas las rutas y envuelve la aplicación con `ThemeProvider`.
-- `App.tsx` monta los listeners globales de juego para no perder eventos durante la navegación de lobby a partida.
+- `/join/:code` precarga un PIN válido y omite el formulario de código. El invitado ingresa su nombre; el usuario autenticado confirma su identidad. Ambos continúan a contraseña si `joinRoom` la requiere. El QR del lobby contiene únicamente la URL completa con el PIN, sin credenciales.
+- `App.tsx` monta una sola vez los listeners globales de juego y sala antes del controlador de recuperación. `useSocketRoom` solo expone acciones; ya no registra listeners por pantalla.
 - Los stores de Zustand contienen la vista local del estado autoritativo recibido por Socket.IO.
-- La sesión JWT se conserva por pestaña en `sessionStorage` mediante `useUserStore`. Al arrancar, `App.tsx` valida el token con `GET /api/auth/me`; solo entonces habilita `/create`. La identidad de sala no se recupera tras recargar.
+- Los avatares de sala se reciben del backend: `useRoomStore.setRoom` sincroniza `room.players`, `players` y `currentPlayer`. El selector deriva su selección de `currentPlayer.avatarUrl`, espera el ack de `changeAvatar` y muestra sus errores; no sobrescribe `roomUpdated` con una selección local pendiente.
+- La sesión JWT se conserva por pestaña en `sessionStorage` mediante `useUserStore`. Al arrancar, `App.tsx` valida el token con `GET /api/auth/me`; solo entonces habilita `/menu`, `/create`, `/public-rooms` y `/profile`. Un visitante no autenticado se redirige a `/join` y solo puede acceder a lobby y juego tras unirse con código o recuperar su propia sesión de sala.
+- `RoomInactivityWarning`, montado en `App.tsx`, escucha el ciclo de inactividad de la sala. Solo presenta el tiempo restante; el backend decide el cierre y autoriza la renovación del anfitrión.
 
 El flujo visible actual no es un único flujo de datos:
 
@@ -21,6 +24,7 @@ Login/Signup --REST + JWT--> Menu
 Menu --> Create --createRoom--> Lobby --gameStarted--> Game
 Menu --> Join --joinRoom--> Lobby --gameStarted--> Game
 Menu --> Public rooms (mock) --joinRoom--> Lobby
+Visitor --room code--> Join --joinRoom--> Lobby --gameStarted--> Game
 ```
 
 El flujo objetivo descrito por el dominio sería:
@@ -65,11 +69,12 @@ El diagnóstico prueba un backend real y requiere dos pestañas para dos sockets
 | --- | --- | --- |
 | Tema | `ThemeProvider` | `localStorage`: `vite-ui-theme` |
 | Sesión | `useUserStore` | `sessionStorage`: `characterus.session` (token, claims JWT, usuario y avatar local) |
-| Sala/lobby | `useRoomStore` | Ninguna tras recargar |
-| Partida, roles, votos y chat | `useGameStore` | Ninguna tras recargar |
+| Credencial privada de sala | `useRoomSessionStore` | `sessionStorage`: `characterus.room-session` (`roomId`, `playerId`, `resumeToken`) |
+| Sala/lobby | `useRoomStore` | Se reconstruye desde el snapshot de `resumeRoom` |
+| Partida, roles, votos y chat | `useGameStore` | Se reconstruyen desde el snapshot privado; no se persisten en storage |
 | Salas públicas | Array mock temporal | Ninguna |
 
-Antes de conectar pantallas, hay que definir identidad de sala/jugador, recuperación tras refresh y reconexión, y qué estado es privado para cada socket. No introducir un store global sin resolver primero esas reglas de dominio.
+El `playerId` de la sesión es estable aunque cambie el transporte. Los DTOs públicos todavía lo llaman `socketId`; no usar el nuevo `socket.id` para identificar al jugador local. La credencial de sala no se incorpora a la sala pública, URLs, logs, QR ni a la sesión HTTP.
 
 ## Flujo de datos externo
 
@@ -95,6 +100,16 @@ La API de autenticación propaga errores HTTP tipados. Los helpers de categoría
 
 Socket.IO modela creación/unión de sala, actualizaciones de participantes y el juego completo. `useSocketGameEvents` se monta en `App.tsx`; los listeners registran cleanup explícito y el juego no crea fases ni roles localmente. El handshake no lleva JWT: `createRoom` envía el token en su payload y el backend responde con acks tipados, incluidos los códigos de autenticación.
 
+Durante `word`, `wordHintRevealed` inserta o actualiza por `playerId` (el `socketId`, incluidos invitados) y marca al jugador local como enviado. `WordSubmission` muestra inmediatamente el texto y deriva el título y permiso de escritura de `currentTurnPlayerId`; `turnChanged` reemplaza ese ID. `allWordsSubmitted` reemplaza el resumen y limpia el turno; abandonar `word` también limpia el turno. Las pistas se conservan en debate y se limpian al entrar en una nueva fase de personaje/palabras. El input mantiene texto y estado de error hasta el ack de `submitWord`; solo un ack satisfactorio lo vacía. Los listeners globales siguen montados únicamente en `App.tsx` y retiran los mismos callbacks.
+
+`node --test tests/word-flow.test.mjs` ejecuta regresiones focalizadas con los stores, listeners, emitters y handlers reales bajo dependencias de React/socket simuladas. No sustituye una prueba de dos navegadores contra el backend.
+
+El ciclo de inactividad también pertenece al servidor: `roomInactivityWarning` entrega `roomId`, `expiresAt` y `remainingMs` cinco minutos antes del cierre; `renewRoomInactivity` solo puede emitirlo el anfitrión y extiende 40 minutos tras un ack satisfactorio; `roomInactivityRenewed` oculta el aviso para todos. Ante `roomClosed`, el cliente limpia stores y credencial, muestra el motivo y vuelve a `/join`.
+
+`createRoomRecovery` registra `connect`, `disconnect` y `connect_error`, emite `resumeRoom` con timeout de 5 segundos y bloquea la UI hasta completar la hidratación de ambos stores y la navegación (`playing` → `/game`; otros estados → `/lobby`). `eventDelivery` descarta los eventos recibidos antes del ack porque quedan cubiertos por el snapshot más reciente; los posteriores se procesan en orden. Los eventos terminales (`roomClosed`, `playerKicked`) se atienden incluso durante la recuperación. Generaciones de intento y la identidad de la credencial impiden que un ack viejo restaure una sesión cancelada.
+
+El snapshot restaura pistas, asignación privada, voto propio, quién votó, preparación, chat permitido y resultados. `hydrateSnapshot` no invoca `setPhase` para evitar borrar las pistas restauradas. Los vencimientos usan `serverTime` como referencia; el contador es solo visual y no avanza fases. `ALREADY_IN_ROOM` consulta `getGameState` y solo admite el mismo `roomId` y `playerId` guardados. Las desconexiones explícitas del servidor requieren reintento manual para evitar que dos conexiones revocadas se recuperen mutuamente en bucle.
+
 `RoomPublic` incluye `name`, pero el payload documentado de `createRoom` no lo recibe. Por tanto, el nombre es actualmente responsabilidad del backend; si debe configurarlo el usuario, el contrato debe añadir un campo explícito.
 
 ## Patrones que conviene preservar
@@ -113,5 +128,6 @@ Socket.IO modela creación/unión de sala, actualizaciones de participantes y el
 - `npm run build` ejecuta primero TypeScript y solo genera `dist/` si esa fase finaliza.
 - `BrowserRouter` requiere fallback del hosting hacia `index.html` para accesos directos y recargas.
 - El backend debe permitir el origen del frontend y aceptar conexiones WebSocket.
+- El plugin de desarrollo `room-invite-network-origin` de Vite inserta un meta con el origen Network y el puerto real del servidor. `RoomInvite` lo utiliza al compartir desde `localhost`; para otros hosts y builds usa `window.location.origin`. Reiniciar Vite al cambiar la configuración y recargar la página al cambiar de red.
 - No hay configuración de CI, contenedores, codegen, migraciones ni despliegue en este repositorio.
 - `ClassDiagram.mmd` describe un modelo de backend, pero este frontend no permite verificar que coincida con el esquema real de Supabase.
