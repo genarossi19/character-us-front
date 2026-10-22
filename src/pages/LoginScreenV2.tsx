@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useUserStore } from "@/store/useUserStore";
 import { Button } from "@/components/ui/button";
@@ -8,10 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Mail, Lock } from "lucide-react";
 import { ThemeToggleButton } from "@/components/ui/shadcn-io/theme-toggle-button";
 import { toast } from "sonner";
+import GoogleSignInButton from "@/components/GoogleSignInButton";
 
 export default function LoginScreenV2() {
   const navigate = useNavigate();
   const login = useUserStore((s) => s.login);
+  const loginWithGoogle = useUserStore((s) => s.loginWithGoogle);
+  const submitting = useRef(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [touched, setTouched] = useState({ email: false, password: false });
@@ -28,7 +31,8 @@ export default function LoginScreenV2() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formValid) return;
+    if (!formValid || submitting.current) return;
+    submitting.current = true;
     setIsLoading(true);
     try {
       await login(email, password);
@@ -36,6 +40,22 @@ export default function LoginScreenV2() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo iniciar sesión");
     } finally {
+      submitting.current = false;
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleCredential = async (credential: string) => {
+    if (submitting.current) return;
+    submitting.current = true;
+    setIsLoading(true);
+    try {
+      await loginWithGoogle(credential);
+      navigate("/menu");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo iniciar sesión con Google");
+    } finally {
+      submitting.current = false;
       setIsLoading(false);
     }
   };
@@ -75,6 +95,8 @@ export default function LoginScreenV2() {
             </h1>
           </CardTitle>
           <CardContent className="pt-6">
+            <GoogleSignInButton onCredential={handleGoogleCredential} disabled={isLoading} />
+            <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground"><div className="h-px flex-1 bg-border" />o continúa con tu email<div className="h-px flex-1 bg-border" /></div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label

@@ -4,6 +4,8 @@ Hallazgos del 5 de septiembre de 2026. La integración inicial posterior unific�
 
 ## Estado de verificación
 
+Login con Google: implementado con Google Identity Services, `POST /auth/google` y sesión por pestaña existente. La prueba real requiere `VITE_GOOGLE_CLIENT_ID`, backend configurado, migración aplicada y origen autorizado. Ver `docs/GOOGLE_LOGIN.md`. No vincular cuentas ante `409` ni reemplazar el username del juego por el nombre de Google.
+
 Con Node.js `v24.12.0` y las dependencias instaladas, verificado el 10 de septiembre de 2026:
 
 - `npm run lint`: falla con 11 errores y 2 warnings.
@@ -44,6 +46,12 @@ Los errores no provienen de un único punto. Incluyen contratos de props incompa
 8. Mantener el timeout de inactividad como autoridad exclusiva del backend. El cliente solo debe representar `roomInactivityWarning`, solicitar `renewRoomInactivity` en nombre del anfitrión y reaccionar a `roomInactivityRenewed` o `roomClosed`.
 
 ## Prioridad 1: consolidar juego y chat
+
+Actualización de la UI de partidas (22 de octubre de 2026): `GameScreenV2` tiene chat permanente y adaptable, identidad privada persistente, tarjetas de pistas por autor y revelación final mediante `gameEnded.impostorIds`. El backend vecino y su contrato se actualizaron únicamente para ese campo final. El chat admite conversación en debate y votación con ack/timeout y conservación del borrador. Las entradas locales de actividad derivan eventos públicos y no persisten en el backend; al recuperar, se restaura el historial del snapshot. El prototipo V1 conserva sus limitaciones y no fue modificado.
+
+Verificación de este cambio: 20 regresiones del frontend aprobadas (`node --test tests/*.test.mjs`), lint focalizado aprobado y revisión de las fases en Edge con estado de prueba local en escritorio y móvil. La regresión `src/sockets/tests/gameReveal.test.mjs` del backend verifica uno y varios impostores, revelación únicamente al terminar y DTOs públicos sin roles, con persistencia simulada y sin acceder a Supabase. El parche `docs/backend-game-reveal.patch` incluye el cambio coordinado y esa prueba. El bundle con Vite compila; el comando completo `npm run build` sigue bloqueado por los 7 errores TypeScript preexistentes y el lint global conserva 11 errores y 2 warnings ajenos a esta UI. Estas verificaciones no sustituyen una partida real de dos navegadores.
+
+Verificar manualmente en dos navegadores la recepción de turnos/pistas y chat, el canal de eliminados y el cierre con uno o varios impostores, usando el backend actualizado. Al finalizar, `roomUpdated` restablece la sala: la UI conserva el payload de `gameEnded` para mantener los avatares y nombres revelados. Recargar después del cierre recupera el lobby, pues el backend no conserva ese resultado en la sesión de sala.
 
 1. Modelar transiciones de ronda de forma explícita. `phase`, panel abierto, habilitación, timers, votos y eliminado pueden quedar en combinaciones contradictorias.
 2. Definir reglas de empate antes de cambiar el algoritmo. El código actual elimina al primer jugador con máximo incluso si hay empate.

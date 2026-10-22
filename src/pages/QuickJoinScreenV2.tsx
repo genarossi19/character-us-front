@@ -7,6 +7,7 @@ import BackgroundAnimate from "@/components/BackgroundAnimate";
 import { ThemeToggleButton } from "@/components/ui/shadcn-io/theme-toggle-button";
 import { useSocketRoom } from "@/hooks/useSocketRoom";
 import { useUserStore } from "@/store/useUserStore";
+import { getDisplayName } from "@/lib/displayName";
 import { AlertCircle } from "lucide-react";
 
 type Step = "code" | "password" | "name";
@@ -271,7 +272,7 @@ function JoinRoomForm({ initialCode }: { initialCode?: string }) {
             <div className="flex flex-col gap-4">
               <ErrorBanner />
               {isLoggedIn ? (
-                <p className="text-center text-muted-foreground">Entrarás como {user?.username}</p>
+                <p className="text-center text-muted-foreground">Entrarás como {getDisplayName(user)}</p>
               ) : <div>
                 <label
                   htmlFor="username"

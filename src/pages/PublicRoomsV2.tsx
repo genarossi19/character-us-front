@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import { useUserStore } from "@/store/useUserStore";
+import { getDisplayName } from "@/lib/displayName";
 import { useSocketRoom } from "@/hooks/useSocketRoom";
 import {
   Card,
@@ -132,7 +133,7 @@ export default function PublicRoomsV2() {
                   className="w-10 h-10 rounded-full border-2 border-accent shadow"
                 />
                 <span className="font-semibold text-lg text-foreground">
-                  {user?.username || "Jugador"}
+                  {getDisplayName(user)}
                 </span>
               </button>
             </DropdownMenuTrigger>

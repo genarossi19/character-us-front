@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router";
 import { useUserStore } from "@/store/useUserStore";
+import { getDisplayName } from "@/lib/displayName";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ThemeToggleButton } from "@/components/ui/shadcn-io/theme-toggle-button";
@@ -16,6 +17,7 @@ import { PlusCircle, Users, LogOut, User } from "lucide-react";
 export default function MenuV2() {
   const navigate = useNavigate();
   const { user, logout } = useUserStore();
+  const displayName = getDisplayName(user);
 
   const handleLogout = () => {
     logout();
@@ -47,7 +49,7 @@ export default function MenuV2() {
                   className="w-10 h-10 rounded-full border-2 border-accent shadow"
                 />
                 <span className="font-semibold text-lg text-foreground">
-                  {user?.username || "Jugador"}
+                  {displayName}
                 </span>
               </button>
             </DropdownMenuTrigger>
@@ -93,8 +95,8 @@ export default function MenuV2() {
             </h1>
             <p className="text-lg text-muted-foreground">
               {user?.isGuest
-                ? `Jugando como ${user.username} (invitado)`
-                : `Bienvenido, ${user?.username}`}
+                ? `Jugando como ${displayName} (invitado)`
+                : `Bienvenido, ${displayName}`}
             </p>
           </div>
 

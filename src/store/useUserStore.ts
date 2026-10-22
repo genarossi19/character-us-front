@@ -4,12 +4,14 @@ import { jwtDecode } from "jwt-decode";
 import {
   getCurrentUserRequest,
   loginRequest,
+  googleLoginRequest,
   signupRequest,
   type AuthUserResponse,
   type SignupPayload,
 } from "@/services/api/auth";
 import { AVATAR_URLS } from "@/constants/avatars";
 import { setAccessToken } from "@/services/auth/accessToken";
+import { disableGoogleAutoSelect } from "@/services/auth/googleIdentity";
 
 export interface AccessTokenClaims {
   userId: string;
@@ -31,6 +33,7 @@ export interface AccessTokenClaims {
 interface RegisteredUser {
   id: string;
   username: string;
+  name?: string | null;
   email: string;
   avatarUrl: string;
   gamesPlayed: number;
@@ -60,6 +63,7 @@ interface UserState {
 
   loginAsGuest: (username: string) => void;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: (credential: string) => Promise<void>;
   signup: (payload: SignupPayload) => Promise<void>;
   logout: () => void;
   setUser: (user: User) => void;
@@ -113,6 +117,7 @@ function createRegisteredUser(
   return {
     id: user.id,
     username: user.username,
+    name: user.name ?? null,
     email: user.email,
     avatarUrl,
     gamesPlayed: user.gamesPlayed,
@@ -168,6 +173,13 @@ export const useUserStore = create<UserState>()(
         });
       },
 
+      loginWithGoogle: async (credential) => {
+        const response = await googleLoginRequest(credential);
+        const claims = decodeAccessToken(response.token);
+        setAccessToken(response.token);
+        set({ user: createRegisteredUser(response.user, get().user?.avatarUrl), token: response.token, claims, isLoggedIn: true, isRestoringSession: false, isSessionReady: true });
+      },
+
       signup: async (payload) => {
         const response = await signupRequest(payload);
         const claims = decodeAccessToken(response.token);
@@ -185,6 +197,7 @@ export const useUserStore = create<UserState>()(
       },
 
       logout: () => {
+        disableGoogleAutoSelect();
         setAccessToken(null);
         set({
           user: null,

@@ -10,10 +10,12 @@ import {
 import { User, LogOut } from "lucide-react";
 import { ThemeToggleButton } from "./ui/shadcn-io/theme-toggle-button";
 import { useUserStore } from "@/store/useUserStore";
+import { getDisplayName } from "@/lib/displayName";
 
 export default function NavBarLoggued() {
   const navigate = useNavigate();
   const { user, logout } = useUserStore();
+  const displayName = getDisplayName(user);
 
   const handleLogout = () => {
     logout();
@@ -39,11 +41,11 @@ export default function NavBarLoggued() {
             <button className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-accent/20 transition">
               <img
                 src={user?.avatarUrl || "/avatars/astronaut.webp"}
-                alt={`Perfil de ${user?.username || "Jugador"}`}
+                alt={`Perfil de ${displayName}`}
                 className="w-10 h-10 rounded-full border-2 border-accent shadow"
               />
               <span className="hidden font-semibold text-lg text-foreground lg:inline">
-                {user?.username || "Jugador"}
+                {displayName}
               </span>
             </button>
           </DropdownMenuTrigger>

@@ -8,6 +8,8 @@ Las pantallas V2 de creación, unión, lobby y juego están conectadas al contra
 
 ## Entrada y navegación
 
+`GoogleSignInButton` carga Google Identity Services con `VITE_GOOGLE_CLIENT_ID` y entrega la credencial a `useUserStore.loginWithGoogle`. `POST /api/auth/google` devuelve el JWT de CharacterUs, que sigue el manejo existente de sesión y restauración. La credencial de Google nunca se almacena. El perfil conserva `name` para presentación y usa `username` para contratos del juego. Ver `docs/GOOGLE_LOGIN.md`.
+
 - `src/main.tsx` monta React en `StrictMode`, `BrowserRouter` y el toaster global.
 - `src/App.tsx` declara todas las rutas y envuelve la aplicación con `ThemeProvider`.
 - `/join/:code` precarga un PIN válido y omite el formulario de código. El invitado ingresa su nombre; el usuario autenticado confirma su identidad. Ambos continúan a contraseña si `joinRoom` la requiere. El QR del lobby contiene únicamente la URL completa con el PIN, sin credenciales.
@@ -45,6 +47,12 @@ No debe documentarse el segundo flujo como implementado hasta que las páginas c
 - `src/components/ui/`: primitives Radix/shadcn; siguen aliases de `components.json`.
 - `src/components/animate-ui/`: componentes incorporados desde el registry Animate UI.
 - `src/index.css`: Tailwind CSS 4, tokens y estilos globales.
+
+`GameScreenV2` organiza exclusivamente la partida: cabecera con fases y ronda, tablero desplazable y chat permanente. En pantallas pequeñas, el chat se apila debajo del tablero. `RoleCard` conserva la asignación privada durante palabras, debate y votación; `ClueBoard` muestra autor, avatar, palabra y estado de turno, incluso si el autor de una pista aceptada abandona la sala. `DebatePhase` conserva la acción de marcar listo y `VotingPhase` muestra las pistas al elegir un voto.
+
+`useSocketGameEvents` deriva entradas de actividad solo de eventos públicos confirmados de turno, pistas, preparación, eliminación y fin. Las asignaciones privadas no entran al chat; fases de debate/votación y votos conservan los mensajes del servidor sin duplicarlos. Los IDs de actividad son estables por ronda/acción/jugador, y los mensajes se insertan/actualizan por ID. Estas entradas de presentación viven en memoria del cliente: el snapshot recupera el chat del servidor, no el historial derivado anterior a la reconexión.
+
+`useGameStore.finalResult` conserva el payload final, incluidos los jugadores e `impostorIds`, aunque el siguiente `roomUpdated` restablezca el lobby. `GameEnd` solo revela identidades confirmadas. No infiere roles por supervivencia, votos ni avatar. El backend publica los IDs únicamente en `gameEnded`, antes de limpiar roles. El ganador `innocent` se normaliza a `crew` en el adaptador del frontend; no cambia el valor del contrato externo.
 
 ### Integración
 

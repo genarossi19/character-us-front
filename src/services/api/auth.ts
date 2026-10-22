@@ -3,6 +3,7 @@ import { authenticatedApi, getApiError, publicApi } from "./client";
 export interface AuthUserResponse {
   id: string;
   username: string;
+  name?: string | null;
   email: string;
   gamesPlayed: number;
   gamesWon: number;
@@ -30,7 +31,7 @@ export interface SignupPayload {
 }
 
 async function requestAuth<TBody>(
-  path: "login" | "signup",
+  path: "login" | "signup" | "google",
   body: TBody
 ): Promise<AuthResponse> {
   try {
@@ -43,6 +44,10 @@ async function requestAuth<TBody>(
 
 export function loginRequest(email: string, password: string): Promise<AuthResponse> {
   return requestAuth("login", { email, password });
+}
+
+export function googleLoginRequest(credential: string): Promise<AuthResponse> {
+  return requestAuth("google", { credential });
 }
 
 export function signupRequest(

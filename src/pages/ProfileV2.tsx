@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router";
 import { useUserStore } from "@/store/useUserStore";
+import { getDisplayName } from "@/lib/displayName";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ThemeToggleButton } from "@/components/ui/shadcn-io/theme-toggle-button";
@@ -78,7 +79,7 @@ export default function ProfileV2() {
 
                 <div className="text-center">
                   <h2 className="text-2xl font-bold text-foreground">
-                    {user.username}
+                    {getDisplayName(user)}
                   </h2>
                   {user.email && (
                     <p className="text-muted-foreground flex items-center justify-center gap-2 mt-1">
@@ -96,7 +97,7 @@ export default function ProfileV2() {
                   <div>
                     <p className="text-sm text-muted-foreground">Nombre</p>
                     <p className="font-medium text-foreground">
-                      {user.username}
+                      {getDisplayName(user)}
                     </p>
                   </div>
                 </div>

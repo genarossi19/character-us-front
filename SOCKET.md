@@ -13,6 +13,8 @@ Referencia de la integración Socket.IO actual. Los contratos de esta capa se al
 
 ## Conexión
 
+El acceso con Google intercambia primero la credencial por un JWT de CharacterUs mediante HTTP (`POST /api/auth/google`). Socket.IO sigue recibiendo exclusivamente el JWT de CharacterUs donde el contrato lo exige, con `user.username` del backend; nunca recibe el ID token de Google. `VITE_GOOGLE_CLIENT_ID` configura solo el botón de identidad, sin modificar la conexión socket.
+
 ```env
 VITE_SOCKET_URL=http://localhost:3000
 ```
@@ -72,6 +74,16 @@ La ruta `/join/:code` y el QR del lobby usan este mismo `joinRoom`: omiten la es
 El servidor publica a todos, incluido el autor, `wordHintRevealed: { playerId, username, word, skipped }` y después `turnChanged: { playerId, username, turnIndex, total }`. `playerId` es siempre el `socketId`. Cada pista se muestra de inmediato durante `word` y se inserta/actualiza por ese ID. El evento del propio jugador deshabilita su input aunque el ack aún esté en tránsito.
 
 Al terminar el último turno llegan `allWordsSubmitted: { hints }` y `phaseChanged: { phase: "debate" }`. El frontend reemplaza las pistas, limpia el turno y las mantiene visibles durante debate. Solo las limpia al comenzar otra ronda. Al vencer los 60 segundos del turno, el backend publica `"Sin palabra"` con `skipped: true` y avanza; el cliente no genera esa transición por su cuenta.
+
+### Chat y actividad durante la partida
+
+El panel permanece montado en todas las fases. `sendChatMessage` solo se emite durante `debate` y `voting`, como permite el backend. El cliente espera el ack hasta 5 segundos, conserva el borrador ante rechazo/timeout y presenta el error (incluido `FLOOD_LIMIT`). No inserta un mensaje optimista: espera `chatMessage`, evitando ecos duplicados. Los mensajes `ghost` siguen limitados a eliminados por el servidor y también se filtran al presentar.
+
+Los eventos públicos `turnChanged`, `wordHintRevealed`, `allWordsSubmitted`, `debateReadyUpdate`, `playerEliminated` y `gameEnded` producen entradas locales de actividad con ID estable. Los votos y las fases de debate/votación ya llegan como mensajes de sistema y no se generan otra vez. No se publican asignaciones privadas ni objetivos de votos ocultos. Estas entradas locales no son eventos nuevos del protocolo ni se reenvían al backend; tras recuperar, el historial disponible es el del snapshot del servidor.
+
+### Revelación final
+
+`gameEnded` incluye `{ winner: "innocent" | "impostor", rounds, players, impostorIds: string[] }`. El backend vecino agrega `impostorIds` antes de restablecer los roles y solo en este evento final. `RoomPublic`/`PlayerPublic` siguen sin exponer roles. El frontend conserva el resultado final separado del lobby, normaliza `innocent` a su etiqueta interna `crew` y muestra nombres y avatares en grande. El campo se acepta como opcional para compatibilidad con servidores anteriores; si falta, solo se muestran identidades conocidas, sin inferirlas. El parche coordinado está en `docs/backend-game-reveal.patch`.
 
 ### Eventos escuchados
 

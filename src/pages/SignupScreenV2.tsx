@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { z } from "zod";
 import { useUserStore } from "@/store/useUserStore";
@@ -10,6 +10,7 @@ import { Mail, Lock, User, CheckCircle } from "lucide-react";
 import BackgroundAnimate from "@/components/BackgroundAnimate";
 import { ThemeToggleButton } from "@/components/ui/shadcn-io/theme-toggle-button";
 import { toast } from "sonner";
+import GoogleSignInButton from "@/components/GoogleSignInButton";
 
 const usernamePattern = /^[a-zA-Z0-9_]+$/;
 
@@ -147,6 +148,8 @@ function humanizeSignupError(error: unknown): string {
 export default function SignupScreenV2() {
   const navigate = useNavigate();
   const signup = useUserStore((s) => s.signup);
+  const loginWithGoogle = useUserStore((s) => s.loginWithGoogle);
+  const pending = useRef(false);
 
   const [formData, setFormData] = useState<SignupFormData>({
     username: "",
@@ -166,6 +169,7 @@ export default function SignupScreenV2() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (pending.current) return;
     const validation = signupSchema.safeParse(formData);
 
     if (!validation.success) {
@@ -180,6 +184,7 @@ export default function SignupScreenV2() {
       confirmPassword: validation.data.confirmPassword,
     };
 
+    pending.current = true;
     setSubmitting(true);
     try {
       await signup(payload);
@@ -202,6 +207,22 @@ export default function SignupScreenV2() {
       }
       toast.error(humanizeSignupError(error));
     } finally {
+      pending.current = false;
+      setSubmitting(false);
+    }
+  };
+
+  const handleGoogleCredential = async (credential: string) => {
+    if (pending.current) return;
+    pending.current = true;
+    setSubmitting(true);
+    try {
+      await loginWithGoogle(credential);
+      navigate("/menu", { replace: true });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo continuar con Google");
+    } finally {
+      pending.current = false;
       setSubmitting(false);
     }
   };
@@ -265,6 +286,8 @@ export default function SignupScreenV2() {
             </CardTitle>
 
             <CardContent className="pt-2">
+              <GoogleSignInButton mode="register" onCredential={handleGoogleCredential} disabled={submitting} />
+              <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground"><div className="h-px flex-1 bg-border" />o regístrate con tu email<div className="h-px flex-1 bg-border" /></div>
               <form noValidate onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label

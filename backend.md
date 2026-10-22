@@ -781,6 +781,8 @@ Resultado de la ronda actual.
 
 El juego terminó. Se incluyen todos los resultados y el ganador.
 
+Actualización coordinada: el resultado incluye `impostorIds: string[]`, con los IDs estables de todos los impostores. Se revela únicamente al finalizar y antes de limpiar los roles del lobby. `winner` es `"innocent" | "impostor"`; los jugadores públicos siguen sin campos de rol.
+
 ```ts
 (result: GameResult) => void
 ```
