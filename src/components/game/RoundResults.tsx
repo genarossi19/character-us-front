@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from "motion/react";
 import { useGameStore } from "@/store/useGameStore";
 import { useRoomStore } from "@/store/useRoomStore";
+import { ArrowRight, Handshake, ShieldAlert, UserRoundX } from "lucide-react";
 
 export default function RoundResults() {
   const { eliminatedPlayer, wasImpostor, currentRound, totalRounds, votes } =
@@ -15,7 +16,7 @@ export default function RoundResults() {
   });
 
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-8 px-4">
+    <div className="flex flex-col items-center justify-center gap-6 rounded-2xl border border-border bg-card px-4 py-8 text-center">
       <motion.h2
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -33,9 +34,7 @@ export default function RoundResults() {
             exit={{ opacity: 0, scale: 0.8 }}
             className="flex flex-col items-center gap-4"
           >
-            <div className="text-6xl mb-2">
-              {wasImpostor ? "🎉" : "💀"}
-            </div>
+            {wasImpostor ? <ShieldAlert className="size-12 text-impostor" aria-hidden="true" /> : <UserRoundX className="size-12 text-muted-foreground" aria-hidden="true" />}
             <h3 className="text-2xl font-bold text-red-500">
               Jugador Eliminado
             </h3>
@@ -55,7 +54,7 @@ export default function RoundResults() {
               }`}
             >
               {wasImpostor
-                ? "¡Era el Impostor! Ganan los tripulantes"
+                ? "¡Era un impostor!"
                 : "Era un Tripulante"}
             </p>
           </motion.div>
@@ -67,7 +66,7 @@ export default function RoundResults() {
             exit={{ opacity: 0, scale: 0.8 }}
             className="flex flex-col items-center gap-4"
           >
-            <div className="text-6xl mb-2">🤝</div>
+            <Handshake className="size-12 text-warning" aria-hidden="true" />
             <h3 className="text-2xl font-bold text-yellow-500">
               Nadie fue eliminado
             </h3>
@@ -103,7 +102,7 @@ export default function RoundResults() {
                     {voter.username}
                   </span>
                 </div>
-                <span className="text-muted-foreground text-sm">→</span>
+                <ArrowRight className="size-4 text-muted-foreground" aria-label="votó a" />
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-foreground text-sm">
                     {target.username}

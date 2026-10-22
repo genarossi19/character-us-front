@@ -1,27 +1,21 @@
 import { useState } from "react";
-import { motion } from "motion/react";
+import { Check, CheckCircle2, Vote } from "lucide-react";
 import { useGameStore } from "@/store/useGameStore";
 import { useRoomStore } from "@/store/useRoomStore";
 import { useSocketGame } from "@/hooks/useSocketGame";
 import { Button } from "@/components/ui/button";
+import ClueBoard from "./ClueBoard";
 
 export default function VotingPhase() {
-  const { votes, votesVisible, hasVoted: confirmedVote, votedFor } = useGameStore();
-  const players = useRoomStore((s) => s.players);
-  const currentPlayer = useRoomStore((s) => s.currentPlayer);
-  const room = useRoomStore((s) => s.room);
+  const { votes, votesVisible, voterIds, hasVoted: confirmedVote, votedFor, wordHints } = useGameStore();
+  const { players, currentPlayer, room } = useRoomStore();
   const { votePlayer } = useSocketGame();
-
   const [selectedVote, setSelectedVote] = useState<string | null>(null);
   const [submittedVote, setHasVoted] = useState(false);
   const hasVoted = confirmedVote || submittedVote;
   const visibleVotes = votesVisible ?? room?.settings.visibleVotes ?? false;
-
-  const alivePlayers = players.filter(
-    (p) => p.isAlive && p.socketId !== currentPlayer?.socketId
-  );
+  const alivePlayers = players.filter((player) => player.isAlive && player.socketId !== currentPlayer?.socketId);
   const userVote = votedFor ?? (currentPlayer ? votes[currentPlayer.socketId] : undefined);
-
   const handleVote = () => {
     if (!selectedVote || !currentPlayer?.isAlive || hasVoted || userVote) return;
     votePlayer(selectedVote);
@@ -29,91 +23,40 @@ export default function VotingPhase() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-6 px-4">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center"
-      >
-        <h2 className="text-3xl font-bold text-foreground mb-2">
-          Votación
-        </h2>
-        <p className="text-muted-foreground">
-          {hasVoted || userVote
-            ? "Esperando a que voten los demás..."
-            : "¿Quién crees que es el impostor?"}
-        </p>
-      </motion.div>
-
-      {/* Lista de jugadores */}
-      <div className="w-full max-w-2xl space-y-3">
-        {alivePlayers.map((player) => {
-          const isSelected = selectedVote === player.socketId;
-          const votesForThisPlayer = Object.values(votes).filter(
-            (v) => v === player.socketId
-          ).length;
-
-          return (
-            <motion.div
-              key={player.socketId}
-              whileHover={!hasVoted && !userVote ? { scale: 1.02 } : {}}
-              whileTap={!hasVoted && !userVote ? { scale: 0.98 } : {}}
-              onClick={() => {
-                if (currentPlayer?.isAlive && !hasVoted && !userVote) {
-                  setSelectedVote(player.socketId);
-                }
-              }}
-              className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-colors ${
-                isSelected
-                  ? "bg-cyan-100 dark:bg-cyan-500/20 border-cyan-500 dark:border-cyan-400"
-                  : "bg-card border-border hover:border-accent/50"
-              } ${
-                hasVoted || userVote
-                  ? "cursor-not-allowed opacity-70"
-                  : ""
-              }`}
-            >
-              <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white/30">
-                <img
-                  src={player.avatarUrl}
-                  alt={player.username}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <p className="flex-1 text-lg font-semibold text-foreground">
-                {player.username}
-              </p>
-              {visibleVotes && votesForThisPlayer > 0 && (
-                <div className="bg-muted px-3 py-1 rounded-full text-sm font-medium text-muted-foreground">
-                  {votesForThisPlayer} voto{votesForThisPlayer > 1 ? "s" : ""}
+    <div className="space-y-7">
+      <section className="space-y-5 rounded-2xl border border-border bg-card p-5 sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="mb-2 flex items-center gap-2 text-sm font-medium text-accent"><Vote className="size-4" aria-hidden="true" /> Momento de decidir</p>
+            <h2 className="text-3xl font-semibold">¿Quién es el impostor?</h2>
+            <p className="mt-2 text-sm text-muted-foreground">{!currentPlayer?.isAlive ? "Estás eliminado. Puedes seguir la votación y conversar con los eliminados." : hasVoted || userVote ? "Tu voto está enviado. Sigue el debate en el chat." : "Elige un jugador y confirma tu voto. Puedes seguir conversando."}</p>
+          </div>
+          <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">{voterIds.length} / {players.filter((player) => player.isAlive).length} votos</span>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {alivePlayers.map((player) => {
+            const selected = selectedVote === player.socketId || userVote === player.socketId;
+            const count = visibleVotes ? Object.values(votes).filter((id) => id === player.socketId).length : 0;
+            const hint = wordHints.find((clue) => clue.playerId === player.socketId);
+            return (
+              <button type="button" key={player.socketId} aria-pressed={selected} disabled={!currentPlayer?.isAlive || hasVoted || Boolean(userVote)} onClick={() => setSelectedVote(player.socketId)}
+                className={`flex min-w-0 items-center gap-3 rounded-2xl border-2 p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default ${selected ? "border-accent bg-accent/10" : "border-border bg-background/30 hover:enabled:border-accent/50"}`}>
+                <img src={player.avatarUrl} alt="" className="size-12 shrink-0 rounded-xl object-cover" />
+                <div className="min-w-0 flex-1">
+                  <p className="break-words font-semibold">{player.username}</p>
+                  <p className="mt-1 break-words text-sm text-muted-foreground">{hint && !hint.skipped ? `Pista: ${hint.word}` : "Sin palabra"}</p>
+                  {visibleVotes && count > 0 && <p className="mt-1 text-xs text-accent">{count} voto{count === 1 ? "" : "s"}</p>}
+                  {!visibleVotes && voterIds.includes(player.socketId) && <p className="mt-1 text-xs text-muted-foreground">Ya votó</p>}
                 </div>
-              )}
-              {!visibleVotes && player.hasVoted && (
-                <span className="text-muted-foreground text-sm">Ha votado</span>
-              )}
-              {(hasVoted || userVote) && userVote === player.socketId && (
-                <span className="text-green-500 font-bold">✅ Tu voto</span>
-              )}
-            </motion.div>
-          );
-        })}
-      </div>
-
-      {/* Botón confirmar */}
-      {selectedVote && !hasVoted && !userVote && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <Button
-            onClick={handleVote}
-            className="bg-red-500 hover:bg-red-600 text-white font-bold px-8 py-3 text-lg"
-          >
-            Confirmar Voto
-          </Button>
-        </motion.div>
-      )}
+                {selected && <CheckCircle2 className="size-5 shrink-0 text-accent" aria-hidden="true" />}
+              </button>
+            );
+          })}
+        </div>
+        {selectedVote && !hasVoted && !userVote && <Button onClick={handleVote} className="w-full gap-2 bg-impostor text-white hover:bg-impostor/90 sm:w-auto"><Vote className="size-4" aria-hidden="true" />Confirmar voto por {players.find((player) => player.socketId === selectedVote)?.username}</Button>}
+        {(hasVoted || userVote) && <p role="status" className="flex items-center gap-2 text-sm text-accent"><Check className="size-4" aria-hidden="true" />Voto enviado. Esperando el resultado.</p>}
+      </section>
+      <ClueBoard />
     </div>
   );
 }

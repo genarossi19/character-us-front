@@ -178,9 +178,11 @@ test("hidden vote is restored privately and the voting UI cannot submit again", 
     react: { useState: (value) => [value, () => {}] },
     "motion/react": { motion: { div: "div" } },
     "@/store/useGameStore": { useGameStore: () => f.game.getState() },
-    "@/store/useRoomStore": { useRoomStore: (select) => select(f.room.getState()) },
+    "@/store/useRoomStore": { useRoomStore: (select) => select ? select(f.room.getState()) : f.room.getState() },
     "@/hooks/useSocketGame": { useSocketGame: () => ({ votePlayer: () => submissions++ }) },
     "@/components/ui/button": { Button: "button" },
+    "lucide-react": { Check: "svg", CheckCircle2: "svg", Vote: "svg" },
+    "./ClueBoard": { default: "clue-board" },
   });
   const nodes = [];
   function visit(node) {
@@ -189,8 +191,9 @@ test("hidden vote is restored privately and the voting UI cannot submit again", 
     else if (typeof node === "string") nodes.push(node);
   }
   visit(VotingPhase());
-  assert.ok(nodes.includes("✅ Tu voto"));
-  assert.equal(nodes.some((node) => node.type === "button"), false);
+  assert.ok(nodes.includes("Voto enviado. Esperando el resultado."));
+  assert.equal(nodes.some((node) => node.type === "button" && !node.props.disabled), false);
+  assert.ok(nodes.some((node) => node.type === "button" && node.props["aria-pressed"]));
   nodes.filter((node) => node.props?.onClick).forEach((node) => node.props.onClick());
   assert.equal(submissions, 0);
   assert.equal(Object.keys(f.game.getState().votes).length, 0);

@@ -7,6 +7,7 @@ import type {
   RoundResult,
   Player,
   RoomSnapshot,
+  GameResult,
 } from "@/types/game";
 
 interface GameState {
@@ -39,6 +40,7 @@ interface GameState {
   chatMessages: ChatMessage[];
   roundResults: RoundResult[];
   winner: "crew" | "impostor" | null;
+  finalResult: GameResult | null;
   readyPlayerIds: string[];
   readyPlayersTotal: number;
   reconnectingPlayerId: string | null;
@@ -99,6 +101,7 @@ const initialGameState = {
   chatMessages: [],
   roundResults: [],
   winner: null,
+  finalResult: null as GameResult | null,
   readyPlayerIds: [],
   readyPlayersTotal: 0,
   reconnectingPlayerId: null as string | null,
@@ -188,7 +191,9 @@ export const useGameStore = create<GameState>((set) => ({
 
   addChatMessage: (message) =>
     set((state) => ({
-      chatMessages: [...state.chatMessages, message],
+      chatMessages: state.chatMessages.some((existing) => existing.id === message.id)
+        ? state.chatMessages.map((existing) => existing.id === message.id ? message : existing)
+        : [...state.chatMessages, message],
     })),
 
   setChatMessages: (messages) => set({ chatMessages: messages }),

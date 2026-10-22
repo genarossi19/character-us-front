@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useGameStore } from "@/store/useGameStore";
+import { ShieldAlert } from "lucide-react";
 
 export default function CharacterReveal() {
   const { character, isImpostor } = useGameStore();
@@ -14,7 +15,7 @@ export default function CharacterReveal() {
   if (!isImpostor && !character) return null;
 
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-6">
+    <div className="flex min-h-[28rem] flex-col items-center justify-center rounded-2xl border border-border bg-card px-5 py-10">
       <AnimatePresence>
         {show && (
           <motion.div
@@ -23,12 +24,13 @@ export default function CharacterReveal() {
             transition={{ duration: 0.6, ease: "easeOut" }}
             className="flex flex-col items-center gap-4"
           >
-            <div className="w-64 h-64 rounded-full overflow-hidden border-4 border-accent shadow-2xl">
-              <img
-                src={isImpostor ? "/impostor.webp" : character?.imageUrl || "/logo.webp"}
-                alt={isImpostor ? "Impostor" : character?.name || "Personaje"}
-                className="w-full h-full object-cover"
-              />
+            <p className="text-xs uppercase tracking-widest text-muted-foreground">Tu identidad · solo tú puedes verla</p>
+            <div className={`flex size-48 items-center justify-center overflow-hidden rounded-3xl border-2 shadow-xl sm:size-64 ${isImpostor ? "border-impostor/40 bg-impostor/10" : "border-accent/40"}`}>
+              {isImpostor ? <ShieldAlert className="size-28 text-impostor" aria-hidden="true" /> : <img
+                src={character?.imageUrl || "/logo.webp"}
+                alt={character?.name || "Personaje"}
+                className="size-full object-cover"
+              />}
             </div>
 
             <motion.h2
@@ -36,7 +38,7 @@ export default function CharacterReveal() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
               className={`text-3xl font-bold ${
-                isImpostor ? "text-red-500" : "text-foreground"
+                isImpostor ? "text-impostor" : "text-foreground"
               }`}
             >
               {isImpostor ? "Eres el Impostor" : character?.name}

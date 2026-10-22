@@ -26,6 +26,15 @@ import type {
   GameResult,
 } from "@/types/game";
 
+// Presentation entries derived only from public, confirmed server events.
+// Phases and votes already have server-authored chat messages: do not duplicate them.
+function addActivity(key: string, message: string) {
+  const game = useGameStore.getState();
+  const id = `activity:${game.currentRound}:${key}`;
+  const existing = game.chatMessages.find((entry) => entry.id === id);
+  game.addChatMessage({ id, senderId: "system", senderName: "Partida", type: "system", message, timestamp: existing?.timestamp ?? Date.now() });
+}
+
 export function useSocketGame() {
   const room = useRoomStore((s) => s.room);
 
@@ -65,9 +74,19 @@ export function useSocketGame() {
   );
 
   const sendChatMessage = useCallback(
-    (message: string) => {
-      if (!room) return;
-      emitSendChatMessage({ roomId: room.id, message: message.slice(0, 500) });
+    async (message: string): Promise<void> => {
+      if (!room) throw new Error("No estás en una sala.");
+      const text = message.trim();
+      if (!text || text.length > 500) throw new Error("El mensaje debe tener entre 1 y 500 caracteres.");
+      const phase = useGameStore.getState().phase;
+      if (phase !== "debate" && phase !== "voting") throw new Error("El chat se abre durante el debate y la votación.");
+      if (!isSocketConnected()) throw new Error("No hay conexión con el servidor.");
+      await new Promise<void>((resolve, reject) => {
+        emitSendChatMessage({ roomId: room.id, message: text }, (response) => {
+          if (!response.success) reject(Object.assign(new Error(response.message), { code: response.code }));
+          else resolve();
+        });
+      });
     },
     [room]
   );
@@ -101,6 +120,8 @@ export function useSocketGameEvents() {
       onTurnChanged((data) => {
         useGameStore.getState().setCurrentTurnPlayer(data.playerId);
         useGameStore.setState({ turnIndex: data.turnIndex, totalTurns: data.total });
+        const player = useRoomStore.getState().players.find((candidate) => candidate.socketId === data.playerId);
+        addActivity(`turn:${data.playerId}`, `Turno de ${data.username ?? player?.username ?? "otro jugador"}: está eligiendo su palabra.`);
       }),
 
       onWordHintRevealed((data) => {
@@ -115,6 +136,7 @@ export function useSocketGameEvents() {
         if (data.playerId === useRoomStore.getState().currentPlayer?.socketId) {
           game.setHasSubmittedWord(true);
         }
+        addActivity(`word:${data.playerId}`, data.skipped ? `${data.username} se quedó sin palabra.` : `${data.username} dio su pista: «${data.word}».`);
       }),
 
       onAllWordsSubmitted((data) => {
@@ -124,6 +146,7 @@ export function useSocketGameEvents() {
         game.setHasSubmittedWord(data.hints.some(
           (hint) => hint.playerId === useRoomStore.getState().currentPlayer?.socketId
         ));
+        data.hints.forEach((hint) => addActivity(`word:${hint.playerId}`, hint.skipped ? `${hint.username} se quedó sin palabra.` : `${hint.username} dio su pista: «${hint.word}».`));
       }),
 
       onVoteUpdate((data) => {
@@ -140,6 +163,7 @@ export function useSocketGameEvents() {
       onPlayerEliminated((data) => {
         useGameStore.getState().setEliminatedPlayer(data.player, data.wasImpostor);
         useRoomStore.getState().updatePlayer(data.player.socketId, { isAlive: false });
+        addActivity(`eliminated:${data.player.socketId}`, `${data.player.username} fue eliminado. ${data.wasImpostor ? "Era un impostor." : "Era tripulante."}`);
       }),
 
       onRoundResults((result: RoundResult) => {
@@ -148,15 +172,22 @@ export function useSocketGameEvents() {
 
       onGameEnded((result: GameResult) => {
         const game = useGameStore.getState();
-        game.setWinner(result.winner);
+        game.setWinner(result.winner === "impostor" ? "impostor" : "crew");
+        useGameStore.setState({ finalResult: result });
         game.setRoundResults(result.rounds);
         game.setPhase("finished");
+        addActivity("finished", result.winner === "impostor" ? "La partida terminó. Ganaron los impostores." : "La partida terminó. Ganaron los tripulantes.");
       }),
 
       onChatMessage((message: ChatMessage) => {
         useGameStore.getState().addChatMessage(message);
       }),
       onDebateReadyUpdate((data) => {
+        const previous = useGameStore.getState().readyPlayerIds;
+        data.readyPlayers.filter((id) => !previous.includes(id)).forEach((id) => {
+          const player = useRoomStore.getState().players.find((candidate) => candidate.socketId === id);
+          addActivity(`ready:${id}`, `${player?.username ?? "Un jugador"} está listo para votar.`);
+        });
         useGameStore.getState().setDebateReady(data.readyPlayers, data.total);
       }),
       onReconnectTimeout((data) => {

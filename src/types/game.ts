@@ -96,9 +96,11 @@ export interface RoundResult {
 }
 
 export interface GameResult {
-  winner: "crew" | "impostor";
+  winner: "innocent" | "impostor";
   rounds: RoundResult[];
   players: Player[];
+  // Final-only reveal; optional for compatibility with servers predating it.
+  impostorIds?: string[];
 }
 
 export interface CreateRoomPayload {

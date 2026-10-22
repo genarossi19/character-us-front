@@ -41,5 +41,11 @@ export const emitSendChatMessage = (
 ): void => {
   assertRoomActionsReady();
   const socket = getSocket();
-  socket.emit("sendChatMessage", payload, callback);
+  socket.timeout(5_000).emit("sendChatMessage", payload, (error: Error | null, response: Parameters<AckCallback>[0]) => {
+    if (error) {
+      callback?.({ success: false, code: "ACK_TIMEOUT", message: "No se pudo confirmar el mensaje. Revisá el chat antes de reintentar." });
+      return;
+    }
+    callback?.(response);
+  });
 };

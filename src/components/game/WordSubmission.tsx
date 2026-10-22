@@ -5,9 +5,11 @@ import { useRoomStore } from "@/store/useRoomStore";
 import { useSocketGame } from "@/hooks/useSocketGame";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CheckCircle2, Clock3, Send } from "lucide-react";
+import ClueBoard from "./ClueBoard";
 
 export default function WordSubmission() {
-  const { phase, currentTurnPlayerId, wordHints, hasSubmittedWord } = useGameStore();
+  const { phase, currentTurnPlayerId, wordHints, hasSubmittedWord, isImpostor } = useGameStore();
   const currentPlayer = useRoomStore((s) => s.currentPlayer);
   const players = useRoomStore((s) => s.players);
   const { submitWord } = useSocketGame();
@@ -57,7 +59,8 @@ export default function WordSubmission() {
   const totalCount = players.filter((player) => player.isAlive).length;
 
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-8 px-4">
+    <div className="flex w-full flex-col gap-6">
+      <section className="flex flex-col items-center gap-5 rounded-2xl border border-border bg-card p-5 sm:p-7">
       {/* Turno actual */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -73,7 +76,7 @@ export default function WordSubmission() {
           {!currentTurnPlayerId || turnCompleted
             ? "La partida se actualizará en un momento..."
             : isMyTurn
-            ? "Escribe UNA palabra relacionada con tu personaje"
+            ? isImpostor ? "Elige una palabra que encaje con las pistas" : "Escribe UNA palabra relacionada con tu personaje"
             : "Espera a que este jugador envíe su palabra..."}
         </p>
       </motion.div>
@@ -92,23 +95,26 @@ export default function WordSubmission() {
             placeholder="Escribe tu palabra..."
             maxLength={20}
             disabled={sending}
+            aria-label="Tu palabra para esta ronda"
+            aria-describedby={error ? "word-error" : "word-help"}
             className="text-center text-xl h-14 border-2 border-accent focus:border-accent"
             autoFocus
           />
           <Button
             onClick={handleSubmit}
             disabled={!word.trim() || sending}
-            className="bg-accent hover:bg-accent/90 text-white font-semibold px-8 py-3 text-lg"
+            className="gap-2 bg-accent hover:bg-accent/90 text-accent-foreground font-semibold px-8 py-3 text-lg"
           >
+            <Send className="size-4" aria-hidden="true" />
             {sending ? "Enviando..." : "Enviar Palabra"}
           </Button>
-          <p className="text-sm text-muted-foreground">
+          <p id="word-help" className="text-sm text-muted-foreground">
             Esta palabra será tu pista para los demás
           </p>
         </motion.div>
       )}
 
-      {error && <p role="alert" className="text-center text-sm text-destructive">{error}</p>}
+      {error && <p id="word-error" role="alert" className="text-center text-sm text-danger">{error}</p>}
 
       {/* Mensaje de que ya envié */}
       {submitted && (
@@ -117,8 +123,8 @@ export default function WordSubmission() {
           animate={{ opacity: 1, scale: 1 }}
           className="text-center"
         >
-          <div className="text-4xl mb-4">✅</div>
-          <p className="text-xl font-semibold text-green-500">
+          {myHint?.skipped ? <Clock3 className="mx-auto mb-2 size-7 text-muted-foreground" aria-hidden="true" /> : <CheckCircle2 className="mx-auto mb-2 size-7 text-accent" aria-hidden="true" />}
+          <p className="text-xl font-semibold text-foreground">
             {myHint?.skipped ? "Se agotó tu turno" : "Palabra enviada"}
           </p>
           <p className="text-muted-foreground mt-2">
@@ -147,32 +153,8 @@ export default function WordSubmission() {
         </div>
       </div>
 
-      {/* Las pistas son públicas en cuanto el servidor las acepta. */}
-      <div aria-live="polite" className="flex flex-wrap gap-2 justify-center">
-        {players.map((player) => {
-          const hint = wordHints.find(
-            (h) => h.playerId === player.socketId
-          );
-          const isCurrentPlayer = player.socketId === currentPlayer?.socketId;
-          return (
-            <div
-              key={player.socketId}
-              className={`px-3 py-1 rounded-full text-sm font-medium ${
-                hint
-                  ? "bg-green-500/20 text-green-500 border border-green-500/30"
-                  : isCurrentPlayer
-                  ? "bg-accent/20 text-accent border border-accent/30"
-                  : "bg-muted text-muted-foreground"
-              }`}
-            >
-              <span>{player.username}</span>
-              {hint && <span className="ml-2 font-semibold break-all">{hint.skipped ? "Sin palabra" : hint.word}</span>}
-              {!hint && !player.isAlive && <span className="ml-2">Eliminado</span>}
-            </div>
-          );
-        })}
-      </div>
-
+      </section>
+      <ClueBoard />
     </div>
   );
 }

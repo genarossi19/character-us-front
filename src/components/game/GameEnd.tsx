@@ -1,110 +1,64 @@
 import { motion } from "motion/react";
+import { ArrowRight, ShieldAlert, Trophy } from "lucide-react";
 import { useGameStore } from "@/store/useGameStore";
 import { useRoomStore } from "@/store/useRoomStore";
 import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 
 export default function GameEnd() {
-  const { winner, roundResults } = useGameStore();
-  const { room, currentPlayer } = useRoomStore();
-  const { resetGame } = useGameStore();
+  const { winner, roundResults, finalResult, impostorIds, isImpostor, resetGame } = useGameStore();
+  const { currentPlayer, players } = useRoomStore();
   const navigate = useNavigate();
-
-  const isHost = currentPlayer?.isHost;
   const crewWon = winner === "crew";
-
-  const handleBackToLobby = () => {
+  // Use the final payload: roomUpdated resets the lobby players immediately afterwards.
+  const finalPlayers = finalResult?.players ?? players;
+  const revealedIds = new Set(finalResult?.impostorIds ?? [
+    ...impostorIds,
+    ...(isImpostor && currentPlayer ? [currentPlayer.socketId] : []),
+    ...roundResults.flatMap((result) => result.wasImpostor && result.eliminatedPlayer ? [result.eliminatedPlayer.socketId] : []),
+  ]);
+  const impostors = finalPlayers.filter((player) => revealedIds.has(player.socketId));
+  const isHost = currentPlayer?.isHost;
+  const handleContinue = () => {
     resetGame();
-    if (isHost && room) {
-      // Host puede crear nueva sala
-      navigate("/create");
-    } else {
-      navigate("/menu");
-    }
+    navigate(isHost ? "/create" : "/menu");
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-8 px-4">
-      {/* Victoria */}
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ type: "spring", duration: 0.8 }}
-        className="text-center"
-      >
-        <div className="text-8xl mb-4">{crewWon ? "🎉" : "🕵️"}</div>
-        <h1
-          className={`text-5xl font-extrabold mb-2 ${
-            crewWon ? "text-green-500" : "text-red-500"
-          }`}
-        >
-          {crewWon ? "¡Tripulantes Ganan!" : "¡Impostor Gana!"}
-        </h1>
-        <p className="text-xl text-muted-foreground">
-          {crewWon
-            ? "El impostor fue descubierto"
-            : "El impostor logró confundir a todos"}
-        </p>
-      </motion.div>
-
-      {/* Resumen de rondas */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="w-full max-w-lg space-y-3"
-      >
-        <h3 className="text-lg font-semibold text-foreground text-center">
-          Resumen de la partida
-        </h3>
-        {roundResults.map((result, i) => (
-          <div
-            key={i}
-            className="flex items-center justify-between px-4 py-3 bg-card rounded-lg border border-border"
-          >
-            <span className="text-sm text-muted-foreground">
-              Ronda {result.round}
-            </span>
-            {result.eliminatedPlayer ? (
-              <div className="flex items-center gap-2">
-                <img
-                  src={result.eliminatedPlayer.avatarUrl}
-                  alt={result.eliminatedPlayer.username}
-                  className="w-8 h-8 rounded-full object-cover"
-                />
-                <span className="font-medium text-foreground text-sm">
-                  {result.eliminatedPlayer.username}
-                </span>
-                <span
-                  className={`text-xs font-bold ${
-                    result.wasImpostor ? "text-red-500" : "text-gray-400"
-                  }`}
-                >
-                  {result.wasImpostor ? "IMPOSTOR" : "tripulante"}
-                </span>
-              </div>
-            ) : (
-              <span className="text-sm text-yellow-500 font-medium">
-                Empate
-              </span>
-            )}
+    <div className="space-y-6">
+      <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className={`relative overflow-hidden rounded-3xl border px-5 py-9 text-center sm:px-8 sm:py-12 ${crewWon ? "border-accent/30 bg-accent/5" : "border-impostor/30 bg-impostor/5"}`}>
+        <div aria-hidden="true" className={`pointer-events-none absolute -top-24 left-1/2 size-72 -translate-x-1/2 rounded-full blur-3xl ${crewWon ? "bg-accent/10" : "bg-impostor/10"}`} />
+        <div className="relative">
+          {crewWon ? <Trophy className="mx-auto mb-4 size-14 text-accent" aria-hidden="true" /> : <ShieldAlert className="mx-auto mb-4 size-14 text-impostor" aria-hidden="true" />}
+          <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">Partida terminada</p>
+          <h1 className={`text-4xl font-semibold sm:text-5xl ${crewWon ? "text-accent" : "text-impostor"}`}>{crewWon ? "Ganan los tripulantes" : impostors.length > 1 ? "Ganan los impostores" : "Gana el impostor"}</h1>
+          <p className="mx-auto mt-3 max-w-lg text-sm text-muted-foreground">{crewWon ? "Las pistas y las sospechas dieron resultado." : impostors.length > 1 ? "Consiguieron pasar desapercibidos hasta el final." : "Consiguió pasar desapercibido hasta el final."}</p>
+          <div className="mt-9 border-t border-border pt-7">
+            <h2 className="mb-6 text-sm font-medium uppercase tracking-widest text-muted-foreground">{impostors.length > 1 ? "Estos eran los impostores" : "Este era el impostor"}</h2>
+            {impostors.length > 0 ? <div className="flex flex-wrap justify-center gap-8">
+              {impostors.map((player) => <div key={player.socketId} className="flex min-w-0 max-w-full flex-col items-center">
+                <div className="relative">
+                  <img src={player.avatarUrl} alt={player.username} className={`rounded-3xl border-4 border-impostor/60 object-cover shadow-xl shadow-impostor/10 ${crewWon ? "size-32 sm:size-40" : "size-44 sm:size-56"}`} />
+                  <span className="absolute -bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-impostor px-4 py-1.5 text-xs font-semibold text-white"><ShieldAlert className="size-3.5" aria-hidden="true" />IMPOSTOR</span>
+                </div>
+                <p className="mt-6 max-w-full break-words text-3xl font-semibold sm:text-4xl">{player.username}{player.socketId === currentPlayer?.socketId && <span className="ml-2 text-lg text-muted-foreground">(tú)</span>}</p>
+              </div>)}
+            </div> : <div className="flex flex-col items-center gap-4"><ShieldAlert className="size-28 text-impostor" aria-hidden="true" /><p className="text-sm text-muted-foreground">Identidad sin revelar</p></div>}
           </div>
-        ))}
-      </motion.div>
-
-      {/* Botón */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.6 }}
-      >
-        <Button
-          onClick={handleBackToLobby}
-          className="bg-accent hover:bg-accent/90 text-white font-bold px-8 py-4 text-lg"
-        >
-          {isHost ? "Crear Nueva Sala" : "Volver al Menú"}
-        </Button>
-      </motion.div>
+        </div>
+      </motion.section>
+      <section className="space-y-3 rounded-2xl border border-border bg-card p-5">
+        <h2 className="mb-4 text-lg font-semibold">Así se jugó la partida</h2>
+        {roundResults.map((result) => <div key={result.round} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-muted/40 px-4 py-3">
+          <span className="text-sm text-muted-foreground">Ronda {result.round}</span>
+          {result.eliminatedPlayer ? <div className="flex min-w-0 items-center gap-2">
+            <img src={result.eliminatedPlayer.avatarUrl} alt="" className="size-8 rounded-lg object-cover" />
+            <span className="min-w-0 break-words text-sm font-medium">{result.eliminatedPlayer.username}</span>
+            <span className={`text-xs ${result.wasImpostor ? "text-impostor" : "text-muted-foreground"}`}>{result.wasImpostor ? "Impostor" : "Tripulante"}</span>
+          </div> : <span className="text-sm text-muted-foreground">Sin eliminación</span>}
+        </div>)}
+      </section>
+      <div className="text-center"><Button onClick={handleContinue} className="gap-2 bg-accent px-6 text-accent-foreground hover:bg-accent/90">{isHost ? "Crear nueva sala" : "Volver al menú"}<ArrowRight className="size-4" aria-hidden="true" /></Button></div>
     </div>
   );
 }
