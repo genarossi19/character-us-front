@@ -353,6 +353,39 @@ function chatHarness(client) {
   return () => { cursor = 0; return flatten(Chat()); };
 }
 
+test("results to word preserves assignment and eliminated players beyond totalRounds", () => {
+  for (const isImpostor of [false, true]) {
+    const client = fixture();
+    client.mount();
+    const character = isImpostor ? null : { id: "secret", name: "Personaje" };
+    client.receive("characterAssigned", { character, isImpostor, impostorIds: isImpostor ? ["socket-guest"] : [] });
+    client.game.setState({ currentRound: 12, totalRounds: 5, hasSubmittedWord: true, hasVoted: true,
+      votedFor: "socket-host", voterIds: ["socket-guest"], votes: { "socket-guest": "socket-host" },
+      readyPlayerIds: ["socket-guest"], readyPlayersTotal: 2,
+      wordHints: [{ playerId: "socket-guest", word: "vieja" }] });
+    client.receive("playerEliminated", { player: client.roomStore.getState().players[1], wasImpostor: false });
+    client.receive("phaseChanged", { phase: "results" });
+    assert.equal(client.game.getState().phaseExpiresAt > Date.now(), true);
+    client.receive("phaseChanged", { phase: "word" });
+    const state = client.game.getState();
+    assert.equal(state.character, character);
+    assert.equal(state.isImpostor, isImpostor);
+    assert.equal(client.roomStore.getState().players[1].isAlive, false);
+    assert.equal(state.currentRound, 12, "only roomUpdated changes the round");
+    assert.equal(state.wordHints.length, 0);
+    assert.equal(state.hasSubmittedWord, false);
+    assert.equal(state.hasVoted, false);
+    assert.equal(state.votedFor, null);
+    assert.equal(Object.keys(state.votes).length, 0);
+    assert.equal(state.readyPlayerIds.length, 0);
+    assert.equal(state.eliminatedPlayer, null);
+    assert.equal(state.currentTurnPlayerId, null);
+    client.receive("turnChanged", { playerId: "socket-guest", turnIndex: 0, total: 1 });
+    assert.equal(client.game.getState().currentTurnPlayerId, "socket-guest");
+    assert.equal(client.game.getState().turnExpiresAt > Date.now(), true);
+  }
+});
+
 test("chat UI keeps rejected drafts, prevents duplicate submissions and waits for the server echo", async () => {
   const client = fixture();
   client.mount();

@@ -373,30 +373,6 @@ export default function CreateRoomPageV2() {
                 </p>
               </div>
 
-              {/* Número de rondas */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-foreground">
-                  Número de rondas
-                </Label>
-                <Select
-                  value={settings.totalRounds.toString()}
-                  onValueChange={(val) =>
-                    update("totalRounds", parseInt(val))
-                  }
-                >
-                  <SelectTrigger className="w-full bg-background border-border text-foreground">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-card text-foreground border-border">
-                    {[3, 5, 7, 10].map((n) => (
-                      <SelectItem key={n} value={n.toString()}>
-                        {n}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
               {/* Número de impostores */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-foreground">
@@ -501,7 +477,7 @@ export default function CreateRoomPageV2() {
                   ["Categoría", selectedCategoryName],
                   ["Modalidad", settings.mode === "classic" ? "Clásico" : "Rápido"],
                   ["Tipo", settings.mode === "classic" ? "Virtual" : "Presencial"],
-                  ["Rondas", settings.totalRounds.toString()],
+                  ["Duración", "Hasta que haya ganador"],
                   ["Impostores", settings.impostorCount.toString()],
                   [
                     "Impostores se conocen",

@@ -106,6 +106,64 @@ function fixture(saved = credential) {
   };
 }
 
+test("same room survives a win, lobby return and host restart; only restart clears the result", () => {
+  const f = fixture();
+  f.start();
+  f.ack(snapshot());
+  const result = { winner: "innocent", players: [...f.room.getState().players], rounds: [], impostorIds: [credential.playerId] };
+  f.game.setState({ finalResult: result, winner: "innocent", phase: "finished" });
+  const lobby = { ...f.room.getState().room, code: 123456, status: "waiting", gamePhase: "waiting", currentRound: 0 };
+  f.socket.fire("roomUpdated", lobby);
+  assert.equal(f.game.getState().finalResult, result);
+  assert.equal(f.game.getState().phase, "finished");
+  assert.equal(f.session.getState().session.resumeToken, credential.resumeToken);
+  assert.equal(f.room.getState().room.code, 123456);
+
+  const { default: GameEnd } = load("src/components/game/GameEnd.tsx", {
+    "react/jsx-runtime": jsxRuntime, "motion/react": { motion: { section: "section" } },
+    "lucide-react": { ArrowRight: "svg", ShieldAlert: "svg", Trophy: "svg" },
+    "@/store/useGameStore": { useGameStore: () => f.game.getState() },
+    "@/store/useRoomStore": { useRoomStore: () => f.room.getState() },
+    "react-router": { useNavigate: () => (path) => f.paths.push(path) },
+    "@/components/ui/button": { Button: "button" },
+  });
+  function nodes(node) {
+    if (Array.isArray(node)) return node.flatMap(nodes);
+    return node?.props ? [node, ...nodes(node.props.children)] : [];
+  }
+  nodes(GameEnd()).find((node) => node.type === "button").props.onClick();
+  assert.equal(f.paths.at(-1), "/lobby");
+  assert.equal(f.game.getState().finalResult, result);
+  assert.equal(f.requests.length, 1, "returning never emits leaveRoom or disconnects");
+  assert.equal(f.socket.connected, true);
+  const nextRoom = { ...lobby, currentRound: 1, status: "playing", gamePhase: "character" };
+  f.socket.fire("gameStarted", { room: nextRoom, totalRounds: 5 });
+  assert.equal(f.paths.at(-1), "/game");
+  assert.equal(f.game.getState().finalResult, null);
+  assert.equal(f.game.getState().character, null);
+  assert.equal(f.game.getState().isImpostor, false);
+  assert.equal(f.game.getState().currentRound, 1);
+  assert.equal(f.game.getState().roundResults.length, 0);
+  assert.equal(f.game.getState().chatMessages.length, 0);
+  assert.equal(f.room.getState().room.code, 123456);
+  assert.equal(f.session.getState().session.resumeToken, credential.resumeToken);
+  f.stop();
+});
+
+test("roomUpdated controls round and eliminated status; waiting without a result returns to lobby", () => {
+  const f = fixture();
+  f.start(); f.ack(snapshot());
+  const room = { ...f.room.getState().room, currentRound: 8,
+    players: f.room.getState().players.map((p) => ({ ...p, isAlive: false })) };
+  f.socket.fire("roomUpdated", room);
+  assert.equal(f.game.getState().currentRound, 8);
+  assert.equal(f.room.getState().currentPlayer.isAlive, false);
+  f.socket.fire("roomUpdated", { ...room, status: "waiting", gamePhase: "waiting" });
+  assert.equal(f.paths.at(-1), "/lobby");
+  assert.equal(f.session.getState().session.resumeToken, credential.resumeToken);
+  f.stop();
+});
+
 test("refresh restores guest identity, private game state and deadlines before opening routes", () => {
   const f = fixture();
   assert.equal(f.session.getState().status, "connecting");

@@ -264,9 +264,9 @@ export default function WaitingRoomV2() {
               </p>
             </div>
             <div className="flex flex-col justify-center items-center bg-game-accent/10 rounded-lg p-2">
-              <p className="text-xs text-muted-foreground">Rondas</p>
+              <p className="text-xs text-muted-foreground">Duración</p>
               <p className="text-lg font-bold text-game-accent">
-                {room.settings.totalRounds}
+                Hasta que haya ganador
               </p>
             </div>
             <div className="flex flex-col justify-center items-center bg-secondary/10 rounded-lg p-2">

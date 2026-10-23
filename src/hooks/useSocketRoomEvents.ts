@@ -23,6 +23,10 @@ export function useSocketRoomEvents() {
         if (useRoomStore.getState().room?.id !== room.id) return;
         useRoomStore.getState().setRoom(room);
         useGameStore.getState().setCurrentRound(room.currentRound);
+        if (room.status === "waiting" && !useGameStore.getState().finalResult) {
+          useGameStore.getState().setPhase("waiting");
+          navigateRef.current("/lobby", { replace: true });
+        }
       }),
       onPlayerJoined((player) => {
         if (useRoomStore.getState().room) useRoomStore.getState().addPlayer(player);
@@ -44,6 +48,9 @@ export function useSocketRoomEvents() {
         roomStore.setRoom(data.room);
         roomStore.setCurrentPlayer(player);
         const game = useGameStore.getState();
+        const clockOffset = game.serverClockOffset;
+        game.resetGame();
+        useGameStore.setState({ serverClockOffset: clockOffset });
         game.setTotalRounds(data.totalRounds);
         game.setCurrentRound(data.room.currentRound);
         game.setPhase(data.room.gamePhase);

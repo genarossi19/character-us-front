@@ -39,7 +39,7 @@ interface GameState {
 
   chatMessages: ChatMessage[];
   roundResults: RoundResult[];
-  winner: "crew" | "impostor" | null;
+  winner: "innocent" | "impostor" | null;
   finalResult: GameResult | null;
   readyPlayerIds: string[];
   readyPlayersTotal: number;
@@ -63,7 +63,7 @@ interface GameState {
   addChatMessage: (message: ChatMessage) => void;
   setChatMessages: (messages: ChatMessage[]) => void;
   addRoundResult: (result: RoundResult) => void;
-  setWinner: (winner: "crew" | "impostor") => void;
+  setWinner: (winner: "innocent" | "impostor") => void;
   setRoundResults: (results: RoundResult[]) => void;
   setDebateReady: (readyPlayers: string[], total: number) => void;
   setReconnectTimeout: (playerId: string | null, secondsLeft: number) => void;
@@ -135,7 +135,7 @@ export const useGameStore = create<GameState>((set) => ({
       votesVisible: snapshot.room.settings.visibleVotes,
       readyPlayerIds: snapshot.readyPlayerIds,
       readyPlayersTotal: snapshot.room.players.filter((player) => player.isAlive).length,
-      chatMessages: snapshot.chatMessages,
+      chatMessages: snapshot.chatMessages.filter((message) => message.type !== "system"),
       roundResults: snapshot.roundResults,
       eliminatedPlayer: lastResult?.eliminatedPlayer ?? null,
       wasImpostor: lastResult?.wasImpostor ?? false,
@@ -151,7 +151,7 @@ export const useGameStore = create<GameState>((set) => ({
     ...(phase !== "word" ? { currentTurnPlayerId: null } : {}),
     // A new word/character phase begins a fresh set of clues, never debate.
     ...((phase === "character" || phase === "word") && state.phase !== phase
-      ? { wordHints: [], hasSubmittedWord: false, currentTurnPlayerId: null, turnIndex: 0, totalTurns: 0, hasVoted: false, votedFor: null, voterIds: [], votes: {}, readyPlayerIds: [] }
+      ? { wordHints: [], hasSubmittedWord: false, currentTurnPlayerId: null, turnIndex: 0, totalTurns: 0, hasVoted: false, votedFor: null, voterIds: [], votes: {}, votesVisible: null, readyPlayerIds: [], readyPlayersTotal: 0, eliminatedPlayer: null, wasImpostor: false }
       : {}),
   })),
 
@@ -222,7 +222,7 @@ export const useGameStore = create<GameState>((set) => ({
     })),
 
   resetRound: () =>
-    set((state) => ({
+    set(() => ({
       wordHints: [],
       currentTurnPlayerId: null,
       turnIndex: 0,
@@ -242,7 +242,6 @@ export const useGameStore = create<GameState>((set) => ({
       reconnectingPlayerId: null,
       reconnectSecondsLeft: 0,
       timer: 0,
-      currentRound: state.currentRound + 1,
     })),
 
   resetGame: () => set(initialGameState),

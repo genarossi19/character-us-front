@@ -4,7 +4,7 @@ import { useRoomStore } from "@/store/useRoomStore";
 import { ArrowRight, Handshake, ShieldAlert, UserRoundX } from "lucide-react";
 
 export default function RoundResults() {
-  const { eliminatedPlayer, wasImpostor, currentRound, totalRounds, votes } =
+  const { eliminatedPlayer, wasImpostor, currentRound, votes } =
     useGameStore();
   const players = useRoomStore((s) => s.players);
   const visibleVotes = useRoomStore((s) => s.room?.settings.visibleVotes ?? false);
@@ -22,7 +22,7 @@ export default function RoundResults() {
         animate={{ opacity: 1, y: 0 }}
         className="text-3xl font-bold text-foreground"
       >
-        Resultados Ronda {currentRound} / {totalRounds}
+        Resultados de la ronda {currentRound}
       </motion.h2>
 
       <AnimatePresence mode="wait">
@@ -55,7 +55,7 @@ export default function RoundResults() {
             >
               {wasImpostor
                 ? "¡Era un impostor!"
-                : "Era un Tripulante"}
+                : "Era un Inocente"}
             </p>
           </motion.div>
         ) : (
