@@ -15,7 +15,7 @@ export default function CharacterReveal() {
   if (!isImpostor && !character) return null;
 
   return (
-    <div className="flex min-h-[28rem] flex-col items-center justify-center rounded-2xl border border-border bg-card px-5 py-10">
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-card px-4 py-6 sm:py-10">
       <AnimatePresence>
         {show && (
           <motion.div
@@ -25,7 +25,7 @@ export default function CharacterReveal() {
             className="flex flex-col items-center gap-4"
           >
             <p className="text-xs uppercase tracking-widest text-muted-foreground">Tu identidad · solo tú puedes verla</p>
-            <div className={`flex size-48 items-center justify-center overflow-hidden rounded-3xl border-2 shadow-xl sm:size-64 ${isImpostor ? "border-impostor/40 bg-impostor/10" : "border-accent/40"}`}>
+            <div className={`flex size-36 items-center justify-center overflow-hidden rounded-3xl border-2 shadow-xl sm:size-56 ${isImpostor ? "border-impostor/40 bg-impostor/10" : "border-accent/40"}`}>
               {isImpostor ? <ShieldAlert className="size-28 text-impostor" aria-hidden="true" /> : <img
                 src={character?.imageUrl || "/logo.webp"}
                 alt={character?.name || "Personaje"}
@@ -48,7 +48,7 @@ export default function CharacterReveal() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.6 }}
-              className="text-lg text-muted-foreground text-center max-w-md"
+              className="text-sm text-muted-foreground text-center max-w-sm"
             >
               {isImpostor
                 ? "Evita ser descubierto. No conoces el personaje, así que ten cuidado con las pistas."

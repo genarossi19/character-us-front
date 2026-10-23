@@ -13,8 +13,8 @@ export default function ServerDeadline() {
   if (!deadline) return null;
   const seconds = Math.max(0, Math.ceil((deadline - now - serverClockOffset) / 1_000));
   return (
-    <p className="text-sm text-muted-foreground" role="timer" aria-label="Tiempo restante">
-      {phase === "word" ? "Turno" : "Fase"}: {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}
+    <p className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-sm font-semibold tabular-nums ${seconds <= 10 ? "border-danger/40 text-danger" : "border-accent/30 text-accent"}`} role="timer" aria-label="Tiempo restante">
+      {phase === "word" ? "Turno" : phase === "debate" ? "Debate" : phase === "voting" ? "Voto" : "Fase"} · {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}
     </p>
   );
 }

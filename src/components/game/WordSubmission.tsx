@@ -55,30 +55,27 @@ export default function WordSubmission() {
     [handleSubmit]
   );
 
-  const submittedCount = wordHints.length;
-  const totalCount = players.filter((player) => player.isAlive).length;
-
   return (
-    <div className="flex w-full flex-col gap-6">
-      <section className="flex flex-col items-center gap-5 rounded-2xl border border-border bg-card p-5 sm:p-7">
+    <div className="flex w-full flex-col gap-4">
+      <section className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-card p-4 sm:p-5">
       {/* Turno actual */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="text-center"
       >
-        <h2 className="text-2xl font-bold text-foreground mb-2">
+        <h2 className="text-xl font-semibold text-foreground mb-1">
           {!currentTurnPlayerId || turnCompleted
             ? "Esperando el siguiente turno"
             : isMyTurn ? "Tu turno" : `Turno de ${currentTurnPlayer?.username ?? "otro jugador"}`}
         </h2>
-        <p className="text-muted-foreground">
+        {canWrite && <p id="word-help" className="text-sm text-muted-foreground">
           {!currentTurnPlayerId || turnCompleted
             ? "La partida se actualizará en un momento..."
             : isMyTurn
             ? isImpostor ? "Elige una palabra que encaje con las pistas" : "Escribe UNA palabra relacionada con tu personaje"
             : "Espera a que este jugador envíe su palabra..."}
-        </p>
+        </p>}
       </motion.div>
 
       {/* Input de palabra (solo si es mi turno) */}
@@ -86,7 +83,7 @@ export default function WordSubmission() {
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="flex flex-col items-center gap-4 w-full max-w-md"
+          className="flex items-center gap-2 w-full max-w-md"
         >
           <Input
             value={word}
@@ -97,20 +94,16 @@ export default function WordSubmission() {
             disabled={sending}
             aria-label="Tu palabra para esta ronda"
             aria-describedby={error ? "word-error" : "word-help"}
-            className="text-center text-xl h-14 border-2 border-accent focus:border-accent"
-            autoFocus
+            className="min-w-0 flex-1 text-center text-base h-12 border-accent"
           />
           <Button
             onClick={handleSubmit}
             disabled={!word.trim() || sending}
-            className="gap-2 bg-accent hover:bg-accent/90 text-accent-foreground font-semibold px-8 py-3 text-lg"
+            className="h-12 shrink-0 gap-2 bg-accent hover:bg-accent/90 text-accent-foreground font-semibold px-4"
           >
             <Send className="size-4" aria-hidden="true" />
-            {sending ? "Enviando..." : "Enviar Palabra"}
+            {sending ? "Enviando..." : "Enviar"}
           </Button>
-          <p id="word-help" className="text-sm text-muted-foreground">
-            Esta palabra será tu pista para los demás
-          </p>
         </motion.div>
       )}
 
@@ -121,37 +114,14 @@ export default function WordSubmission() {
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="text-center"
+          className="flex items-center gap-2 text-sm text-accent"
         >
-          {myHint?.skipped ? <Clock3 className="mx-auto mb-2 size-7 text-muted-foreground" aria-hidden="true" /> : <CheckCircle2 className="mx-auto mb-2 size-7 text-accent" aria-hidden="true" />}
-          <p className="text-xl font-semibold text-foreground">
+          {myHint?.skipped ? <Clock3 className="size-4 text-muted-foreground" aria-hidden="true" /> : <CheckCircle2 className="size-4" aria-hidden="true" />}
+          <p role="status">
             {myHint?.skipped ? "Se agotó tu turno" : "Palabra enviada"}
-          </p>
-          <p className="text-muted-foreground mt-2">
-            Espera a que los demás terminen...
           </p>
         </motion.div>
       )}
-
-      {/* Progreso */}
-      <div className="w-full max-w-md">
-        <div className="flex justify-between text-sm text-muted-foreground mb-2">
-          <span>Palabras enviadas</span>
-          <span>
-            {submittedCount} / {totalCount}
-          </span>
-        </div>
-        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-          <motion.div
-            className="h-full bg-accent rounded-full"
-            initial={{ width: 0 }}
-            animate={{
-              width: `${totalCount ? Math.min(100, (submittedCount / totalCount) * 100) : 0}%`,
-            }}
-            transition={{ duration: 0.3 }}
-          />
-        </div>
-      </div>
 
       </section>
       <ClueBoard />

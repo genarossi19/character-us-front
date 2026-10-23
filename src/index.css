@@ -48,7 +48,7 @@
 
   /* Game-specific */
   --impostor: #ff4757;
-  --crewmate: #5352ed;
+  --innocent: #5352ed;
   --chat: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 
   /* Avatar colors */
@@ -97,7 +97,7 @@
   --radius: 1rem;
 
   --impostor: #ff4757;
-  --crewmate: #5352ed;
+  --innocent: #5352ed;
   --chat: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 
   --red: #ff6b6b;
@@ -146,7 +146,7 @@
   --radius: var(--radius);
 
   --color-impostor: var(--impostor);
-  --color-crewmate: var(--crewmate);
+  --color-innocent: var(--innocent);
   --color-chat: var(--chat);
 
   --color-red: var(--red);
@@ -218,7 +218,7 @@ body {
   background: linear-gradient(135deg, #ff4757 0%, #ff3742 100%);
 }
 
-.crewmate-gradient {
+.innocent-gradient {
   background: linear-gradient(135deg, #5352ed 0%, #3742fa 100%);
 }
 

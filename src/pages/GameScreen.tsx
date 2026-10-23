@@ -304,7 +304,7 @@ const GameScreen: React.FC = () => {
                       : "text-green-400"
                   }`}
                 >
-                  {eliminatedPlayer.isImpostor ? "Impostor" : "Tripulante"}
+                  {eliminatedPlayer.isImpostor ? "Impostor" : "Inocente"}
                 </p>
                 <Button
                   onClick={() => {

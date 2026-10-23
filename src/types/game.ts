@@ -84,6 +84,8 @@ export interface ChatMessage {
   message: string;
   type: ChatMessageType;
   timestamp: number;
+  // Local presentation metadata; never sent to the server.
+  activity?: { kind: "word"; actor: string; word: string } | { kind: "vote"; actor?: string; target?: string };
 }
 
 export interface RoundResult {

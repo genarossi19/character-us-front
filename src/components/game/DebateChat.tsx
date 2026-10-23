@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect } from "react";
-import { ArrowDown, Ghost, LockKeyhole, MessageCircle, Radio, Send, Activity } from "lucide-react";
+import { ArrowDown, Ghost, LockKeyhole, MessageCircle, Radio, Send, Activity, PencilLine, Vote, X } from "lucide-react";
 import { useGameStore } from "@/store/useGameStore";
 import { useRoomStore } from "@/store/useRoomStore";
 import { useSocketGame } from "@/hooks/useSocketGame";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import ServerDeadline from "./ServerDeadline";
 
-export default function DebateChat() {
+export default function DebateChat({ onClose, active = true }: { onClose?: () => void; active?: boolean } = {}) {
   const { phase, chatMessages, finalResult } = useGameStore();
   const { currentPlayer, players } = useRoomStore();
   const { sendChatMessage } = useSocketGame();
@@ -22,13 +23,14 @@ export default function DebateChat() {
   const messages = chatMessages.filter((message) => message.type !== "ghost" || isGhost);
 
   useEffect(() => {
+    if (!active) return;
     if (followRef.current) {
       const container = scrollRef.current;
       if (container) container.scrollTop = container.scrollHeight;
     } else {
       setUnread((count) => count + 1);
     }
-  }, [chatMessages]);
+  }, [chatMessages, active]);
 
   const handleSend = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -55,11 +57,11 @@ export default function DebateChat() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      <div className="shrink-0 border-b border-border px-4 py-2 lg:hidden"><ServerDeadline /></div>
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border p-4">
         <div className="flex items-center gap-2.5"><MessageCircle className="size-5 text-accent" aria-hidden="true" /><h2 className="font-semibold">Chat de la partida</h2></div>
-        <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><Radio className="size-3.5 text-accent" aria-hidden="true" />{canChat ? "Abierto" : "Actividad"}</span>
+        <div className="flex items-center gap-2"><span className="flex items-center gap-1.5 text-xs text-muted-foreground"><Radio className="size-3.5 text-accent" aria-hidden="true" />{canChat ? "Abierto" : "Actividad"}</span>{onClose && <Button variant="ghost" className="size-10 p-0 lg:hidden" aria-label="Cerrar chat" onClick={onClose}><X className="size-5" aria-hidden="true" /></Button>}</div>
       </header>
-      <p className="shrink-0 border-b border-border bg-muted/30 px-4 py-2.5 text-xs text-muted-foreground">Turnos, pistas y decisiones. Todo queda aquí.</p>
       <div ref={scrollRef} role="log" aria-label="Mensajes y acciones" aria-live="polite" aria-relevant="additions" onScroll={() => {
         const element = scrollRef.current;
         if (!element) return;
@@ -71,17 +73,22 @@ export default function DebateChat() {
           const mine = message.senderId === currentPlayer?.socketId;
           const player = players.find((candidate) => candidate.socketId === message.senderId);
           const time = new Date(message.timestamp).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
-          if (message.type === "system") return (
-            <div key={message.id} className="flex items-start gap-2.5 rounded-xl border border-border bg-muted/35 px-3 py-2.5">
-              <Activity className="mt-0.5 size-3.5 shrink-0 text-accent" aria-hidden="true" />
-              <p className="min-w-0 flex-1 break-words text-xs leading-relaxed text-muted-foreground">{message.message.replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu, "").trim()}</p>
-              <time className="shrink-0 text-[10px] text-muted-foreground">{time}</time>
-            </div>
-          );
+          if (message.type === "system") {
+            const activity = message.activity;
+            if (!activity) return null;
+            const isWord = activity.kind === "word";
+            return (
+              <article key={message.id} aria-label={isWord ? "Palabra enviada" : "Voto emitido"} className={`mx-2 border-y border-dashed px-3 py-4 ${isWord ? "border-accent/50 bg-accent/5" : "border-border bg-background/50"}`}>
+                <div className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{isWord ? <PencilLine className="size-3.5 text-accent" aria-hidden="true" /> : <Vote className="size-3.5" aria-hidden="true" />}{isWord ? "Palabra enviada" : "Voto emitido"}<time className="ml-auto text-[10px] font-normal tracking-normal">{time}</time></div>
+                {activity.kind === "word" ? <><p className="break-words text-xs text-muted-foreground">{activity.actor}</p><p className="mt-1 break-words text-2xl font-semibold text-accent">{activity.word}</p></> : <p className="break-words text-sm">{activity.actor && activity.target ? <><strong>{activity.actor}</strong><span className="text-muted-foreground"> votó a </span><strong>{activity.target}</strong></> : "Ha votado"}</p>}
+              </article>
+            );
+          }
           return (
             <div key={message.id} className={`flex items-start gap-2 ${mine ? "flex-row-reverse" : ""}`}>
               {player?.avatarUrl ? <img src={player.avatarUrl} alt="" className="size-8 shrink-0 rounded-xl object-cover" /> : <MessageCircle className="size-8 shrink-0 rounded-xl bg-muted p-2 text-muted-foreground" aria-hidden="true" />}
-              <div className={`min-w-0 max-w-[85%] rounded-2xl px-3 py-2.5 ${message.type === "ghost" ? "border border-purple/30 bg-purple/10" : mine ? "border border-accent/20 bg-accent/10" : "bg-muted/65"}`}>
+              <div className={`min-w-0 max-w-[85%] px-3 py-2.5 ${message.type === "ghost" ? "rounded-lg border-l-4 border-purple bg-purple/15 text-purple" : mine ? "rounded-2xl rounded-tr-sm border border-accent/20 bg-accent/15" : "rounded-2xl rounded-tl-sm bg-muted"}`}>
+                {message.type === "ghost" && <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider"><Ghost className="size-3.5" aria-hidden="true" />Fantasmas · solo eliminados</p>}
                 <div className="mb-1 flex items-center gap-2 text-xs"><span className="break-words font-semibold">{message.senderName}{mine ? " (tú)" : ""}</span>{message.type === "ghost" && <Ghost className="size-3.5 shrink-0 text-purple" aria-label="Canal de eliminados" />}<time className="ml-auto shrink-0 text-[10px] text-muted-foreground">{time}</time></div>
                 <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.message}</p>
               </div>
@@ -99,7 +106,6 @@ export default function DebateChat() {
               <Button type="submit" aria-label={sending ? "Enviando mensaje" : "Enviar mensaje"} disabled={!newMessage.trim() || sending} className="size-10 shrink-0 rounded-xl bg-accent p-0 text-accent-foreground hover:bg-accent/90"><Send className="size-4" aria-hidden="true" /></Button>
             </div>
             {error && <p role="alert" className="text-xs text-danger">{error}</p>}
-            <p className="text-[11px] text-muted-foreground">Puedes conversar durante el debate y la votación.</p>
           </form>
         ) : <p className="flex items-center gap-2 text-xs leading-relaxed text-muted-foreground"><LockKeyhole className="size-4 shrink-0" aria-hidden="true" />{phase === "finished" ? "Partida terminada. Puedes revisar toda la actividad." : "El historial sigue activo. Podrás escribir al debatir y votar."}</p>}
       </div>

@@ -276,11 +276,40 @@ test("activity follows public server events without duplicating clues or reveali
   client.receive("allWordsSubmitted", { hints: [hint] });
   assert.equal(client.game.getState().chatMessages.filter((message) => message.message.includes("Luna")).length, 1);
   client.receive("phaseChanged", { phase: "debate" });
-  assert.equal(client.game.getState().chatMessages.length, 2);
+  assert.equal(client.game.getState().chatMessages.length, 1);
   const message = { id: "server-vote", type: "system", message: "Host ha votado", timestamp: 123 };
   client.receive("chatMessage", message);
   client.receive("chatMessage", message);
+  assert.equal(client.game.getState().chatMessages.length, 1);
+});
+
+test("chat includes only submitted words and structured votes; hidden votes reveal neither player", () => {
+  const client = fixture(); client.mount();
+  client.receive("turnChanged", { playerId: "socket-guest" });
+  client.receive("debateReadyUpdate", { readyPlayers: ["socket-host"], total: 2 });
+  client.receive("wordHintRevealed", { playerId: "socket-host", username: "Host", word: "Sin palabra", skipped: true });
+  assert.equal(client.game.getState().chatMessages.length, 0);
+  client.receive("voteUpdate", { voterId: "socket-host", targetId: "socket-guest", votes: { "socket-host": "socket-guest" }, visible: false });
+  client.receive("chatMessage", { id: "server-vote", type: "system", message: "Host ha votado a Invitado. Quedan 1 votantes" });
+  const hidden = client.game.getState().chatMessages[0];
+  assert.equal(hidden.message, "Ha votado");
+  assert.equal(hidden.activity.actor, undefined);
+  assert.equal(hidden.activity.target, undefined);
+  client.receive("voteUpdate", { voterId: "socket-host", votes: { "socket-host": "socket-guest" }, visible: false });
+  assert.equal(client.game.getState().chatMessages.length, 1, "duplicate event does not create another entry");
+  client.receive("voteUpdate", { voterId: "socket-guest", targetId: "socket-host", votes: { "socket-guest": "socket-host" }, visible: true });
+  const visible = client.game.getState().chatMessages[1];
+  assert.equal(visible.activity.actor, "Invitado");
+  assert.equal(visible.activity.target, "Host");
+  client.receive("wordHintRevealed", { playerId: "socket-guest", username: "Invitado", word: "Luna", skipped: false });
+  const word = client.game.getState().chatMessages[2];
+  assert.equal(word.activity.actor, "Invitado");
+  assert.equal(word.activity.word, "Luna");
+  client.receive("playerEliminated", { player: client.roomStore.getState().players[0], wasImpostor: false });
+  client.receive("gameEnded", { winner: "innocent", players: client.roomStore.getState().players, rounds: [] });
   assert.equal(client.game.getState().chatMessages.length, 3);
+  client.receive("chatMessage", { id: "player-chat", type: "player", message: "Hola" });
+  assert.equal(client.game.getState().chatMessages.length, 4);
 });
 
 test("final result keeps revealed impostor identities through the lobby reset and normalizes innocent", () => {
@@ -289,7 +318,7 @@ test("final result keeps revealed impostor identities through the lobby reset an
   const finalPlayers = [...client.roomStore.getState().players];
   client.receive("gameEnded", { winner: "innocent", players: finalPlayers, rounds: [], impostorIds: ["socket-host"] });
   client.roomStore.getState().players = [];
-  assert.equal(client.game.getState().winner, "crew");
+  assert.equal(client.game.getState().winner, "innocent");
   assert.equal(client.game.getState().phase, "finished");
   assert.equal(client.game.getState().finalResult.impostorIds[0], "socket-host");
   assert.equal(client.game.getState().finalResult.players.length, 2);
@@ -306,6 +335,7 @@ function chatHarness(client) {
     return [slots[index], (value) => { slots[index] = typeof value === "function" ? value(slots[index]) : value; }];
   };
   const { default: Chat } = loadSource("src/components/game/DebateChat.tsx", {
+    "./ServerDeadline": { default: "span" },
     "react/jsx-runtime": jsxRuntime,
     react: { useState, useRef: (value) => useState({ current: value })[0], useEffect: () => {} },
     "lucide-react": Object.fromEntries(["ArrowDown", "Ghost", "LockKeyhole", "MessageCircle", "Radio", "Send", "Activity"].map((name) => [name, "svg"])),

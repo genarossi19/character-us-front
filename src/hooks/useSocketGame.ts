@@ -27,12 +27,12 @@ import type {
 } from "@/types/game";
 
 // Presentation entries derived only from public, confirmed server events.
-// Phases and votes already have server-authored chat messages: do not duplicate them.
-function addActivity(key: string, message: string) {
+// Phase notices stay on the board; votes use a structured local entry.
+function addActivity(key: string, message: string, activity: NonNullable<ChatMessage["activity"]>) {
   const game = useGameStore.getState();
   const id = `activity:${game.currentRound}:${key}`;
   const existing = game.chatMessages.find((entry) => entry.id === id);
-  game.addChatMessage({ id, senderId: "system", senderName: "Partida", type: "system", message, timestamp: existing?.timestamp ?? Date.now() });
+  game.addChatMessage({ id, senderId: "system", senderName: "Partida", type: "system", message, activity, timestamp: existing?.timestamp ?? Date.now() });
 }
 
 export function useSocketGame() {
@@ -115,13 +115,14 @@ export function useSocketGameEvents() {
 
       onPhaseChanged((data) => {
         useGameStore.getState().setPhase(data.phase);
+        const duration = ({ character: 6_000, debate: 40_000, voting: 40_000, results: 5_000 } as Partial<Record<typeof data.phase, number>>)[data.phase] ?? 0;
+        const offset = useGameStore.getState().serverClockOffset;
+        useGameStore.setState({ phaseExpiresAt: duration ? Date.now() + offset + duration : null });
       }),
 
       onTurnChanged((data) => {
         useGameStore.getState().setCurrentTurnPlayer(data.playerId);
-        useGameStore.setState({ turnIndex: data.turnIndex, totalTurns: data.total });
-        const player = useRoomStore.getState().players.find((candidate) => candidate.socketId === data.playerId);
-        addActivity(`turn:${data.playerId}`, `Turno de ${data.username ?? player?.username ?? "otro jugador"}: está eligiendo su palabra.`);
+        useGameStore.setState({ turnIndex: data.turnIndex, totalTurns: data.total, turnExpiresAt: Date.now() + useGameStore.getState().serverClockOffset + 60_000 });
       }),
 
       onWordHintRevealed((data) => {
@@ -136,7 +137,7 @@ export function useSocketGameEvents() {
         if (data.playerId === useRoomStore.getState().currentPlayer?.socketId) {
           game.setHasSubmittedWord(true);
         }
-        addActivity(`word:${data.playerId}`, data.skipped ? `${data.username} se quedó sin palabra.` : `${data.username} dio su pista: «${data.word}».`);
+        if (!data.skipped) addActivity(`word:${data.playerId}`, `${data.username}: ${data.word}`, { kind: "word", actor: data.username, word: data.word });
       }),
 
       onAllWordsSubmitted((data) => {
@@ -146,13 +147,18 @@ export function useSocketGameEvents() {
         game.setHasSubmittedWord(data.hints.some(
           (hint) => hint.playerId === useRoomStore.getState().currentPlayer?.socketId
         ));
-        data.hints.forEach((hint) => addActivity(`word:${hint.playerId}`, hint.skipped ? `${hint.username} se quedó sin palabra.` : `${hint.username} dio su pista: «${hint.word}».`));
+        data.hints.filter((hint) => !hint.skipped).forEach((hint) => addActivity(`word:${hint.playerId}`, `${hint.username}: ${hint.word}`, { kind: "word", actor: hint.username, word: hint.word }));
       }),
 
       onVoteUpdate((data) => {
         const game = useGameStore.getState();
         game.setVotes(data.votes);
         game.setVotesVisible(data.visible);
+        const players = useRoomStore.getState().players;
+        const actor = players.find((player) => player.socketId === data.voterId)?.username ?? "Un jugador";
+        const targetId = data.targetId ?? data.votes[data.voterId];
+        const target = data.visible ? players.find((player) => player.socketId === targetId)?.username : undefined;
+        addActivity(`vote:${data.voterId}`, data.visible && target ? `${actor} votó a ${target}` : "Ha votado", data.visible && target ? { kind: "vote", actor, target } : { kind: "vote" });
         useRoomStore.getState().updatePlayer(data.voterId, { hasVoted: true });
         useGameStore.setState({ voterIds: [...new Set([...game.voterIds, data.voterId])] });
         if (data.voterId === useRoomStore.getState().currentPlayer?.socketId) {
@@ -163,7 +169,6 @@ export function useSocketGameEvents() {
       onPlayerEliminated((data) => {
         useGameStore.getState().setEliminatedPlayer(data.player, data.wasImpostor);
         useRoomStore.getState().updatePlayer(data.player.socketId, { isAlive: false });
-        addActivity(`eliminated:${data.player.socketId}`, `${data.player.username} fue eliminado. ${data.wasImpostor ? "Era un impostor." : "Era tripulante."}`);
       }),
 
       onRoundResults((result: RoundResult) => {
@@ -172,22 +177,18 @@ export function useSocketGameEvents() {
 
       onGameEnded((result: GameResult) => {
         const game = useGameStore.getState();
-        game.setWinner(result.winner === "impostor" ? "impostor" : "crew");
+        game.setWinner(result.winner === "impostor" ? "impostor" : "innocent");
         useGameStore.setState({ finalResult: result });
         game.setRoundResults(result.rounds);
         game.setPhase("finished");
-        addActivity("finished", result.winner === "impostor" ? "La partida terminó. Ganaron los impostores." : "La partida terminó. Ganaron los tripulantes.");
       }),
 
       onChatMessage((message: ChatMessage) => {
-        useGameStore.getState().addChatMessage(message);
+        // Votes have a structured entry from voteUpdate. Other system notices
+        // are already displayed on the board, so don't repeat them here.
+        if (message.type !== "system") useGameStore.getState().addChatMessage(message);
       }),
       onDebateReadyUpdate((data) => {
-        const previous = useGameStore.getState().readyPlayerIds;
-        data.readyPlayers.filter((id) => !previous.includes(id)).forEach((id) => {
-          const player = useRoomStore.getState().players.find((candidate) => candidate.socketId === id);
-          addActivity(`ready:${id}`, `${player?.username ?? "Un jugador"} está listo para votar.`);
-        });
         useGameStore.getState().setDebateReady(data.readyPlayers, data.total);
       }),
       onReconnectTimeout((data) => {
