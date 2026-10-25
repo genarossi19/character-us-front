@@ -81,7 +81,7 @@ Las pruebas focalizadas usan el runner nativo de Node y ejercitan stores, recupe
 
 `/profile` está registrada solo para usuarios autenticados. Las rutas `/menu`, `/create`, `/public-rooms` y `/profile` redirigen a `/join` cuando no hay una sesión autenticada; el visitante puede continuar a lobby y partida únicamente después de unirse mediante código. La sesión HTTP se restaura por pestaña solo después de que `GET /api/auth/me` confirme el token. La recuperación de sala es independiente: no autentica HTTP ni habilita crear salas. El socket permanece sin autenticación de handshake; el backend autoriza la creación de sala mediante el token del payload `createRoom`.
 
-Durante una recuperación se muestra “Recuperando partida” y se bloquean rutas y acciones hasta aplicar el snapshot privado. Los timeouts conservan la credencial y permiten reintentar; una sesión vencida o una sala eliminada la limpian y vuelven a `/join`. Salir correctamente, ser expulsado o cerrarse la sala también la limpian. Reiniciar el backend pierde la partida, ya que el servidor la conserva en memoria.
+Durante una recuperación se muestra “Recuperando partida” y se bloquean rutas y acciones hasta aplicar el snapshot privado. Los timeouts conservan la credencial y permiten reintentar; una sesión vencida o una sala eliminada la limpian. Salir correctamente, ser expulsado o cerrarse la sala también limpia la credencial. En esos casos, el usuario autenticado vuelve a `/menu` y el visitante a `/join`. Reiniciar el backend pierde la partida, ya que el servidor la conserva en memoria.
 
 Al desplegar, el hosting debe redirigir rutas desconocidas a `index.html`; de lo contrario, recargar una ruta de `BrowserRouter` devolverá 404.
 

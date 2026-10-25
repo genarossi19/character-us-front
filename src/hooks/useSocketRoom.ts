@@ -11,6 +11,7 @@ import {
   isSocketConnected,
 } from "@/services/socket";
 import { useRoomSessionStore } from "@/store/useRoomSessionStore";
+import { useUserStore } from "@/store/useUserStore";
 import { AVATAR_OPTIONS } from "@/constants/avatars";
 import type {
   AckResponse,
@@ -124,7 +125,7 @@ export function useSocketRoom() {
           resetRoom();
           resetGame();
           useRoomSessionStore.getState().clearSession();
-          navigate("/menu");
+          navigate(useUserStore.getState().isLoggedIn ? "/menu" : "/join");
           resolve();
         });
       }),

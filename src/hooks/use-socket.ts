@@ -40,7 +40,7 @@ export const useSocket = (): Socket | null => {
  * @returns true si está conectado, false en caso contrario
  */
 export const useSocketConnected = (): boolean => {
-  const socket = useSocket();
+  useSocket();
   // En una aplicación real, aquí usarías useState y un listener
   // para actualizar el estado. Por ahora, retornamos el estado actual
   return isSocketConnected();

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "../components/ui/button";
 import { Label } from "../components/ui/label";
@@ -26,7 +26,7 @@ export default function CreateRoomPage() {
     tipo: "virtual",
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     navigate(`/game`);
   };

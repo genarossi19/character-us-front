@@ -42,7 +42,7 @@ function snapshot(phase = "word", status = "playing") {
   };
 }
 
-function fixture(saved = credential) {
+function fixture(saved = credential, isLoggedIn = false) {
   const storage = new Map(saved ? [[key, JSON.stringify(saved)]] : []);
   const sessionStorage = {
     getItem: (name) => storage.get(name) ?? null,
@@ -51,6 +51,7 @@ function fixture(saved = credential) {
   };
   const sessionModule = load("src/store/useRoomSessionStore.ts", { zustand: { create } }, { sessionStorage });
   const session = sessionModule.useRoomSessionStore;
+  const userModule = { useUserStore: { getState: () => ({ isLoggedIn }) } };
   const game = load("src/store/useGameStore.ts", { zustand: { create } }).useGameStore;
   const room = load("src/store/useRoomStore.ts", { zustand: { create } }).useRoomStore;
   const callbacks = new Map();
@@ -81,6 +82,7 @@ function fixture(saved = credential) {
     "@/store/useRoomStore": { useRoomStore: Object.assign(() => room.getState(), room) },
     "@/store/useGameStore": { useGameStore: Object.assign(() => game.getState(), game) },
     "@/store/useRoomSessionStore": sessionModule,
+    "@/store/useUserStore": userModule,
   };
   const navigate = (path) => paths.push(path);
   let cleanupRoom;
@@ -258,14 +260,14 @@ test("hidden vote is restored privately and the voting UI cannot submit again", 
   f.stop();
 });
 
-test("expired session or missing room clears recovery and goes to join", () => {
-  for (const code of ["INVALID_SESSION", "ROOM_NOT_FOUND"]) {
-    const f = fixture(); f.start();
+test("expired session or missing room clears recovery and returns to the matching entry route", () => {
+  for (const [isLoggedIn, destination] of [[false, "/join"], [true, "/menu"]]) for (const code of ["INVALID_SESSION", "ROOM_NOT_FOUND"]) {
+    const f = fixture(credential, isLoggedIn); f.start();
     f.requests[0].respond(null, { success: false, code, message: "Sesión vencida" });
     assert.equal(f.storage.has(key), false);
     assert.equal(f.session.getState().session, null);
     assert.equal(f.room.getState().room, null);
-    assert.equal(f.paths.at(-1), "/join");
+    assert.equal(f.paths.at(-1), destination);
     assert.equal(f.messages.at(-1), "Sesión vencida"); f.stop();
   }
 });
@@ -306,6 +308,28 @@ test("kick/roomClosed invalidate recovery even while ack is pending", () => {
     assert.equal(f.session.getState().session, null);
     assert.equal(f.room.getState().room, null);
     assert.equal(f.paths.at(-1), "/join"); f.stop();
+  }
+});
+
+test("terminal room exits return authenticated users to the menu and visitors to join", async () => {
+  for (const [isLoggedIn, destination] of [[false, "/join"], [true, "/menu"]]) {
+    const f = fixture(credential, isLoggedIn);
+    f.start(); f.ack();
+    f.socket.fire("roomClosed", { reason: "Sala cerrada" });
+    assert.equal(f.paths.at(-1), destination);
+    assert.equal(f.session.getState().session, null);
+    f.stop();
+  }
+
+  for (const [isLoggedIn, destination] of [[false, "/join"], [true, "/menu"]]) {
+    const f = fixture(credential, isLoggedIn);
+    f.start(); f.ack();
+    const leaving = f.actions().leaveRoom(credential.roomId);
+    f.requests.at(-1).respond({ success: true });
+    await leaving;
+    assert.equal(f.paths.at(-1), destination);
+    assert.equal(f.session.getState().session, null);
+    f.stop();
   }
 });
 

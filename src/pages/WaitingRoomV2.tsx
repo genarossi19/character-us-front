@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { useRoomStore } from "@/store/useRoomStore";
 import { useSocketRoom } from "@/hooks/useSocketRoom";
+import { useUserStore } from "@/store/useUserStore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +15,7 @@ import RoomInvite from "@/components/RoomInvite";
 
 export default function WaitingRoomV2() {
   const { room, currentPlayer, players } = useRoomStore();
+  const isLoggedIn = useUserStore((state) => state.isLoggedIn);
   const { leaveRoom, startGame, kickPlayer, changeAvatar } = useSocketRoom();
   const navigate = useNavigate();
   const selectedAvatar = currentPlayer?.avatarUrl;
@@ -31,9 +33,9 @@ export default function WaitingRoomV2() {
 
   useEffect(() => {
     if (!room || !currentPlayer) {
-      navigate("/join", { replace: true });
+      navigate(isLoggedIn ? "/menu" : "/join", { replace: true });
     }
-  }, [room, currentPlayer, navigate]);
+  }, [room, currentPlayer, isLoggedIn, navigate]);
 
   const handleStart = async () => {
     if (!room || !canStartGame) return;

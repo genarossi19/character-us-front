@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useRoomStore } from "@/store/useRoomStore";
 import { useGameStore } from "@/store/useGameStore";
 import { useRoomSessionStore } from "@/store/useRoomSessionStore";
+import { useUserStore } from "@/store/useUserStore";
 import { onRoomUpdated, onPlayerJoined, onPlayerLeft, onPlayerKicked, onRoomClosed, onGameStarted } from "@/services/socket";
 
 export function useSocketRoomEvents() {
@@ -14,7 +15,7 @@ export function useSocketRoomEvents() {
     const close = (message: string) => {
       useRoomStore.getState().reset();
       useGameStore.getState().resetGame();
-      navigateRef.current("/join", { replace: true });
+      navigateRef.current(useUserStore.getState().isLoggedIn ? "/menu" : "/join", { replace: true });
       useRoomSessionStore.getState().clearSession();
       toast.error(message);
     };

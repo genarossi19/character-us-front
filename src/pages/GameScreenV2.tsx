@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, MessageCircle } from "lucide-react";
 import { useGameStore } from "@/store/useGameStore";
 import { useRoomStore } from "@/store/useRoomStore";
+import { useUserStore } from "@/store/useUserStore";
 import { useSocketRoom } from "@/hooks/useSocketRoom";
 import CharacterReveal from "@/components/game/CharacterReveal";
 import WordSubmission from "@/components/game/WordSubmission";
@@ -24,6 +25,7 @@ const labels: Record<GamePhase, string> = { waiting: "Preparando partida", chara
 export default function GameScreenV2() {
   const { phase, currentRound, reconnectingPlayerId, reconnectSecondsLeft } = useGameStore();
   const { room, currentPlayer, players } = useRoomStore();
+  const isLoggedIn = useUserStore((state) => state.isLoggedIn);
   const { leaveRoom } = useSocketRoom();
   const messages = useGameStore((state) => state.chatMessages);
   const [chatOpen, setChatOpen] = useState(false);
@@ -60,7 +62,7 @@ export default function GameScreenV2() {
     catch (error) { toast.error(error instanceof Error ? error.message : "No se pudo salir de la sala."); }
   };
 
-  if (!room || !currentPlayer) return <Navigate to="/join" replace />;
+  if (!room || !currentPlayer) return <Navigate to={isLoggedIn ? "/menu" : "/join"} replace />;
 
   return (
     <div className="min-h-dvh bg-background text-foreground lg:flex lg:h-dvh lg:min-h-0 lg:flex-col lg:overflow-hidden">

@@ -2,6 +2,7 @@ import { getSocket } from "./socket";
 import { useRoomSessionStore } from "@/store/useRoomSessionStore";
 import { useRoomStore } from "@/store/useRoomStore";
 import { useGameStore } from "@/store/useGameStore";
+import { useUserStore } from "@/store/useUserStore";
 import type { AckResponse, RoomSnapshot } from "@/types/game";
 
 export function createRoomRecovery(navigate: (path: string) => void, notifyExpired: (message: string) => void = () => {}) {
@@ -41,7 +42,7 @@ export function createRoomRecovery(navigate: (path: string) => void, notifyExpir
         if (ack.code === "ROOM_NOT_FOUND" || ack.code === "INVALID_SESSION") {
           useRoomStore.getState().reset();
           useGameStore.getState().resetGame();
-          navigate("/join");
+          navigate(useUserStore.getState().isLoggedIn ? "/menu" : "/join");
           useRoomSessionStore.getState().clearSession();
           notifyExpired(ack.message);
         } else {

@@ -1,5 +1,3 @@
-import React from "react";
-
 const BackgroundAnimate = () => {
   return (
     <ul className="background -z-1 ">
