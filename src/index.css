@@ -170,6 +170,17 @@ body {
 }
 
 /* Custom animations */
+@keyframes auth-loading {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(200%); }
+}
+
+.auth-loading-bar { animation: auth-loading 1.3s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-loading-bar { animation: none; transform: translateX(50%); }
+}
+
 @keyframes bounce-in {
   0% {
     transform: scale(0.3);

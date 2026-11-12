@@ -56,7 +56,7 @@ export default function GameEnd() {
           </div> : <span className="text-sm text-muted-foreground">Sin eliminación</span>}
         </div>)}
       </section>
-      <div className="text-center"><Button onClick={handleContinue} className="gap-2 bg-accent px-6 text-accent-foreground hover:bg-accent/90">Volver al lobby<ArrowRight className="size-4" aria-hidden="true" /></Button></div>
+      <div className="text-center"><Button onClick={handleContinue} className="gap-2 bg-accent px-6 text-accent-foreground hover:bg-accent/90">Volver a la sala<ArrowRight className="size-4" aria-hidden="true" /></Button></div>
     </div>
   );
 }

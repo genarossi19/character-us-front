@@ -48,7 +48,7 @@ const mockRooms = [
   },
   {
     id: "2",
-    name: "Clash Royale Challenge",
+    name: "Desafío Clash Royale",
     category: "Clash Royale",
     mode: "Especial (Pista)",
     creator: "Luis",
@@ -59,7 +59,7 @@ const mockRooms = [
   },
   {
     id: "3",
-    name: "Los Simpson Trivia",
+    name: "Preguntas de Los Simpson",
     category: "Los Simpson",
     mode: "Clásico (2 Impostores)",
     creator: "Carla",

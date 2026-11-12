@@ -27,28 +27,28 @@ export default function MenuV2() {
   return (
     <div className="bg-background min-h-screen flex flex-col">
       {/* Header */}
-      <header className="fixed top-0 left-0 w-full z-50 h-16 md:h-20 px-6 flex items-center justify-between bg-card shadow-sm">
-        <div className="flex items-center gap-6">
+      <header className="fixed top-0 left-0 w-full z-50 h-16 md:h-20 px-4 sm:px-6 flex items-center justify-between bg-card shadow-sm">
+        <div className="min-w-0 flex items-center gap-3">
           <Link to="/">
-            <div className="flex items-center gap-4">
-              <img className="h-12 w-12 rounded-md" src="/logo.webp" alt="" />
-              <span className="text-5xl font-extrabold bg-gradient-to-b from-accent/60 via-accent/80 to-accent bg-clip-text text-transparent">
+            <div className="flex min-w-0 items-center gap-2">
+              <img className="size-8 rounded-md sm:size-12" src="/logo.webp" alt="" />
+              <span className="text-2xl font-extrabold sm:text-4xl bg-gradient-to-b from-accent/60 via-accent/80 to-accent bg-clip-text text-transparent">
                 CharacterUs
               </span>
             </div>
           </Link>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-accent/20 transition">
+              <button aria-label="Abrir menú de cuenta" className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-accent/20 transition">
                 <img
                   src={user?.avatarUrl || "/avatars/astronaut.webp"}
                   alt="avatar"
                   className="w-10 h-10 rounded-full border-2 border-accent shadow"
                 />
-                <span className="font-semibold text-lg text-foreground">
+                <span className="hidden max-w-36 truncate font-semibold text-lg text-foreground sm:block">
                   {displayName}
                 </span>
               </button>
@@ -87,10 +87,10 @@ export default function MenuV2() {
       </header>
 
       {/* Main */}
-      <main className="flex-1 flex flex-col items-center justify-center p-6 pt-24">
+      <main className="flex-1 flex flex-col items-center justify-center px-4 pb-6 pt-24 sm:px-6">
         <div className="max-w-3xl w-full space-y-8">
           <div className="text-center space-y-2">
-            <h1 className="text-5xl font-bold text-foreground">
+            <h1 className="text-3xl font-bold sm:text-5xl text-foreground">
               Menú Principal
             </h1>
             <p className="text-lg text-muted-foreground">
@@ -103,7 +103,7 @@ export default function MenuV2() {
           <div className="grid gap-6 md:grid-cols-2">
             {/* Crear Partida */}
             <Card className="shadow-lg border-none hover:shadow-xl transition animate-bounce-in">
-              <CardContent className="flex flex-col items-center justify-center p-8 space-y-4">
+              <CardContent className="flex flex-col items-center justify-center p-5 sm:p-8 space-y-4">
                 <PlusCircle className="h-16 w-16 text-accent" />
                 <CardTitle className="text-2xl font-bold">
                   Crear Partida
@@ -124,7 +124,7 @@ export default function MenuV2() {
 
             {/* Unirse a Partida */}
             <Card className="shadow-lg border-none hover:shadow-xl transition animate-bounce-in">
-              <CardContent className="flex flex-col items-center justify-center p-8 space-y-4">
+              <CardContent className="flex flex-col items-center justify-center p-5 sm:p-8 space-y-4">
                 <Users className="h-16 w-16 text-accent" />
                 <CardTitle className="text-2xl font-bold">
                   Unirse a Partida

@@ -159,7 +159,7 @@ export const ThemeToggleButton = ({
         showLabel && "gap-2",
         className
       )}
-      aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+      aria-label={`Cambiar a tema ${theme === "light" ? "oscuro" : "claro"}`}
     >
       {theme === "light" ? (
         <Sun className="h-[1.2rem] w-[1.2rem]" />
@@ -167,7 +167,7 @@ export const ThemeToggleButton = ({
         <Moon className="h-[1.2rem] w-[1.2rem]" />
       )}
       {showLabel && (
-        <span className="text-sm">{theme === "light" ? "Light" : "Dark"}</span>
+        <span className="text-sm">{theme === "light" ? "Claro" : "Oscuro"}</span>
       )}
     </Button>
   );

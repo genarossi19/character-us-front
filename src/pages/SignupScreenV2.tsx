@@ -24,7 +24,7 @@ const signupSchema = z
         usernamePattern,
         "El nombre de usuario solo puede contener letras, números y guiones bajos (_). No uses espacios."
       ),
-    email: z.email("Ingresa un email válido."),
+    email: z.email("Ingresa un correo electrónico válido."),
     password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres."),
     confirmPassword: z.string(),
     acceptedTerms: z.literal(true, {
@@ -92,7 +92,7 @@ function humanizeFieldError(field: SignupField, message: string): string {
   }
 
   if (field === "email" && isTechnicalValidation) {
-    return "Ingresa un email válido.";
+    return "Ingresa un correo electrónico válido.";
   }
 
   if (field === "password" && isTechnicalValidation) {
@@ -128,7 +128,7 @@ function humanizeSignupError(error: unknown): string {
   }
 
   if (message.includes("invalid email")) {
-    return "Ingresa un email válido.";
+    return "Ingresa un correo electrónico válido.";
   }
 
   if (
@@ -287,7 +287,7 @@ export default function SignupScreenV2() {
 
             <CardContent className="pt-2">
               <GoogleSignInButton mode="register" onCredential={handleGoogleCredential} disabled={submitting} />
-              <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground"><div className="h-px flex-1 bg-border" />o regístrate con tu email<div className="h-px flex-1 bg-border" /></div>
+              <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground"><div className="h-px flex-1 bg-border" />o regístrate con tu correo<div className="h-px flex-1 bg-border" /></div>
               <form noValidate onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label
@@ -324,7 +324,7 @@ export default function SignupScreenV2() {
                     htmlFor="email"
                     className="block text-md font-medium text-muted-foreground"
                   >
-                    Email
+                    Correo electrónico
                   </label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />

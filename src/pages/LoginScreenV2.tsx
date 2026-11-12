@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import BackgroundAnimate from "@/components/BackgroundAnimate";
 import { Input } from "@/components/ui/input";
-import { Mail, Lock } from "lucide-react";
+import { Mail, Lock, LoaderCircle } from "lucide-react";
 import { ThemeToggleButton } from "@/components/ui/shadcn-io/theme-toggle-button";
 import { toast } from "sonner";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
@@ -61,7 +61,7 @@ export default function LoginScreenV2() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative">
+    <div className="relative flex min-h-screen items-center justify-center px-4 pb-6 pt-24">
       <header className="fixed top-0 left-0 w-full z-50 h-16 md:h-20 px-6 flex items-center justify-between">
         <div className="flex items-center">
           <Button
@@ -88,7 +88,8 @@ export default function LoginScreenV2() {
           <h1 className="text-4xl font-bold text-white">CharacterUs</h1>
         </div>
 
-        <Card className="backdrop-blur-md shadow-md animate-bounce-in animate-pulse-glow border-none">
+        <Card aria-busy={isLoading} className="relative overflow-hidden backdrop-blur-md shadow-md animate-bounce-in border-none">
+          <div inert={isLoading} className={isLoading ? "opacity-0" : "opacity-100"}>
           <CardTitle>
             <h1 className="text-center text-4xl font-extrabold">
               Iniciar sesión
@@ -96,14 +97,14 @@ export default function LoginScreenV2() {
           </CardTitle>
           <CardContent className="pt-6">
             <GoogleSignInButton onCredential={handleGoogleCredential} disabled={isLoading} />
-            <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground"><div className="h-px flex-1 bg-border" />o continúa con tu email<div className="h-px flex-1 bg-border" /></div>
+            <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground"><div className="h-px flex-1 bg-border" />o continúa con tu correo<div className="h-px flex-1 bg-border" /></div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label
                   htmlFor="email"
                   className="block text-md font-medium text-gray-600 dark:text-light"
                 >
-                  Email
+                  Correo electrónico
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
@@ -124,7 +125,7 @@ export default function LoginScreenV2() {
                 </div>
                 {emailInvalid && (
                   <p className="mt-1 text-sm text-red-400">
-                    Por favor ingresa un email válido.
+                    Por favor ingresa un correo válido.
                   </p>
                 )}
               </div>
@@ -167,7 +168,7 @@ export default function LoginScreenV2() {
                 disabled={!formValid || isLoading}
                 className="w-full text-white font-semibold text-lg rounded-md"
               >
-                {isLoading ? "Iniciando..." : "Entrar"}
+                Iniciar sesión
               </Button>
             </form>
 
@@ -181,6 +182,16 @@ export default function LoginScreenV2() {
               </span>
             </p>
           </CardContent>
+          </div>
+          {isLoading && (
+            <div role="status" aria-live="polite" className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-card px-8 text-center text-card-foreground">
+              <div className="rounded-full bg-accent/15 p-5"><LoaderCircle aria-hidden="true" className="size-10 animate-spin text-accent motion-reduce:animate-none" /></div>
+              <div><p className="text-2xl font-semibold">Iniciando sesión</p><p className="mt-2 text-sm text-muted-foreground">Estamos verificando tus datos…</p></div>
+              <div role="progressbar" aria-label="Inicio de sesión en curso" className="h-1.5 w-full max-w-56 overflow-hidden rounded-full bg-muted">
+                <div className="auth-loading-bar h-full w-1/2 rounded-full bg-accent" />
+              </div>
+            </div>
+          )}
         </Card>
       </div>
     </div>
