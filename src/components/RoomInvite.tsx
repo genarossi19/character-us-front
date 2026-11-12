@@ -20,11 +20,11 @@ export default function RoomInvite({ code }: { code: number }) {
   };
 
   return (
-    <div className="flex max-w-sm items-center gap-3 rounded-xl bg-card p-3 text-left text-foreground shadow-lg">
+    <div className="flex min-w-0 items-center gap-3 text-left text-foreground">
       <a href={inviteUrl} aria-label={`Entrar a la sala ${code}`} className="shrink-0 rounded bg-white">
         <QRCodeSVG
           value={inviteUrl}
-          size={144}
+          size={104}
           level="M"
           marginSize={4}
           title={`Escanea para entrar a la sala ${code}`}

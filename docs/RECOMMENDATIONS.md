@@ -1,5 +1,13 @@
 # Recomendaciones técnicas
 
+## Verificación de interfaz y preparación del lobby
+
+La interfaz activa usa español, incluido el idioma HTML, las acciones de acceso, las etiquetas de correo, modos y cambio de tema. Login muestra carga indeterminada por correo o Google y recupera el formulario ante errores. Inicio/menú se adaptan a móvil; el lobby organiza jugadores e invitación/configuración en dos columnas en escritorio. La preparación de sala se sincroniza con `lobbyReady` y `Player.isLobbyReady`, y el servidor rechaza inicios sin todos conectados y listos. El backend vecino fue actualizado; reiniciarlo junto con el frontend.
+
+Verificación: `npm run build` completo aprobado, 32 regresiones del frontend aprobadas y 8 pruebas focalizadas del servidor aprobadas, sin acceder a PostgreSQL. Cubren confirmación por invitados/anfitrión, autorización, bloqueo por nuevos jugadores/desconexión, mínimos, idempotencia, errores, timeout/reintento, DTO/snapshot sin secretos y reinicio de preparación al terminar. El typecheck del backend se completa. El lint global conserva sus 10 errores y 2 warnings preexistentes, presentes antes del cambio; el lint focalizado de las páginas y la integración modificadas se completa correctamente.
+
+Revisión en Brave con datos locales de prueba: inicio en 320, 390, 768 y 1440 px sin desbordamiento horizontal; lobby en claro/oscuro en 320, 390, 1024 y 1440 px sin desbordamiento horizontal, y ocho jugadores sin scroll vertical en 1024×768 y 1440×900. Login con respuesta HTTP simulada: indicador activo durante la espera y formulario recuperado con datos conservados tras rechazo. No sustituye la comprobación contra el backend desplegado ni una autenticación real con Google.
+
 Hallazgos del 5 de septiembre de 2026. La integración inicial posterior unificó los contratos Socket.IO en `src/types/game.ts`, conectó el flujo V2 y añadió JWT para login/registro; los puntos pendientes siguen vigentes cuando apliquen.
 
 ## Estado de verificación

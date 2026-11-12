@@ -5,6 +5,7 @@ import type {
   KickPlayerPayload,
   DebateReadyPayload,
   ChangeAvatarPayload,
+  LobbyReadyPayload,
   RenewRoomInactivityPayload,
   RenewRoomInactivityResponse,
   AckCallback,
@@ -45,7 +46,16 @@ export const emitStartGame = (
 ): void => {
   assertRoomActionsReady();
   const socket = getSocket();
-  socket.emit("startGame", { roomId }, callback);
+  socket.timeout(10_000).emit("startGame", { roomId }, (error: Error | null, response: Parameters<AckCallback<RoomResponse>>[0]) => {
+    callback?.(error ? { success: false, code: "ACK_TIMEOUT", message: "El servidor no confirmó el inicio. Intenta nuevamente." } : response);
+  });
+};
+
+export const emitLobbyReady = (payload: LobbyReadyPayload, callback?: AckCallback): void => {
+  assertRoomActionsReady();
+  getSocket().timeout(10_000).emit("lobbyReady", payload, (error: Error | null, response: Parameters<AckCallback>[0]) => {
+    callback?.(error ? { success: false, code: "ACK_TIMEOUT", message: "El servidor no confirmó que estás listo. Intenta nuevamente." } : response);
+  });
 };
 
 export const emitKickPlayer = (

@@ -8,6 +8,7 @@ import {
   emitStartGame,
   emitKickPlayer,
   emitChangeAvatar,
+  emitLobbyReady,
   isSocketConnected,
 } from "@/services/socket";
 import { useRoomSessionStore } from "@/store/useRoomSessionStore";
@@ -135,6 +136,7 @@ export function useSocketRoom() {
   const startGame = useCallback(
     (roomId: string) =>
       new Promise<Room>((resolve, reject) => {
+        assertConnected();
         emitStartGame(roomId, (response) => {
           try {
             resolve(getRoomFromAck(response).room);
@@ -145,6 +147,19 @@ export function useSocketRoom() {
       }),
     []
   );
+
+  const lobbyReady = useCallback(async (roomId: string): Promise<void> => {
+    assertConnected();
+    await new Promise<void>((resolve, reject) => {
+      emitLobbyReady({ roomId }, (response) => {
+        if (!response.success) {
+          reject(new SocketAckError(response.code, response.message));
+          return;
+        }
+        resolve();
+      });
+    });
+  }, []);
 
   const kickPlayer = useCallback(
     (roomId: string, targetId: string) => {
@@ -189,5 +204,6 @@ export function useSocketRoom() {
     startGame,
     kickPlayer,
     changeAvatar,
+    lobbyReady,
   };
 }

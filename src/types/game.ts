@@ -13,6 +13,7 @@ export interface Player {
   isOnline: boolean;
   hasVoted: boolean;
   isDebateReady: boolean;
+  isLobbyReady?: boolean;
 }
 
 export type RoomPrivacy = "public" | "private";
@@ -145,6 +146,10 @@ export interface DebateReadyPayload {
 export interface ChangeAvatarPayload {
   roomId: string;
   avatarId: string;
+}
+
+export interface LobbyReadyPayload {
+  roomId: string;
 }
 
 export interface RenewRoomInactivityPayload {

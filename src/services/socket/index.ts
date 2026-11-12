@@ -10,6 +10,7 @@ export {
   emitKickPlayer,
   emitDebateReady,
   emitChangeAvatar,
+  emitLobbyReady,
   emitRenewRoomInactivity,
 } from "./emitters/room";
 

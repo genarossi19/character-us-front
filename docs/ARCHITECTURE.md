@@ -1,5 +1,11 @@
 # Arquitectura del frontend
 
+## Preparación de la sala e interacción
+
+`useRoomStore` sigue siendo dueño de la vista pública de la sala. `Player.isLobbyReady`, recibido en `roomUpdated` y en el snapshot de recuperación, determina el estado de cada tarjeta y la habilitación de inicio. `WaitingRoomV2` solo conserva los estados transitorios de solicitud; `useSocketRoom.lobbyReady` espera el ack sin marcar al jugador listo de forma optimista. La preparación de sala es independiente de `isDebateReady` y de `isAlive`.
+
+El anfitrión también confirma preparación antes de usar su acción separada de inicio. El servidor valida la regla, limpia preparación al terminar la partida y al desconectarse en espera. El frontend acepta la ausencia del campo como pendiente para compatibilidad de DTOs, pero el flujo nuevo requiere el backend coordinado. El lobby aprovecha hasta 1280 px de contenido y se apila en móvil. Login mantiene montado el formulario mientras presenta la carga por correo o Google, bloquea interacción y conserva los datos ante error.
+
 ## Objetivo del producto
 
 CharacterUs coordina salas para un juego social por rondas. El backend Express debe ser la autoridad de sala, participantes, personaje asignado, impostores, votos y resultado; PostgreSQL en Supabase persiste los datos que correspondan. El frontend presenta ese estado y mantiene solo interacción efímera de UI.

@@ -1,5 +1,15 @@
 # Socket.IO en CharacterUs
 
+## Preparación del lobby
+
+- Emisión `lobbyReady: { roomId }`: confirma preparación del jugador estable de esa conexión; admite invitados. Requiere membresía, conexión y sala en `waiting`. Repetir es idempotente.
+- Ack `{ success: true }` o error con `INVALID_PAYLOAD`, `ROOM_NOT_FOUND`, `NOT_IN_ROOM` o `ROOM_NOT_WAITING`. El frontend espera hasta 10 segundos y permite reintentar ante rechazo/timeout.
+- El servidor publica `roomUpdated` con `Player.isLobbyReady`; el cliente solo representa ese estado confirmado. El snapshot privado incluye el campo dentro de la sala pública.
+- `startGame` conserva la autorización del anfitrión y el mínimo `max(3, impostorCount + 1)`. También exige que todos, incluido el anfitrión, estén conectados y listos; de lo contrario devuelve `NOT_ALL_READY`. Su ack también tiene timeout de 10 segundos en el frontend.
+- Crear/unirse inicializa preparación en `false`. Se limpia al desconectarse mientras se espera y para todos al terminar la partida. Es independiente de preparación del debate y supervivencia.
+
+El contrato se implementó también en el backend vecino. Actualizar y reiniciar ese servidor antes de usar el flujo nuevo; el parche reproducible está en `docs/backend-lobby-ready.patch`.
+
 Referencia de la integración Socket.IO actual. Los contratos de esta capa se alinean con `backend.md`.
 
 ## Alcance actual

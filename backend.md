@@ -1,5 +1,12 @@
 # Frontend Contract — CharacterUs Server
 
+## Ampliación coordinada: preparación del lobby
+
+`PlayerPublic.isLobbyReady` indica la confirmación de preparación de sala, independiente de `isDebateReady`. Crear/unirse lo inicializa en `false`. `lobbyReady: { roomId }` valida membresía, conexión y estado `waiting`, permite invitados, responde con ack `{ success: true }` y publica `roomUpdated`. Errores: `INVALID_PAYLOAD`, `ROOM_NOT_FOUND`, `NOT_IN_ROOM`, `ROOM_NOT_WAITING`. Repetir la confirmación es idempotente.
+
+`startGame` solo se acepta del anfitrión, con el mínimo `max(3, impostorCount + 1)` y todos los miembros conectados y listos, incluido el anfitrión. Si falta preparación devuelve `NOT_ALL_READY`. Desconectarse en espera limpia la preparación del jugador; terminar una partida la limpia para todos. El snapshot de recuperación incluye el campo dentro de la sala pública. Ver `docs/backend-lobby-ready.patch` para el cambio coordinado del servidor vecino.
+
+
 > Documento de referencia para el frontend. Todo lo que necesita saber para conectarse al backend: endpoints HTTP, eventos Socket.IO, tipos de datos, y flujo del juego.
 
 ---

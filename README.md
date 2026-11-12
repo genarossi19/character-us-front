@@ -1,5 +1,11 @@
 # CharacterUs Frontend
 
+## Interfaz y preparación de sala
+
+El inicio y el menú se adaptan a móvil. El login por correo o Google muestra un indicador y una barra de carga indeterminada; ante errores restaura el formulario conservando sus datos. La interfaz activa usa español. El lobby distribuye jugadores, invitación y configuración en dos columnas en escritorio y una en móvil, con espera legible en ambos temas.
+
+Todos, incluido el anfitrión, deben pulsar **Estoy listo**. El anfitrión dispone de un botón separado para iniciar, habilitado cuando se alcanza el mínimo y todos están conectados y listos. La regla también se exige en el backend vecino: actualizar y reiniciar el servidor junto con el frontend. El cambio coordinado está en [el parche del lobby](docs/backend-lobby-ready.patch); ver [el contrato](SOCKET.md).
+
 Frontend de CharacterUs, un juego social del impostor orientado a personajes. En cada ronda todos los jugadores salvo el impostor conocen el personaje elegido; cada participante aporta una palabra relacionada y el impostor intenta pasar inadvertido antes de la votación.
 
 ## Estado actual

@@ -12,14 +12,17 @@ import { AVATAR_URLS } from "@/constants/avatars";
 import { fetchCategories, type Category } from "@/services/api/category";
 import { toast } from "sonner";
 import RoomInvite from "@/components/RoomInvite";
+import { Check, Clock3, Copy, Crown, LoaderCircle, LogOut, Play, Users } from "lucide-react";
 
 export default function WaitingRoomV2() {
   const { room, currentPlayer, players } = useRoomStore();
   const isLoggedIn = useUserStore((state) => state.isLoggedIn);
-  const { leaveRoom, startGame, kickPlayer, changeAvatar } = useSocketRoom();
+  const { leaveRoom, startGame, kickPlayer, changeAvatar, lobbyReady } = useSocketRoom();
   const navigate = useNavigate();
   const selectedAvatar = currentPlayer?.avatarUrl;
   const [changingAvatar, setChangingAvatar] = useState(false);
+  const [markingReady, setMarkingReady] = useState(false);
+  const [starting, setStarting] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
@@ -27,9 +30,10 @@ export default function WaitingRoomV2() {
   }, []);
 
   const isHost = currentPlayer?.isHost;
-  const readyPlayers = players.filter((p) => p.isAlive).length;
-  const canStartGame =
-    isHost && players.length >= 3 && room?.status === "waiting";
+  const readyPlayers = players.filter((p) => p.isLobbyReady && p.isOnline).length;
+  const minimumPlayers = Math.max(3, (room?.settings.impostorCount ?? 1) + 1);
+  const allReady = players.length > 0 && readyPlayers === players.length;
+  const canStartGame = isHost && players.length >= minimumPlayers && allReady && room?.status === "waiting";
 
   useEffect(() => {
     if (!room || !currentPlayer) {
@@ -38,11 +42,26 @@ export default function WaitingRoomV2() {
   }, [room, currentPlayer, isLoggedIn, navigate]);
 
   const handleStart = async () => {
-    if (!room || !canStartGame) return;
+    if (!room || !canStartGame || starting) return;
+    setStarting(true);
     try {
       await startGame(room.id);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo iniciar la partida");
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  const handleReady = async () => {
+    if (!room || markingReady || currentPlayer?.isLobbyReady) return;
+    setMarkingReady(true);
+    try {
+      await lobbyReady(room.id);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo confirmar que estás listo");
+    } finally {
+      setMarkingReady(false);
     }
   };
 
@@ -61,10 +80,14 @@ export default function WaitingRoomV2() {
     toast.success("Jugador expulsado");
   };
 
-  const handleCopyCode = () => {
+  const handleCopyCode = async () => {
     if (!room) return;
-    navigator.clipboard.writeText(String(room.code));
-    toast.success("Código copiado al portapapeles");
+    try {
+      await navigator.clipboard.writeText(String(room.code));
+      toast.success("Código copiado al portapapeles");
+    } catch {
+      toast.error("No se pudo copiar el código. Puedes seleccionarlo para compartirlo.");
+    }
   };
 
   const usedAvatars = players
@@ -85,200 +108,113 @@ export default function WaitingRoomV2() {
 
   if (!room || !currentPlayer) return null;
 
+  const modeLabel = { classic: "Clásico", anonymous: "Anónimo", special: "Especial" }[room.settings.mode];
+  const startHint = players.length < minimumPlayers
+    ? `Se necesitan al menos ${minimumPlayers} jugadores.`
+    : !allReady ? "Todos deben estar conectados y listos para comenzar." : "Todo listo para comenzar.";
+
   return (
-    <div className="min-h-screen p-4 to-primary/5">
+    <div className="min-h-screen px-4 py-5 sm:px-6 lg:px-8 lg:py-4">
       <BackgroundAnimate />
-      <ThemeToggleButton className="absolute top-4 right-4 text-light" />
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="text-center space-y-4">
-          <div className="space-y-2">
-            <h1 className="text-4xl font-bold text-balance text-white">
-              Sala de Espera
-            </h1>
-            <div className="flex flex-wrap items-center justify-center gap-5">
-              <div className="flex flex-col items-center gap-2">
-              <span className="text-white text-3xl">Código:</span>
-              <button
-                onClick={handleCopyCode}
-                className="px-3 py-1 bg-accent/20 text-accent rounded-lg text-5xl font-semibold font-fredoka hover:bg-accent/30 transition-colors cursor-pointer"
-              >
-                {room.code}
-              </button>
-              <span className="text-white/60 text-sm">(click para copiar)</span>
-              </div>
-              <RoomInvite code={room.code} />
-            </div>
-            <p className="text-white/80 text-lg">{room.name}</p>
+      <div className="relative mx-auto max-w-7xl space-y-5 lg:space-y-4">
+        <header className="flex items-center justify-between gap-3 text-white">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold sm:text-3xl">Sala de espera</h1>
+            <p className="truncate text-sm text-white/70">{room.name}</p>
           </div>
-        </div>
+          <div className="flex shrink-0 items-center gap-1">
+            <ThemeToggleButton className="text-white" />
+            <Button variant="ghost" onClick={handleLeave} className="text-white hover:bg-white/10"><LogOut className="size-4" aria-hidden="true" />Salir<span className="hidden sm:inline">de la sala</span></Button>
+          </div>
+        </header>
 
-        {/* Players Grid */}
-        <Card className="border-border/50 bg-card backdrop-blur-sm relative">
-          <CardHeader className="flex flex-col md:flex-row md:justify-between md:items-center">
-            <CardTitle className="flex items-center justify-between w-full md:w-auto mb-2 md:mb-0">
-              <span>Jugadores ({players.length}/{room.settings.maxPlayers})</span>
-              <Badge
-                variant="secondary"
-                className="bg-primary/20 text-primary ml-2"
-              >
-                {readyPlayers} listos
-              </Badge>
-            </CardTitle>
-
-            <div className="flex gap-2 mt-2 md:mt-0">
-              {isHost ? (
-                <Button
-                  onClick={handleStart}
-                  disabled={!canStartGame}
-                  className="bg-primary hover:bg-primary/90 text-light font-medium py-2 px-4 text-sm"
-                >
-                  {canStartGame
-                    ? "Iniciar Partida"
-                    : `Esperando jugadores (${players.length}/3)`}
-                </Button>
-              ) : (
-                <Badge variant="secondary" className="bg-muted px-4 py-2">
-                  Esperando que el host inicie...
-                </Badge>
-              )}
-
-              <Button
-                variant="outline"
-                onClick={handleLeave}
-                className="border-border/50 hover:bg-accent/50 bg-transparent py-2 px-4 text-sm"
-              >
-                Salir de la Sala
-              </Button>
-            </div>
-          </CardHeader>
-
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {players.map((player) => {
-                  const isCurrentPlayer = player.socketId === currentPlayer.socketId;
+        <main className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_360px]">
+          <Card className="min-w-0 gap-4 border-border/50 bg-card py-5 shadow-lg">
+            <CardHeader className="gap-3 px-4 sm:px-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <CardTitle className="flex items-center gap-2 text-lg"><Users className="size-5 text-accent" aria-hidden="true" />Jugadores <span className="text-sm font-normal text-muted-foreground">{players.length}/{room.settings.maxPlayers}</span></CardTitle>
+                <Badge className="bg-accent/15 text-teal-800 dark:text-teal-200">{readyPlayers}/{players.length} listos</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-5 px-4 sm:px-5 lg:space-y-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                {players.map((player) => {
+                  const mine = player.socketId === currentPlayer.socketId;
+                  const ready = player.isLobbyReady && player.isOnline;
                   return (
-                    <div
-                      key={player.socketId}
-                      className="flex flex-col items-center space-y-2 p-2 rounded-xl bg-foreground/4 shadow-sm relative animate-in fade-in zoom-in duration-300"
-                    >
+                    <div key={player.socketId} className={`relative flex min-w-0 flex-col items-center gap-2 rounded-xl border p-3 lg:gap-1 lg:p-2 xl:gap-2 xl:p-3 ${mine ? "border-accent/50 bg-accent/5" : "border-border bg-muted/30"}`}>
                       <div className="relative">
-                        <img
-                          src={player.avatarUrl}
-                          alt={player.username}
-                          className={`object-cover rounded-full ${
-                            isCurrentPlayer ? "w-28 h-28" : "w-24 h-24"
-                          }`}
-                        />
-                        {player.isHost && (
-                          <div className="absolute -top-1 -right-1 w-6 h-6 bg-game-warning rounded-full flex items-center justify-center">
-                            <span className="text-xs">👑</span>
-                          </div>
-                        )}
-                        {!player.isOnline && (
-                          <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
-                            <span className="text-white text-xs">Offline</span>
-                          </div>
-                        )}
+                        <img src={player.avatarUrl} alt="" className="size-16 rounded-full object-cover sm:size-20 lg:size-14 xl:size-20" />
+                        {player.isHost && <span title="Anfitrión" className="absolute -right-1 -top-1 rounded-full bg-warning p-1 text-warning-foreground"><Crown className="size-3.5" aria-label="Anfitrión" /></span>}
                       </div>
-                      <div className="text-center">
-                        <p className="font-medium text-sm">{player.username}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {isCurrentPlayer
-                            ? "Tú"
-                            : player.isHost
-                            ? "Anfitrión"
-                            : "Jugador"}
-                        </p>
+                      <div className="w-full text-center">
+                        <p className="truncate text-sm font-semibold" title={player.username}>{player.username}</p>
+                        <p className="text-xs text-muted-foreground">{mine ? "Tú" : player.isHost ? "Anfitrión" : "Jugador"}</p>
                       </div>
-
-                      {/* Botón de kick (solo host, no a sí mismo) */}
-                      {isHost && !isCurrentPlayer && (
-                        <button
-                          onClick={() => handleKick(player.socketId)}
-                          className="absolute top-1 right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs hover:bg-red-600 transition-colors"
-                          title="Expulsar jugador"
-                        >
-                          ×
-                        </button>
-                      )}
+                      <span className={`flex items-center gap-1 text-xs ${ready ? "text-teal-800 dark:text-teal-200" : "text-muted-foreground"}`}>
+                        {ready ? <Check className="size-3.5" aria-hidden="true" /> : <Clock3 className="size-3.5" aria-hidden="true" />}
+                        {!player.isOnline ? "Sin conexión" : ready ? "Listo" : "Preparándose"}
+                      </span>
+                      {isHost && !mine && <button onClick={() => handleKick(player.socketId)} aria-label={`Expulsar a ${player.username}`} className="absolute right-0 top-0 flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-danger/15 hover:text-danger">×</button>}
                     </div>
                   );
                 })}
-            </div>
-
-            {/* Avatar Selection */}
-            <div className="mt-8">
-              <h3 className="text-md font-medium text-center text-muted-foreground mb-3">
-                <span className="ml-2 font-semibold">{currentPlayer.username},</span>{" "}
-                Elige tu avatar
-              </h3>
-              <div className="grid grid-cols-4 lg:grid-cols-8 gap-3 justify-items-center">
-                {AVATAR_URLS.map((avatar) => {
-                  const taken = usedAvatars.includes(avatar);
-                  const isSelected = selectedAvatar === avatar;
-                  return (
-                    <button
-                      key={avatar}
-                      onClick={() => handleSelectAvatar(avatar)}
-                      disabled={taken || changingAvatar}
-                      aria-pressed={isSelected}
-                      aria-label={taken ? "Avatar ocupado" : "Seleccionar avatar"}
-                      className={`w-20 h-20 rounded-full border-4 transition-all ${
-                        isSelected
-                          ? "border-game-accent scale-110"
-                          : "border-border hover:scale-105"
-                      } ${
-                        taken
-                          ? "opacity-40 cursor-not-allowed"
-                          : "cursor-pointer"
-                      }`}
-                    >
-                      <img
-                        src={avatar}
-                        alt="avatar"
-                        className="w-full h-full rounded-full object-cover"
-                      />
-                    </button>
-                  );
-                })}
               </div>
-            </div>
-          </CardContent>
-        </Card>
 
-        {/* Info de la partida */}
-        <Card className="border-border/50 bg-card backdrop-blur-sm p-4 md:p-6">
-          <h2 className="text-lg md:text-xl font-bold text-foreground mb-2 text-center">
-            Configuración de la Partida
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
-            <div className="flex flex-col justify-center items-center bg-primary/10 rounded-lg p-2">
-              <p className="text-xs text-muted-foreground">Categoría</p>
-              <p className="text-lg font-bold text-primary capitalize">
-                {categories.find((c) => c.id === room.settings.category)?.name || room.settings.category}
-              </p>
-            </div>
-            <div className="flex flex-col justify-center items-center bg-game-danger/10 rounded-lg p-2">
-              <p className="text-xs text-muted-foreground">Impostores</p>
-              <p className="text-lg font-bold text-game-danger">
-                {room.settings.impostorCount}
-              </p>
-            </div>
-            <div className="flex flex-col justify-center items-center bg-game-accent/10 rounded-lg p-2">
-              <p className="text-xs text-muted-foreground">Duración</p>
-              <p className="text-lg font-bold text-game-accent">
-                Hasta que haya ganador
-              </p>
-            </div>
-            <div className="flex flex-col justify-center items-center bg-secondary/10 rounded-lg p-2">
-              <p className="text-xs text-muted-foreground">Modo</p>
-              <p className="text-lg font-bold text-secondary capitalize">
-                {room.settings.mode}
-              </p>
-            </div>
-          </div>
-        </Card>
+              <div className="space-y-3 border-t border-border pt-4">
+                {!currentPlayer.isLobbyReady ? (
+                  <Button onClick={handleReady} disabled={markingReady || starting || !currentPlayer.isOnline} className="h-11 w-full bg-accent text-accent-foreground hover:bg-accent/90">
+                    {markingReady ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Check className="size-4" aria-hidden="true" />}
+                    {markingReady ? "Confirmando…" : "Estoy listo"}
+                  </Button>
+                ) : (
+                  <p role="status" className="flex items-center justify-center gap-2 rounded-xl border border-teal-600/25 bg-teal-50 px-3 py-3 text-center text-sm font-medium text-teal-900 dark:border-teal-300/25 dark:bg-teal-400/10 dark:text-teal-100">
+                    <Check className="size-4 shrink-0" aria-hidden="true" />{isHost ? "Estás listo para iniciar la partida" : "Esperando que el anfitrión inicie"}
+                  </p>
+                )}
+                {isHost && <Button onClick={handleStart} disabled={!canStartGame || starting} aria-describedby="start-hint" className="h-11 w-full text-base">
+                  {starting ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Play className="size-4" aria-hidden="true" />}{starting ? "Iniciando partida…" : "Iniciar partida"}
+                </Button>}
+                <p id="start-hint" aria-live="polite" className="text-center text-xs text-muted-foreground">{startHint}</p>
+              </div>
+
+              <section className="border-t border-border pt-4" aria-labelledby="avatar-title">
+                <h2 id="avatar-title" className="mb-3 text-sm font-medium">Tu avatar</h2>
+                {currentPlayer.isGuest ? <p className="text-xs text-muted-foreground">Tu avatar se asignó al unirte a la sala.</p> : (
+                  <div className="grid grid-cols-4 gap-3 sm:grid-cols-8">
+                    {AVATAR_URLS.map((avatar, index) => {
+                      const taken = usedAvatars.includes(avatar);
+                      const selected = selectedAvatar === avatar;
+                      return <button key={avatar} onClick={() => handleSelectAvatar(avatar)} disabled={taken || changingAvatar} aria-pressed={selected} aria-label={`Avatar ${index + 1}${taken ? ", ocupado" : selected ? ", seleccionado" : ""}`} className={`mx-auto aspect-square w-full max-w-14 rounded-full border-2 p-0.5 transition-colors focus-visible:outline-2 focus-visible:outline-ring ${selected ? "border-accent bg-accent/20" : "border-transparent hover:border-accent/50"} ${taken ? "cursor-not-allowed opacity-30" : "cursor-pointer"}`}>
+                        <img src={avatar} alt="" className="size-full rounded-full object-cover" />
+                      </button>;
+                    })}
+                  </div>
+                )}
+              </section>
+            </CardContent>
+          </Card>
+
+          <aside className="min-w-0 space-y-4">
+            <Card className="gap-3 border-border/50 bg-card py-5 shadow-lg">
+              <CardHeader className="px-5"><CardTitle className="text-base">Invita a tus amigos</CardTitle></CardHeader>
+              <CardContent className="space-y-3 px-5">
+                <button onClick={handleCopyCode} aria-label={`Copiar código de sala ${room.code}`} className="flex w-full items-center justify-between gap-2 rounded-xl bg-accent/10 px-4 py-2 text-accent hover:bg-accent/20 focus-visible:outline-2 focus-visible:outline-ring">
+                  <span className="text-left"><span className="block text-xs text-muted-foreground">Código de sala</span><span className="text-3xl font-semibold tracking-widest">{room.code}</span></span><Copy className="size-5 shrink-0" aria-hidden="true" />
+                </button>
+                <RoomInvite code={room.code} />
+              </CardContent>
+            </Card>
+            <Card className="gap-3 border-border/50 bg-card py-5 shadow-lg">
+              <CardHeader className="px-5"><CardTitle className="text-base">Configuración de la partida</CardTitle></CardHeader>
+              <CardContent className="px-5">
+                <dl className="space-y-3 text-sm">
+                  {[["Categoría", categories.find((c) => c.id === room.settings.category)?.name || "Categoría seleccionada"], ["Impostores", room.settings.impostorCount], ["Modo", modeLabel], ["Duración", "Hasta que haya ganador"]].map(([label, value]) => <div key={label} className="flex justify-between gap-4"><dt className="text-muted-foreground">{label}</dt><dd className="min-w-0 break-words text-right font-medium">{value}</dd></div>)}
+                </dl>
+              </CardContent>
+            </Card>
+          </aside>
+        </main>
       </div>
     </div>
   );
