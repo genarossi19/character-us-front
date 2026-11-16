@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Users, Lock, Gamepad2, Settings, Eye, Sparkles } from "lucide-react";
+import { Users, Lock, Gamepad2, Settings, Eye, EyeOff, Sparkles, Globe2, Minus, Plus, Play, VenetianMask, SlidersHorizontal, Check, Clock3, LoaderCircle } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { FormActionButton } from "@/components/ui/form-actions";
+import { motion, MotionConfig, useReducedMotion } from "motion/react";
 import { toast } from "sonner";
 import { SocketAckError, useSocketRoom } from "@/hooks/useSocketRoom";
 import { useUserStore } from "@/store/useUserStore";
@@ -26,13 +29,14 @@ const defaultSettings: RoomSettings = {
   maxPlayers: 8,
   privacy: "private",
   mode: "classic",
+  playMode: "online",
   impostorsKnowEachOther: false,
   visibleVotes: false,
 };
 
 function CategoryLoading() {
   return (
-    <main className="flex min-h-screen items-center justify-center px-6 pt-20 md:h-dvh md:min-h-0 md:overflow-hidden md:pt-24">
+    <main className="flex min-h-screen items-center justify-center page-gutter pt-20 md:h-dvh md:min-h-0 md:overflow-hidden md:pt-24">
       <section
         className="relative w-full max-w-md overflow-hidden rounded-3xl border border-accent/25 bg-card px-6 py-10 text-center shadow-xl animate-bounce-in"
         aria-live="polite"
@@ -86,6 +90,10 @@ function CategoryLoading() {
 
 export default function CreateRoomPageV2() {
   const navigate = useNavigate();
+  const reduced = useReducedMotion();
+  const pending = useRef(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [categoryAttempt, setCategoryAttempt] = useState(0);
   const { createRoom } = useSocketRoom();
   const user = useUserStore((s) => s.user);
   const token = useUserStore((s) => s.token);
@@ -99,25 +107,23 @@ export default function CreateRoomPageV2() {
   const [settingsError, setSettingsError] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadCategories = async () => {
-      const data = await fetchCategories();
+    let active = true;
+    setCategoriesLoading(true);
+    void fetchCategories().then((data) => {
+      if (!active) return;
       setCategories(data);
-      setSettings((previous) =>
-        previous.category || data.length === 0
-          ? previous
-          : { ...previous, category: data[0].id }
-      );
+      setSettings((previous) => data.some((category) => category.id === previous.category)
+        ? previous : { ...previous, category: data[0]?.id ?? "" });
       setCategoriesLoading(false);
-    };
-
-    loadCategories();
-  }, []);
+    });
+    return () => { active = false; };
+  }, [categoryAttempt]);
 
   const update = <K extends keyof RoomSettings>(
     key: K,
     value: RoomSettings[K]
   ) => {
-    setSettings((prev) => ({ ...prev, [key]: value }));
+    setSettings((prev) => ({ ...prev, [key]: value, ...(key === "privacy" && value === "public" ? { password: undefined } : {}) }));
     setSettingsError(null);
     if (key === "category") setCategoryError(null);
   };
@@ -127,6 +133,7 @@ export default function CreateRoomPageV2() {
     "Sin seleccionar";
 
   const handleCreate = async () => {
+    if (pending.current) return;
     if (!isLoggedIn || !user || !token) {
       toast.error("Debes iniciar sesión para crear una sala");
       logout();
@@ -143,6 +150,7 @@ export default function CreateRoomPageV2() {
     }
     setCategoryError(null);
     setSettingsError(null);
+    pending.current = true;
     setCreating(true);
     try {
       await createRoom({
@@ -182,365 +190,128 @@ export default function CreateRoomPageV2() {
 
       toast.error("No se pudo crear la sala. Inténtalo nuevamente.");
     } finally {
+      pending.current = false;
       setCreating(false);
     }
   };
 
-  const isConfigReady = settings.category && settings.privacy === "public" || (settings.privacy === "private" && settings.password);
+  const isConfigReady = Boolean(categories.some((category) => category.id === settings.category) &&
+    (settings.privacy === "public" || settings.password));
+  const modeLabels: Record<RoomMode, string> = { classic: "Clásico", anonymous: "Anónimo", special: "Especial" };
+  const controlClass = "min-w-0 w-full border-border bg-muted/20 text-base data-[size=default]:h-12";
+  const toggleClass = "h-6 w-11 data-[state=checked]:bg-accent [&_[data-slot=switch-thumb]]:size-5 [&_[data-slot=switch-thumb]]:!bg-white [&_[data-slot=switch-thumb]]:data-[state=checked]:translate-x-5";
 
   return (
-    <div className="min-h-screen bg-background transition-colors md:h-dvh md:overflow-hidden">
-      <NavBarLoggued />
-      {categoriesLoading ? (
-        <CategoryLoading />
-      ) : (
-      <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 pb-6 pt-20 sm:px-6 md:h-dvh md:min-h-0 md:justify-center md:overflow-hidden md:pb-4 md:pt-24">
-        {/* HEADER */}
-        <div className="w-full shrink-0 rounded-t-xl bg-accent p-4 text-background shadow-sm transition-colors dark:bg-muted dark:text-foreground md:p-5">
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-3">
-              <Settings className="h-8 w-8 text-light dark:text-foreground" />
-              <h1 className="text-3xl font-bold leading-tight text-light md:text-4xl">
-                Crear Sala
-              </h1>
-            </div>
-          </div>
-          <p className="mt-2 max-w-3xl text-base leading-relaxed text-light/90 dark:text-light">
-            Configura las reglas principales de tu partida antes de comenzar.
-          </p>
-        </div>
-
-        {/* FORM  */}
-        <div className="mt-4 grid w-full grid-cols-1 gap-5 md:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)]">
-          {/* FORMULARIO */}
-          <div className="rounded-xl border border-border bg-card p-5 shadow-xl transition-colors md:p-5">
-            <h2 className="mb-4 text-lg font-semibold text-foreground md:text-xl">
-              Configuración principal
-            </h2>
-            {settingsError && (
-              <p className="mb-3 text-sm font-medium text-danger" role="alert">
-                {settingsError}
-              </p>
-            )}
-
-            <div className="grid grid-cols-1 gap-x-5 gap-y-4 md:grid-cols-2">
-              {/* Número de jugadores */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-3 text-sm font-medium text-foreground">
-                  <Users className="h-5 w-5 text-accent" />
-                  Número de jugadores
-                </Label>
-                <Select
-                  value={settings.maxPlayers.toString()}
-                  onValueChange={(val) =>
-                    update("maxPlayers", parseInt(val))
-                  }
-                >
-                  <SelectTrigger className="w-full bg-background border-border text-foreground">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-card text-foreground border-border">
-                    {[4, 6, 8].map((n) => (
-                      <SelectItem key={n} value={n.toString()}>
-                        {n}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Recomendado: 4 a 6 jugadores para un mejor ritmo.
-                </p>
+    <MotionConfig reducedMotion="user">
+      <div className="min-h-screen bg-background text-foreground">
+        <NavBarLoggued />
+        {categoriesLoading ? <CategoryLoading /> : (
+          <main className="page-container pb-6 pt-24">
+            <header className="mb-4 flex items-center justify-between gap-4">
+              <div>
+                <h1 className="flex items-center gap-3 text-3xl font-semibold sm:text-4xl"><span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent"><Settings className="size-6" aria-hidden="true" /></span>Crear partida</h1>
+                <p className="mt-2 text-base text-muted-foreground">Elige cómo van a jugar. Revisa el resumen y reúne al grupo.</p>
               </div>
+              <img src="/avatar1.webp" alt="" className="hidden size-18 shrink-0 object-contain sm:block" />
+            </header>
 
-              {/* Privacidad */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-3 text-sm font-medium text-foreground">
-                  <Lock className="h-5 w-5 text-accent" />
-                  Privacidad
-                </Label>
-                <RadioGroup
-                  value={settings.privacy}
-                  onValueChange={(val) =>
-                    setSettings((previous) => ({
-                      ...previous,
-                      privacy: val as "public" | "private",
-                      password: val === "public" ? undefined : previous.password,
-                    }))
-                  }
-                  className="flex gap-5"
-                >
-                  <div className="flex items-center space-x-3">
-                    <RadioGroupItem value="public" id="public" />
-                    <Label htmlFor="public" className="text-sm text-foreground">
-                      Pública
-                    </Label>
+            <form onSubmit={(event) => { event.preventDefault(); void handleCreate(); }} className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_360px]">
+              <motion.div initial={reduced ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="min-w-0 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+                <fieldset disabled={creating} className="min-w-0 divide-y divide-border">
+                  <legend className="sr-only">Configuración de la partida</legend>
+                  <section className="p-5 sm:px-6" aria-labelledby="create-theme">
+                    <h2 id="create-theme" className="mb-3 flex items-center gap-2 text-lg font-semibold"><Gamepad2 className="size-5 text-accent" aria-hidden="true" />La partida<span className="ml-auto text-xs font-normal text-muted-foreground">01</span></h2>
+                    {categories.length === 0 && <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-danger/25 bg-danger/5 p-3 text-sm"><p>No hay categorías disponibles.</p><Button type="button" variant="outline" size="sm" onClick={() => setCategoryAttempt((value) => value + 1)}>Volver a intentar</Button></div>}
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div><Label htmlFor="category" className="mb-2 block text-base">Categoría</Label>
+                        <Select value={settings.category} onValueChange={(value) => update("category", value)} disabled={creating || !categories.length}>
+                          <SelectTrigger id="category" aria-invalid={Boolean(categoryError)} aria-describedby={categoryError ? "category-error" : undefined} className={controlClass}><SelectValue placeholder="Elige una categoría" /></SelectTrigger>
+                          <SelectContent className="bg-card text-foreground">{categories.map((category) => <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>)}</SelectContent>
+                        </Select>
+                        {categoryError && <p id="category-error" role="alert" className="mt-2 text-sm text-danger">{categoryError}</p>}
+                      </div>
+                      <div><Label htmlFor="mode" className="mb-2 block text-base">Modalidad</Label>
+                        <Select value={settings.mode} onValueChange={(value) => update("mode", value as RoomMode)} disabled={creating}>
+                          <SelectTrigger id="mode" className={controlClass}><SelectValue /></SelectTrigger>
+                          <SelectContent className="bg-card text-foreground">{Object.entries(modeLabels).map(([value, name]) => <SelectItem key={value} value={value}>{name}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+                      <div><Label htmlFor="in-person" className="text-base">Presencial</Label><p className="mt-1 text-sm text-muted-foreground">Palabras y debate en voz alta. Turnos y votos en la app.</p></div>
+                      <Switch id="in-person" className={toggleClass} disabled={creating} checked={settings.playMode === "in_person"} onCheckedChange={(checked) => update("playMode", checked ? "in_person" : "online")} />
+                    </div>
+                  </section>
+
+                  <section className="p-5 sm:px-6" aria-labelledby="create-players">
+                    <h2 id="create-players" className="mb-3 flex items-center gap-2 text-lg font-semibold"><Users className="size-5 text-accent" aria-hidden="true" />Jugadores y roles<span className="ml-auto text-xs font-normal text-muted-foreground">02</span></h2>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div><Label id="capacity-label" className="mb-2 block text-base">Capacidad de la sala</Label>
+                        <RadioGroup orientation="horizontal" aria-labelledby="capacity-label" value={String(settings.maxPlayers)} onValueChange={(value) => update("maxPlayers", Number(value))} className="grid grid-cols-3 gap-2" disabled={creating}>
+                          {[4, 6, 8].map((count) => <div key={count} className="relative"><RadioGroupItem id={`capacity-${count}`} value={String(count)} className="peer absolute inset-0 z-10 size-full rounded-md opacity-0" /><Label htmlFor={`capacity-${count}`} className={`flex h-12 cursor-pointer items-center justify-center gap-2 rounded-md border text-base peer-focus-visible:ring-2 peer-focus-visible:ring-ring ${settings.maxPlayers === count ? "border-accent bg-accent/10 font-semibold text-foreground" : "border-border text-muted-foreground hover:bg-muted"}`}><Users className="size-4" aria-hidden="true" />{count}</Label></div>)}
+                        </RadioGroup>
+                      </div>
+                      <div><Label htmlFor="impostor-count" className="mb-2 block text-base">Impostores</Label>
+                        <div className="flex h-12 items-center gap-2 rounded-md border border-border bg-muted/20 px-1">
+                          <Button type="button" variant="ghost" size="icon" disabled={creating || settings.impostorCount <= 1} onClick={() => update("impostorCount", settings.impostorCount - 1)} aria-label="Quitar un impostor"><Minus className="size-4" aria-hidden="true" /></Button>
+                          <Input id="impostor-count" type="number" min={1} max={3} value={settings.impostorCount} onChange={(event) => { const value = Number(event.target.value); if (Number.isInteger(value) && value >= 1 && value <= 3) update("impostorCount", value); }} className="h-10 min-w-0 flex-1 border-0 bg-transparent text-center text-base font-semibold shadow-none" />
+                          <Button type="button" variant="ghost" size="icon" disabled={creating || settings.impostorCount >= 3} onClick={() => update("impostorCount", settings.impostorCount + 1)} aria-label="Agregar un impostor"><Plus className="size-4" aria-hidden="true" /></Button>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="p-5 sm:px-6" aria-labelledby="create-rules">
+                    <h2 id="create-rules" className="mb-3 flex items-center gap-2 text-lg font-semibold"><SlidersHorizontal className="size-5 text-accent" aria-hidden="true" />Acceso y reglas<span className="ml-auto text-xs font-normal text-muted-foreground">03</span></h2>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div><Label id="privacy-label" className="mb-2 block text-base">Privacidad</Label>
+                        <RadioGroup orientation="horizontal" aria-labelledby="privacy-label" value={settings.privacy} onValueChange={(value) => update("privacy", value as "public" | "private")} disabled={creating} className="grid grid-cols-2 gap-2">
+                          {([{ value: "public", label: "Pública", icon: Globe2 }, { value: "private", label: "Privada", icon: Lock }] as const).map((option) => <div className="relative" key={option.value}><RadioGroupItem id={`privacy-${option.value}`} value={option.value} className="peer absolute inset-0 z-10 size-full rounded-md opacity-0" /><Label htmlFor={`privacy-${option.value}`} className={`flex h-12 cursor-pointer items-center justify-center gap-2 rounded-md border text-sm peer-focus-visible:ring-2 peer-focus-visible:ring-ring ${settings.privacy === option.value ? "border-accent bg-accent/10 font-semibold" : "border-border text-muted-foreground hover:bg-muted"}`}><option.icon className="size-4" aria-hidden="true" />{option.label}</Label></div>)}
+                        </RadioGroup>
+                      </div>
+                      {settings.privacy === "private" ? <motion.div initial={reduced ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }}>
+                        <Label htmlFor="room-password" className="mb-2 block text-base">Contraseña de la sala</Label>
+                        <div className="relative"><Input id="room-password" type={showPassword ? "text" : "password"} value={settings.password || ""} onChange={(event) => update("password", event.target.value || undefined)} autoComplete="new-password" maxLength={100} placeholder="Elige una contraseña" className="bg-muted/20 pr-12" /><button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Ocultar contraseña de sala" : "Mostrar contraseña de sala"} aria-controls="room-password" aria-pressed={showPassword} className="absolute right-1 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent/10 focus-visible:outline-2 focus-visible:outline-ring">{showPassword ? <EyeOff className="size-5" aria-hidden="true" /> : <Eye className="size-5" aria-hidden="true" />}</button></div>
+                      </motion.div> : <p className="flex items-center gap-2 text-sm leading-relaxed text-muted-foreground sm:pt-6"><Globe2 className="size-4 shrink-0 text-accent" aria-hidden="true" />Se entra con el código de sala, sin contraseña.</p>}
+                    </div>
+                    <div className="mt-4 grid gap-4 border-t border-border pt-3 sm:grid-cols-2">
+                      <div className="flex items-start justify-between gap-3"><div><Label htmlFor="know-impostors" className="block cursor-pointer text-sm font-medium leading-relaxed">Los impostores se conocen</Label><p className="mt-1 text-xs text-muted-foreground">Pueden identificar a sus compañeros.</p></div><Switch id="know-impostors" checked={settings.impostorsKnowEachOther} onCheckedChange={(value) => update("impostorsKnowEachOther", value)} disabled={creating} className={toggleClass} /></div>
+                      <div className="flex items-start justify-between gap-3"><div><Label htmlFor="visible-votes" className="block cursor-pointer text-sm font-medium leading-relaxed">Mostrar a quién vota cada jugador</Label><p className="mt-1 text-xs text-muted-foreground">Si está apagado, solo se sabe quién votó.</p></div><Switch id="visible-votes" checked={settings.visibleVotes} onCheckedChange={(value) => update("visibleVotes", value)} disabled={creating} className={toggleClass} /></div>
+                    </div>
+                  </section>
+                </fieldset>
+              </motion.div>
+
+              <aside aria-labelledby="room-preview" className="min-w-0 lg:sticky lg:top-24">
+                <div className="overflow-hidden rounded-xl border border-accent/25 bg-card shadow-sm">
+                  <div className="relative overflow-hidden border-b border-accent/15 bg-accent/10 p-4">
+                    <h2 id="room-preview" className="flex items-center gap-2 text-lg font-semibold"><Eye className="size-5 text-accent" aria-hidden="true" />Tu partida</h2>
+                    <div className="mt-3 flex items-center gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-card text-accent"><Gamepad2 className="size-6" aria-hidden="true" /></span><div className="min-w-0"><p className="text-xs text-muted-foreground">Categoría</p><p className="break-words text-xl font-semibold">{selectedCategoryName}</p></div></div>
                   </div>
-                  <div className="flex items-center space-x-3">
-                    <RadioGroupItem value="private" id="private" />
-                    <Label htmlFor="private" className="text-sm text-foreground">
-                      Privada
-                    </Label>
+                  <div className="space-y-3 p-4">
+                    <div className="rounded-lg border border-border bg-muted/20 p-3">
+                      <div className="flex items-center justify-between gap-3 text-sm"><span className="flex items-center gap-1.5"><Users className="size-4 text-accent" aria-hidden="true" />Hasta {settings.maxPlayers} jugadores</span><span className="flex items-center gap-1 text-xs text-muted-foreground"><VenetianMask className="size-4" aria-hidden="true" />{settings.impostorCount} {settings.impostorCount === 1 ? "impostor" : "impostores"}</span></div>
+                      <div className="mt-3 flex gap-1.5" aria-hidden="true">{Array.from({ length: settings.maxPlayers }, (_, index) => <span key={index} className={`flex size-7 flex-1 items-center justify-center rounded-md ${index < settings.impostorCount ? "bg-purple/15 text-purple" : "bg-accent/15 text-accent"}`}>{index < settings.impostorCount ? <VenetianMask className="size-4" /> : <Users className="size-3.5" />}</span>)}</div>
+                    </div>
+                    <dl className="divide-y divide-border text-sm">
+                      {[["Tipo de partida", settings.playMode === "in_person" ? "Presencial" : "En línea"], ["Modalidad", modeLabels[settings.mode]], ["Privacidad", settings.privacy === "private" ? "Privada" : "Pública"], ["Impostores se conocen", settings.impostorsKnowEachOther ? "Sí" : "No"], ["Objetivos de los votos", settings.visibleVotes ? "Visibles" : "Ocultos"]].map(([label, value]) => <div key={label} className="flex items-center justify-between gap-3 py-2"><dt className="text-muted-foreground">{label}</dt><dd className="text-right font-medium">{value}</dd></div>)}
+                    </dl>
+                    <p className="flex items-center gap-2 text-xs text-muted-foreground"><Clock3 className="size-4 shrink-0" aria-hidden="true" />Se juega hasta que haya ganador.</p>
+                    <div className="border-t border-border pt-4">
+                      <p aria-live="polite" className={`mb-3 flex items-center gap-2 text-sm ${isConfigReady ? "text-foreground" : "text-muted-foreground"}`}>{isConfigReady ? <Check className="size-4 text-accent" aria-hidden="true" /> : <Lock className="size-4" aria-hidden="true" />}{!settings.category ? "Elige una categoría para continuar." : settings.privacy === "private" && !settings.password ? "Agrega una contraseña para esta sala." : "Todo listo para crear tu sala."}</p>
+                      {settingsError && <p role="alert" className="mb-3 rounded-md border border-danger/25 bg-danger/5 p-3 text-sm text-danger">{settingsError}</p>}
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <div className="min-w-0 flex-1"><FormActionButton tone="accent" type="submit" disabled={creating || !isLoggedIn || !isConfigReady}>{creating ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Play className="size-4" aria-hidden="true" />}{creating ? "Creando…" : "Crear partida"}</FormActionButton></div>
+                        <Button type="button" variant="outline" size="lg" className="px-3 text-base text-foreground" disabled={creating} onClick={() => navigate("/menu")}>Cancelar</Button>
+                      </div>
+                    </div>
                   </div>
-                </RadioGroup>
-              </div>
-
-              {/* Categoría */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-3 text-sm font-medium text-foreground">
-                  <Gamepad2 className="h-5 w-5 text-accent" />
-                  Categoría
-                </Label>
-                <Select
-                  value={settings.category}
-                  onValueChange={(val) => update("category", val)}
-                >
-                  <SelectTrigger
-                    className={`w-full bg-background border-border text-foreground ${
-                      categoryError ? "border-danger" : ""
-                    }`}
-                  >
-                    <SelectValue placeholder="Selecciona categoría" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-card text-foreground border-border">
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {categoryError && (
-                  <p className="text-sm font-medium text-danger" role="alert">
-                    {categoryError}
-                  </p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Elige la temática principal de la partida.
-                </p>
-              </div>
-
-              {/* Modalidad */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-3 text-sm font-medium text-foreground">
-                  <Settings className="h-5 w-5 text-accent" />
-                  Modalidad
-                </Label>
-                <Select
-                  value={settings.mode}
-                  onValueChange={(val) => update("mode", val as RoomMode)}
-                >
-                  <SelectTrigger className="w-full bg-background border-border text-foreground">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-card text-foreground border-border">
-                    <SelectItem value="classic">Clásico</SelectItem>
-                    <SelectItem value="anonymous">Anónimo</SelectItem>
-                    <SelectItem value="special">Especial</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Cambia reglas o visibilidad entre jugadores.
-                </p>
-              </div>
-
-              {/* Tipo de sala */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-foreground">
-                  Tipo de sala
-                </Label>
-                <RadioGroup
-                  value={settings.mode === "classic" ? "virtual" : "presencial"}
-                  onValueChange={(val) =>
-                    update("mode", val === "virtual" ? "classic" : "anonymous")
-                  }
-                  className="flex gap-5"
-                >
-                  <div className="flex items-center space-x-3">
-                    <RadioGroupItem value="virtual" id="virtual" />
-                    <Label htmlFor="virtual" className="text-sm text-foreground">
-                      Virtual
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <RadioGroupItem value="presencial" id="presencial" />
-                    <Label htmlFor="presencial" className="text-sm text-foreground">
-                      Presencial
-                    </Label>
-                  </div>
-                </RadioGroup>
-                <p className="text-xs text-muted-foreground">
-                  Virtual: acceso remoto. Presencial: mismo lugar físico.
-                </p>
-              </div>
-
-              {/* Número de impostores */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-foreground">
-                  Número de impostores
-                </Label>
-                <Select
-                  value={settings.impostorCount.toString()}
-                  onValueChange={(val) =>
-                    update("impostorCount", parseInt(val))
-                  }
-                >
-                  <SelectTrigger className="w-full bg-background border-border text-foreground">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-card text-foreground border-border">
-                    {[1, 2, 3].map((n) => (
-                      <SelectItem key={n} value={n.toString()}>
-                        {n}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {settings.privacy === "private" && (
-                <div className="space-y-2">
-                  <Label htmlFor="room-password" className="text-sm font-medium text-foreground">
-                    Contraseña de la sala
-                  </Label>
-                  <Input
-                    id="room-password"
-                    type="password"
-                    value={settings.password || ""}
-                    onChange={(event) => update("password", event.target.value || undefined)}
-                    maxLength={100}
-                    className="h-9 bg-background border-border text-foreground"
-                  />
                 </div>
-              )}
-
-              {/* Impostores se conocen */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-foreground">
-                  Los impostores se conocen entre sí
-                </Label>
-                <RadioGroup
-                  value={settings.impostorsKnowEachOther ? "yes" : "no"}
-                  onValueChange={(val) =>
-                    update("impostorsKnowEachOther", val === "yes")
-                  }
-                  className="flex gap-5"
-                >
-                  <div className="flex items-center space-x-3">
-                    <RadioGroupItem value="yes" id="know-yes" />
-                    <Label htmlFor="know-yes" className="text-sm text-foreground">
-                      Sí
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <RadioGroupItem value="no" id="know-no" />
-                    <Label htmlFor="know-no" className="text-sm text-foreground">
-                      No
-                    </Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              {/* Votos visibles */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-foreground">
-                  Mostrar a quién votó cada jugador
-                </Label>
-                <RadioGroup
-                  value={settings.visibleVotes ? "yes" : "no"}
-                  onValueChange={(value) => update("visibleVotes", value === "yes")}
-                  className="flex gap-5"
-                >
-                  <div className="flex items-center space-x-3">
-                    <RadioGroupItem value="yes" id="visible-votes-yes" />
-                    <Label htmlFor="visible-votes-yes" className="text-sm text-foreground">Sí</Label>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <RadioGroupItem value="no" id="visible-votes-no" />
-                    <Label htmlFor="visible-votes-no" className="text-sm text-foreground">No</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-            </div>
-          </div>
-
-          {/* VISTA PREVIA + ACCIONES */}
-          <aside className="flex flex-col gap-4">
-            <div className="rounded-xl border border-accent/20 bg-accent/10 p-4 shadow-sm transition-colors">
-              <h3 className="flex items-center gap-2 text-base font-semibold text-foreground md:text-lg">
-                <Eye className="h-5 w-5 text-accent" />
-                Vista previa
-              </h3>
-              <div className="mt-3 space-y-1">
-                {[
-                  ["Jugadores", settings.maxPlayers.toString()],
-                  ["Privacidad", settings.privacy === "public" ? "Pública" : "Privada"],
-                  ["Categoría", selectedCategoryName],
-                  ["Modalidad", settings.mode === "classic" ? "Clásico" : "Rápido"],
-                  ["Tipo", settings.mode === "classic" ? "Virtual" : "Presencial"],
-                  ["Duración", "Hasta que haya ganador"],
-                  ["Impostores", settings.impostorCount.toString()],
-                  [
-                    "Impostores se conocen",
-                    settings.impostorsKnowEachOther ? "Sí" : "No",
-                  ],
-                  ["Votos visibles", settings.visibleVotes ? "Sí" : "No"],
-                ].map(([label, value]) => (
-                  <div
-                    key={label}
-                    className="flex items-center justify-between border-b border-border py-1.5"
-                  >
-                    <span className="text-sm text-muted-foreground">{label}</span>
-                    <span className="text-sm font-medium capitalize text-foreground">
-                      {value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm transition-colors">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm text-muted-foreground">Configuración lista:</span>
-                <span className={`text-sm font-medium ${isConfigReady ? "text-game-accent" : "text-game-danger"}`}>
-                  {isConfigReady ? "Sí" : "No"}
-                </span>
-              </div>
-              <div className="flex flex-col md:flex-row gap-3">
-                <Button
-                  onClick={handleCreate}
-                  disabled={creating || !isLoggedIn || !settings.category || categoriesLoading}
-                  size="lg"
-                  className="flex-1 bg-gradient-to-br from-accent to-secondary hover:opacity-90 transition py-3 px-5 text-base text-light font-semibold"
-                >
-                  {creating ? "Creando..." : "Crear Sala"}
-                </Button>
-                <Button
-                  type="button"
-                  size="lg"
-                  variant="outline"
-                  className="flex-1 py-3 px-5 text-base text-foreground"
-                  onClick={() => navigate("/menu")}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type="button"
-                  size="lg"
-                  variant="ghost"
-                  className="py-3 px-5 text-base text-foreground hover:bg-accent/20"
-                  disabled
-                >
-                  Guardar Borrador
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Revisa tu configuración antes de crear la sala. Las privadas requieren un código de acceso.
-              </p>
-            </div>
-          </aside>
-        </div>
-      </main>
-      )}
-    </div>
+              </aside>
+            </form>
+          </main>
+        )}
+      </div>
+    </MotionConfig>
   );
 }

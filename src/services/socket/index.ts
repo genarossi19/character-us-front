@@ -17,6 +17,7 @@ export {
 // Game emitters
 export {
   emitSubmitWord,
+  emitCompleteTurn,
   emitVotePlayer,
   emitSendChatMessage,
 } from "./emitters/game";
@@ -37,6 +38,7 @@ export {
   onCharacterAssigned,
   onPhaseChanged,
   onTurnChanged,
+  onTurnCompleted,
   onWordHintRevealed,
   onAllWordsSubmitted,
   onVoteUpdate,

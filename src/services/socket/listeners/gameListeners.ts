@@ -12,6 +12,7 @@ import type {
   RoundResult,
   GameResult,
   Room,
+  TurnCompleted,
 } from "@/types/game";
 import { onServerEvent } from "../eventDelivery";
 
@@ -92,3 +93,5 @@ export const onGameStarted = (
 ): (() => void) => {
   return onServerEvent("gameStarted", callback);
 };
+
+export const onTurnCompleted = (callback: (data: TurnCompleted) => void): (() => void) => onServerEvent("turnCompleted", callback);

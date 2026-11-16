@@ -1,26 +1,30 @@
 import { useState, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Button } from "@/components/ui/button";
+import { BackButton, FormActionButton } from "@/components/ui/form-actions";
 import { Input } from "@/components/ui/input";
+import RoomCodeInput from "@/components/RoomCodeInput";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import BackgroundAnimate from "@/components/BackgroundAnimate";
+import { motion, MotionConfig, useReducedMotion } from "motion/react";
 import { ThemeToggleButton } from "@/components/ui/shadcn-io/theme-toggle-button";
 import { useSocketRoom } from "@/hooks/useSocketRoom";
 import { useUserStore } from "@/store/useUserStore";
 import { getDisplayName } from "@/lib/displayName";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ArrowRight, Hash, LoaderCircle, LockKeyhole, Users } from "lucide-react";
 
 type Step = "code" | "password" | "name";
 
 const JOIN_TIMEOUT_MS = 20_000;
 
-export default function QuickJoinScreenV2() {
-  const { code } = useParams();
+export default function QuickJoinScreenV2({ invitationCode }: { invitationCode?: string }) {
+  const { code: routeCode } = useParams();
+  const code = invitationCode ?? routeCode;
   return <JoinRoomForm key={code ?? "manual"} initialCode={code} />;
 }
 
 function JoinRoomForm({ initialCode }: { initialCode?: string }) {
   const navigate = useNavigate();
+  const reduced = useReducedMotion();
   const { joinRoom } = useSocketRoom();
   const user = useUserStore((s) => s.user);
   const isLoggedIn = useUserStore((s) => s.isLoggedIn);
@@ -208,10 +212,12 @@ function JoinRoomForm({ initialCode }: { initialCode?: string }) {
     }
   };
 
+  const submitLabel = joining ? "Uniéndose…" : step === "code" && !isLoggedIn ? "Continuar" : "Unirme a la sala";
+
   const ErrorBanner = () => {
     if (!errorMsg) return null;
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
+      <div id="join-error" role="alert" className="flex items-start gap-2 rounded-md border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
         <AlertCircle className="h-4 w-4 shrink-0" />
         <span>{errorMsg}</span>
       </div>
@@ -222,31 +228,25 @@ function JoinRoomForm({ initialCode }: { initialCode?: string }) {
     switch (step) {
       case "code":
         return (
-          <CardContent>
+          <CardContent className="sm:px-10">
             <div className="flex flex-col gap-4">
               <ErrorBanner />
               <div>
                 <label
                   htmlFor="roomCode"
-                  className="block text-sm font-medium text-muted-foreground mb-1"
+                  className="block text-base font-medium text-muted-foreground mb-2 sm:text-lg"
                 >
-                  Codigo de Sala
+                  Código de sala
                 </label>
-                <Input
-                  id="roomCode"
+                <RoomCodeInput
                   value={roomCode}
-                  onChange={(e) => {
-                    setRoomCode(e.target.value.replace(/\D/g, "").slice(0, 6));
-                    clearError();
-                  }}
+                  onChange={(value) => { setRoomCode(value); clearError(); }}
                   onKeyDown={handleCodeKeyDown}
-                  placeholder="000000"
-                  maxLength={6}
-                  autoFocus
-                  className="text-center text-foreground !text-3xl border-2 !tracking-widest !font-bold h-12"
+                  invalid={Boolean(errorMsg)}
+                  disabled={joining}
                 />
               </div>
-              <Button
+              <FormActionButton tone="accent"
                 onClick={() => {
                   if (isLoggedIn) {
                     handleCodeSubmit();
@@ -255,20 +255,18 @@ function JoinRoomForm({ initialCode }: { initialCode?: string }) {
                   }
                 }}
                 disabled={roomCode.length !== 6 || joining || !isSessionReady}
-                variant="secondary"
-                className="h-12"
               >
-                <span className="text-xl">
-                  {joining ? "Uniéndose..." : "Ingresar"}
-                </span>
-              </Button>
+                {joining ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : null}
+                <span>{submitLabel}</span>
+                {!joining && <ArrowRight className="size-4" aria-hidden="true" />}
+              </FormActionButton>
             </div>
           </CardContent>
         );
 
       case "name":
         return (
-          <CardContent>
+          <CardContent className="sm:px-10">
             <div className="flex flex-col gap-4">
               <ErrorBanner />
               {isLoggedIn ? (
@@ -276,7 +274,7 @@ function JoinRoomForm({ initialCode }: { initialCode?: string }) {
               ) : <div>
                 <label
                   htmlFor="username"
-                  className="block text-sm font-medium text-muted-foreground mb-1"
+                  className="block text-base font-medium text-muted-foreground mb-2 sm:text-lg"
                 >
                   Tu nombre
                 </label>
@@ -291,32 +289,30 @@ function JoinRoomForm({ initialCode }: { initialCode?: string }) {
                   placeholder="¿Cómo te llamas?"
                   maxLength={20}
                   autoFocus
-                  className="text-center text-foreground"
+                  disabled={joining} className="h-14 bg-muted/30 !text-lg text-foreground sm:h-16 sm:!text-xl"
                 />
               </div>}
-              <Button
+              <FormActionButton tone="accent"
                 onClick={handleNameSubmit}
                 disabled={(!isLoggedIn && username.trim().length < 2) || joining || !isSessionReady}
-                variant="secondary"
-                className="h-12"
               >
-                <span className="text-xl">
-                  {joining ? "Uniéndose..." : "Ingresar"}
-                </span>
-              </Button>
+                {joining ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : null}
+                <span>{submitLabel}</span>
+                {!joining && <ArrowRight className="size-4" aria-hidden="true" />}
+              </FormActionButton>
             </div>
           </CardContent>
         );
 
       case "password":
         return (
-          <CardContent>
+          <CardContent className="sm:px-10">
             <div className="flex flex-col gap-4">
               <ErrorBanner />
               <div>
                 <label
                   htmlFor="password"
-                  className="block text-sm font-medium text-muted-foreground mb-1"
+                  className="block text-base font-medium text-muted-foreground mb-2 sm:text-lg"
                 >
                   Contraseña de la sala
                 </label>
@@ -331,19 +327,17 @@ function JoinRoomForm({ initialCode }: { initialCode?: string }) {
                   onKeyDown={handlePasswordKeyDown}
                   placeholder="Ingresa la contraseña"
                   autoFocus
-                  className="text-center text-foreground"
+                  disabled={joining} className="h-14 bg-muted/30 !text-lg text-foreground sm:h-16 sm:!text-xl"
                 />
               </div>
-              <Button
+              <FormActionButton tone="accent"
                 onClick={handlePasswordSubmit}
                 disabled={password.length === 0 || joining || !isSessionReady}
-                variant="secondary"
-                className="h-12"
               >
-                <span className="text-xl">
-                  {joining ? "Uniéndose..." : "Ingresar"}
-                </span>
-              </Button>
+                {joining ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : null}
+                <span>{submitLabel}</span>
+                {!joining && <ArrowRight className="size-4" aria-hidden="true" />}
+              </FormActionButton>
             </div>
           </CardContent>
         );
@@ -353,18 +347,18 @@ function JoinRoomForm({ initialCode }: { initialCode?: string }) {
   const getTitle = () => {
     switch (step) {
       case "code":
-        return "Ingresar a una Sala";
+        return "Unirse a una sala";
       case "name":
         return isLoggedIn ? "Unirse a la sala" : "¿Cómo te llamas?";
       case "password":
-        return "Sala Privada";
+        return "Contraseña de la sala";
     }
   };
 
   const getSubtitle = () => {
     switch (step) {
       case "code":
-        return undefined;
+        return "Ingresa el código de 6 dígitos que te compartieron.";
       case "name":
         return isLoggedIn ? "Continúa para ingresar a la partida" : "Ingresa tu nombre para unirte a la partida";
       case "password":
@@ -386,53 +380,42 @@ function JoinRoomForm({ initialCode }: { initialCode?: string }) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <header className="fixed top-0 left-0 w-full z-50 h-16 md:h-20 px-6 flex items-center justify-between">
-        <div className="flex items-center">
-          <Button
-            onClick={handleBack}
-            size="lg"
-            variant="ghost"
-            className="text-light hover:bg-accent/20 text-lg font-semibold transition-colors"
-          >
-            ← Volver
-          </Button>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            size="lg"
-            onClick={() => navigate("/login")}
-            variant="ghost"
-            className="text-light hover:bg-accent/20 text-lg font-semibold transition-colors"
-          >
-            Log In
-          </Button>
-          <ThemeToggleButton className="text-light" />
-        </div>
-      </header>
-
-      <BackgroundAnimate />
-      <Card className="border-none bg-card min-w-[320px] w-md animate-bounce-in">
-        <CardHeader>
-          <CardTitle className="flex flex-col text-center justify-center items-center gap-4">
-            <img
-              src="/logo.webp"
-              alt="logo"
-              className="w-24 h-24 rounded-md"
-            />
-            <span className="text-3xl font-fredoka font-bold">
-              {getTitle()}
-            </span>
-            {step !== "code" && <span className="text-muted-foreground">Sala {roomCode}</span>}
-            {getSubtitle() && (
-              <span className="text-sm text-muted-foreground -mt-2">
-                {getSubtitle()}
-              </span>
-            )}
-          </CardTitle>
-        </CardHeader>
-        {renderStep()}
-      </Card>
-    </div>
+    <MotionConfig reducedMotion="user">
+      <div className="flex min-h-screen flex-col bg-background page-gutter pb-10 pt-36 text-foreground sm:pt-24">
+        <header className="fixed left-0 top-0 z-50 grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 bg-background/95 page-gutter py-4 backdrop-blur-sm sm:flex sm:h-20 sm:justify-between sm:py-0">
+          <BackButton onClick={handleBack} />
+          {!isLoggedIn && <Button type="button" onClick={() => navigate("/login")} size="lg" variant="ghost" className="order-3 col-span-2 text-lg font-semibold text-foreground hover:bg-accent/20 hover:text-foreground sm:order-none sm:ml-auto">Iniciar sesión</Button>}
+          <ThemeToggleButton className="justify-self-end text-foreground hover:text-foreground" />
+        </header>
+        <main className="mx-auto flex w-full max-w-xl flex-1 sm:max-w-2xl items-center py-6">
+          <motion.div className="w-full" initial={reduced ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+            <Card className="w-full gap-7 overflow-hidden border-accent/20 bg-card pb-7 pt-0 shadow-lg shadow-black/5 sm:pb-10">
+              <div className="relative flex h-36 items-center justify-between overflow-hidden border-b border-accent/15 bg-accent/8 px-6 sm:h-44 sm:px-10">
+                <div className="relative z-10 space-y-3">
+                  <p className="text-2xl font-semibold tracking-tight sm:text-3xl">Character<span className="text-accent">Us</span></p>
+                  <span className="inline-flex items-center gap-2 rounded-md border border-accent/20 bg-card/80 px-3 py-2 text-sm font-medium sm:text-base text-muted-foreground">
+                    {step === "code" ? <Hash className="size-4 text-accent sm:size-5" aria-hidden="true" /> : step === "password" ? <LockKeyhole className="size-4 text-accent sm:size-5" aria-hidden="true" /> : <Users className="size-4 text-accent sm:size-5" aria-hidden="true" />}
+                    {step === "code" ? "Código de sala" : step === "password" ? "Sala privada" : "Tu entrada"}
+                  </span>
+                </div>
+                <div className="absolute -right-7 -top-10 size-48 rounded-full border border-accent/15" aria-hidden="true" />
+                <div className="absolute right-2 top-0 size-32 rounded-full bg-accent/10" aria-hidden="true" />
+                <motion.img src="/avatar1.webp" alt="" className="relative size-20 shrink-0 object-contain min-[380px]:size-28 sm:size-40" initial={reduced ? false : { rotate: -8, scale: 0.9 }} animate={{ rotate: 5, scale: 1 }} transition={{ duration: 0.5 }} />
+              </div>
+              <CardHeader className="gap-3 sm:px-10">
+                <CardTitle><h1 className="text-3xl font-semibold sm:text-4xl">{getTitle()}</h1></CardTitle>
+                <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">{getSubtitle()}</p>
+                {step !== "code" && <p className="mt-3 inline-flex w-fit items-center gap-2 rounded-md bg-muted/60 px-3 py-2 text-sm text-muted-foreground"><Hash className="size-4 text-accent" aria-hidden="true" />Sala <span className="font-semibold tracking-widest text-foreground">{roomCode}</span></p>}
+              </CardHeader>
+              <motion.div key={step} initial={reduced ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }}>
+                {renderStep()}
+              </motion.div>
+              {(joining || !isSessionReady) && <p role="status" className="px-6 text-sm text-muted-foreground sm:px-8">{joining ? "Esperando respuesta…" : "Verificando tu sesión…"}</p>}
+            </Card>
+            {!isLoggedIn && <p className="mt-6 flex items-start justify-center gap-2 text-sm text-muted-foreground"><Users className="size-3.5 shrink-0" aria-hidden="true" />Puedes entrar como invitado, sin crear una cuenta.</p>}
+          </motion.div>
+        </main>
+      </div>
+    </MotionConfig>
   );
 }

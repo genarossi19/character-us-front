@@ -424,3 +424,65 @@ test("ghost messages stay hidden for living players and remain available to elim
   client.roomStore.getState().updatePlayer("socket-guest", { isAlive: true });
   assert.ok(render().includes("Mensaje privado"));
 });
+
+test("presential turn sends no word, waits for server and rejects chat/written clues", async () => {
+  const f = fixture();
+  f.roomStore.getState().room.settings = { playMode: "in_person" };
+  f.game.setState({ phase: "word", currentTurnPlayerId: "socket-guest", turnIndex: 0 });
+  const actions = f.hooks.useSocketGame();
+  await assert.rejects(actions.submitWord("pista"), /voz alta/);
+  await assert.rejects(actions.sendChatMessage("hola"), /desactivado/);
+  assert.equal(f.requests.length, 0);
+  const pending = actions.completeTurn();
+  assert.equal(f.requests[0].event, "completeTurn");
+  assert.deepEqual(JSON.parse(JSON.stringify(f.requests[0].payload)), { roomId: "room-1", round: 1, turnIndex: 0 });
+  assert.equal(f.game.getState().currentTurnPlayerId, "socket-guest");
+  f.requests[0].respond(null, { success: true }); await pending;
+  assert.equal(f.game.getState().hasSubmittedWord, true);
+  assert.equal(f.game.getState().currentTurnPlayerId, "socket-guest", "Only turnChanged advances");
+  await assert.rejects(actions.completeTurn(), /No puedes/);
+});
+
+test("presential turn rejects wrong player, eliminated, wrong mode and permits retry after timeout", async () => {
+  const f = fixture();
+  const actions = f.hooks.useSocketGame();
+  await assert.rejects(actions.completeTurn(), /no es presencial/);
+  f.roomStore.getState().room.settings = { playMode: "in_person" };
+  f.game.setState({ phase: "word", currentTurnPlayerId: "socket-host", turnIndex: 1 });
+  await assert.rejects(actions.completeTurn(), /No puedes/);
+  f.game.setState({ currentTurnPlayerId: "socket-guest" });
+  f.roomStore.getState().updatePlayer("socket-guest", { isAlive: false });
+  await assert.rejects(actions.completeTurn(), /No puedes/);
+  f.roomStore.getState().updatePlayer("socket-guest", { isAlive: true });
+  const pending = actions.completeTurn();
+  assert.equal(f.requests[0].ms, 5000);
+  f.requests[0].respond(new Error("timeout"));
+  await assert.rejects(pending, (e) => e.code === "ACK_TIMEOUT");
+  assert.equal(f.game.getState().hasSubmittedWord, false);
+  const retry = actions.completeTurn();
+  f.game.setState({ currentRound: 2, turnIndex: 1 });
+  f.requests[1].respond(null, { success: true }); await retry;
+  assert.equal(f.game.getState().hasSubmittedWord, false, "Late ack cannot complete next round");
+});
+
+test("presential public completion is deduplicated, ignores stale rounds and never consumes chat or word hints", () => {
+  const f = fixture(); f.mount();
+  f.roomStore.getState().room.settings = { playMode: "in_person" };
+  f.game.setState({ phase: "word", currentTurnPlayerId: "socket-guest" });
+  const data = { playerId: "socket-guest", username: "Invitado", round: 1, turnIndex: 0, skipped: false };
+  f.receive("turnCompleted", data); f.receive("turnCompleted", data);
+  f.receive("turnCompleted", { ...data, playerId: "other", round: 0 });
+  assert.equal(f.game.getState().completedTurns.length, 1);
+  assert.equal(f.game.getState().hasSubmittedWord, true);
+  f.receive("chatMessage", { id: "private", type: "player", message: "No debe verse" });
+  f.receive("wordHintRevealed", { playerId: "other", username: "Otro", word: "secreto", skipped: false });
+  assert.equal(f.game.getState().chatMessages.length, 0);
+  assert.equal(f.game.getState().wordHints.length, 0);
+  f.receive("turnChanged", { playerId: "socket-host", turnIndex: 1, total: 2 });
+  assert.equal(f.game.getState().currentTurnPlayerId, "socket-host");
+  f.game.getState().setPhase("debate");
+  assert.equal(f.game.getState().completedTurns.length, 1);
+  f.game.getState().setPhase("word");
+  assert.equal(f.game.getState().completedTurns.length, 0);
+  f.unmount();
+});

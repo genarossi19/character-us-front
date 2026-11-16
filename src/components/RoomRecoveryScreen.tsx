@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 export default function RoomRecoveryScreen({ onRetry }: { onRetry: () => void }) {
   const { status, error } = useRoomSessionStore();
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-6 text-foreground">
+    <main className="flex min-h-screen items-center justify-center bg-background page-gutter text-foreground">
       <div className="max-w-md space-y-4 text-center" role="status">
         <h1 className="text-2xl font-semibold">Recuperando partida</h1>
         <p className="text-muted-foreground">

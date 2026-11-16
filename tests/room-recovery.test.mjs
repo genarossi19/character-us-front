@@ -325,7 +325,7 @@ test("terminal room exits return authenticated users to the menu and visitors to
     const f = fixture(credential, isLoggedIn);
     f.start(); f.ack();
     const leaving = f.actions().leaveRoom(credential.roomId);
-    f.requests.at(-1).respond({ success: true });
+    f.requests.at(-1).respond(null, { success: true });
     await leaving;
     assert.equal(f.paths.at(-1), destination);
     assert.equal(f.session.getState().session, null);
@@ -353,11 +353,34 @@ test("create/join save session and identify by stable ID; only successful leave 
     assert.equal(f.room.getState().currentPlayer.socketId, credential.playerId);
     assert.equal(JSON.parse(f.storage.get(key)).resumeToken, credential.resumeToken);
     const failedLeave = f.actions().leaveRoom(credential.roomId);
-    f.requests[1].respond({ success: false, message: "Error" });
+    f.requests[1].respond(null, { success: false, message: "Error" });
     await assert.rejects(failedLeave); assert.ok(f.storage.has(key));
     const leave = f.actions().leaveRoom(credential.roomId);
-    f.requests[2].respond({ success: true }); await leave;
+    f.requests[2].respond(null, { success: true }); await leave;
     assert.equal(f.storage.has(key), false); assert.equal(f.room.getState().room, null);
     f.stop();
   }
+});
+
+test("presential recovery restores oral completions without conversation history", () => {
+  const f = fixture(); f.start();
+  const state = snapshot();
+  state.room.settings.playMode = "in_person";
+  state.completedTurns = [{ playerId: credential.playerId, username: "Invitado", round: 3, turnIndex: 0, skipped: false }];
+  f.ack(state);
+  assert.equal(f.room.getState().room.settings.playMode, "in_person");
+  assert.equal(f.game.getState().completedTurns.length, 1);
+  assert.equal(f.game.getState().chatMessages.length, 0);
+  assert.equal(f.game.getState().hasSubmittedWord, true);
+  f.stop();
+});
+
+test("creating presential refuses a server that silently omits the requested play mode", async () => {
+  const f = fixture(null); f.start();
+  const pending = f.actions().createRoom({ username: "Host", settings: { playMode: "in_person" } });
+  f.requests[0].respond({ success: true, data: { room: snapshot("waiting", "waiting").room, session: credential } });
+  await assert.rejects(pending, /todavía no admite partidas presenciales/);
+  assert.equal(f.room.getState().room, null);
+  assert.equal(f.session.getState().session, null);
+  f.stop();
 });

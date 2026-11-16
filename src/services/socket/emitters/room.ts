@@ -37,7 +37,9 @@ export const emitLeaveRoom = (
 ): void => {
   assertRoomActionsReady();
   const socket = getSocket();
-  socket.emit("leaveRoom", { roomId }, callback);
+  socket.timeout(10_000).emit("leaveRoom", { roomId }, (error: Error | null, response: Parameters<AckCallback>[0]) => {
+    callback?.(error ? { success: false, code: "ACK_TIMEOUT", message: "El servidor no confirmó la salida. Intenta nuevamente." } : response);
+  });
 };
 
 export const emitStartGame = (
@@ -64,7 +66,9 @@ export const emitKickPlayer = (
 ): void => {
   assertRoomActionsReady();
   const socket = getSocket();
-  socket.emit("kickPlayer", payload, callback);
+  socket.timeout(10_000).emit("kickPlayer", payload, (error: Error | null, response: Parameters<AckCallback>[0]) => {
+    callback?.(error ? { success: false, code: "ACK_TIMEOUT", message: "El servidor no confirmó la expulsión. Intenta nuevamente." } : response);
+  });
 };
 
 export const emitDebateReady = (

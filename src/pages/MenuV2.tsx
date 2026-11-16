@@ -27,7 +27,7 @@ export default function MenuV2() {
   return (
     <div className="bg-background min-h-screen flex flex-col">
       {/* Header */}
-      <header className="fixed top-0 left-0 w-full z-50 h-16 md:h-20 px-4 sm:px-6 flex items-center justify-between bg-card shadow-sm">
+      <header className="fixed top-0 left-0 w-full z-50 h-16 md:h-20 page-gutter flex items-center justify-between bg-card shadow-sm">
         <div className="min-w-0 flex items-center gap-3">
           <Link to="/">
             <div className="flex min-w-0 items-center gap-2">
@@ -87,7 +87,7 @@ export default function MenuV2() {
       </header>
 
       {/* Main */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 pb-6 pt-24 sm:px-6">
+      <main className="flex-1 flex flex-col items-center justify-center page-gutter pb-10 pt-28">
         <div className="max-w-3xl w-full space-y-8">
           <div className="text-center space-y-2">
             <h1 className="text-3xl font-bold sm:text-5xl text-foreground">

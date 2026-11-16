@@ -387,3 +387,107 @@ input[type="number"]::-webkit-inner-spin-button {
 input[type="number"] {
   -moz-appearance: textfield;
 }
+
+/* Shared page rhythm. Change these tokens to tune the entire active UI. */
+:root {
+  --page-gutter: clamp(1.5rem, 4vw, 4rem);
+  --page-width: 80rem;
+  --page-space: clamp(1.5rem, 3vw, 2.5rem);
+  --panel-space: clamp(1.5rem, 2.5vw, 2rem);
+  --section-space: clamp(4rem, 8vw, 7rem);
+}
+.page-container { width: min(calc(100% - var(--page-gutter) * 2), var(--page-width)); margin-inline: auto; }
+.page-gutter { padding-inline: max(var(--page-gutter), calc((100% - var(--page-width)) / 2)); }
+.page-padding { padding-block: var(--page-space); padding-inline: max(var(--page-gutter), calc((100% - var(--page-width)) / 2)); }
+.page-content { width: 100%; max-width: var(--page-width); margin-inline: auto; }
+.home-page { overflow: clip; }
+.home-section { padding-block: var(--section-space); }
+.home-hero { display: grid; align-items: center; gap: 3rem; min-height: min(52rem, 90svh); }
+.home-eyebrow { display: flex; align-items: center; gap: .5rem; font-size: .75rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
+.home-title { margin-top: 1.5rem; font-size: clamp(3.1rem, 6.5vw, 6rem); line-height: 1.03; font-weight: 650; letter-spacing: -.045em; }
+.home-highlight { color: var(--accent); position: relative; }
+.home-heading { margin-top: 1rem; font-size: clamp(2.5rem, 4.5vw, 4.5rem); line-height: 1.08; font-weight: 600; letter-spacing: -.035em; text-wrap: balance; }
+.home-lead { margin-top: 1.5rem; max-width: 36rem; font-size: clamp(1.05rem, 1.6vw, 1.25rem); line-height: 1.7; color: var(--muted-foreground); }
+.home-actions { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 2rem; }
+.home-button { min-height: 3.5rem; height: auto; padding: 1rem 1.5rem; white-space: normal; font-size: 1rem; }
+.home-cast { position: relative; min-width: 0; height: clamp(22rem, 40vw, 35rem); isolation: isolate; }
+.home-orbit { position: absolute; inset: 4% 3%; border: 1px dashed color-mix(in srgb, var(--accent) 40%, transparent); border-radius: 50%; transform: rotate(-20deg); background: radial-gradient(ellipse, color-mix(in srgb, var(--accent) 13%, transparent), transparent 70%); }
+.home-orbit-inner { inset: 16% 12%; transform: rotate(25deg); border-color: color-mix(in srgb, var(--primary) 30%, transparent); }
+.home-avatar { position: absolute; width: 43%; object-fit: contain; filter: drop-shadow(0 24px 14px #00000018); }
+.home-avatar-left { left: -1%; top: 24%; z-index: 2; }
+.home-avatar-center { left: 30%; top: 9%; z-index: 1; }
+.home-avatar-right { right: -1%; bottom: 10%; z-index: 3; }
+.home-sticker { position: absolute; z-index: 4; display: flex; align-items: center; gap: .5rem; padding: .8rem 1rem; border-radius: 1rem; font-size: .85rem; font-weight: 500; box-shadow: 0 8px 28px #0000000d; }
+.home-sticker-top { top: 2%; left: 5%; background: var(--warning); color: #382b0d; transform: rotate(-6deg); }
+.home-sticker-bottom { bottom: 9%; left: 6%; background: var(--card); color: var(--foreground); border: 1px solid var(--border); transform: rotate(4deg); }
+.home-cast-star { position: absolute; top: 16%; right: 2%; font-size: 3rem; color: var(--primary); }
+.home-ribbon { background: var(--accent); color: var(--accent-foreground); border-block: 1px solid var(--accent); }
+.home-section-heading { margin-bottom: 3rem; }
+.home-step { display: flex; flex-direction: column; padding: var(--panel-space); border-radius: 1.5rem; border: 1px solid var(--border); background: var(--card); }
+.home-demo-band { background: color-mix(in srgb, var(--accent) 5%, var(--card)); border-block: 1px solid var(--border); }
+.home-demo { padding: var(--panel-space); border: 1px solid var(--border); border-radius: 2rem; background: var(--card); box-shadow: 12px 12px 0 color-mix(in srgb, var(--accent) 14%, transparent); }
+.home-clue { display: flex; align-items: center; gap: 1rem; width: 100%; padding: .75rem; border-width: 1px; cursor: pointer; }
+.home-clue:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.home-avatar-line { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; padding-block: 1rem 3rem; }
+.home-finale { padding: var(--section-space) var(--panel-space); border-radius: 2rem; text-align: center; background: color-mix(in srgb, var(--accent) 10%, var(--card)); border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border)); }
+@media (min-width: 768px) { .home-avatar-line { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .home-hero { grid-template-columns: 1.1fr 1fr; } }
+@media (max-width: 639px) {
+  .home-hero { min-height: auto; padding-top: 3rem; }
+  .home-title { font-size: clamp(2.65rem, 11vw, 4rem); overflow-wrap: anywhere; }
+  .home-actions > * { flex: 1 1 12rem; }
+  .home-demo { box-shadow: 6px 6px 0 color-mix(in srgb, var(--accent) 14%, transparent); }
+  .home-clue { gap: .5rem; }
+  .home-clue img { width: 3rem; height: 3rem; }
+}
+
+/* Keep decorative login artwork compact on short desktop windows. */
+@media (min-width: 1024px) and (max-height: 700px) {
+  .login-illustration { height: 9rem; }
+  .login-illustration img { height: 100%; width: auto; max-width: 60%; }
+}
+
+@media (min-width: 1024px) and (max-height: 700px) {
+  .signup-ticket-scene { height: 10rem; }
+}
+
+/* Auth screens share snapshots: the visual panel travels over the form. */
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  html[data-auth-transition] .auth-frame { view-transition-name: auth-frame; }
+  html[data-auth-transition] .auth-visual { view-transition-name: auth-visual; }
+  html[data-auth-transition] .auth-form { view-transition-name: auth-form; }
+}
+html[data-auth-transition]::view-transition-old(root),
+html[data-auth-transition]::view-transition-new(root) { animation: none; }
+html[data-auth-transition]::view-transition-group(auth-frame),
+html[data-auth-transition]::view-transition-group(auth-visual),
+html[data-auth-transition]::view-transition-group(auth-form) {
+  animation-duration: 600ms;
+  animation-timing-function: cubic-bezier(.65, 0, .25, 1);
+}
+html[data-auth-transition]::view-transition-group(auth-frame) { z-index: 1; }
+html[data-auth-transition]::view-transition-group(auth-form) { z-index: 2; }
+html[data-auth-transition]::view-transition-group(auth-visual) { z-index: 3; }
+html[data-auth-transition]::view-transition-image-pair(auth-visual) { isolation: isolate; }
+html[data-auth-transition]::view-transition-old(auth-visual) {
+  animation: auth-visual-out 600ms ease both;
+}
+html[data-auth-transition]::view-transition-new(auth-visual) {
+  animation: auth-visual-in 600ms ease both;
+}
+html[data-auth-transition]::view-transition-old(auth-form) {
+  animation: auth-form-out 160ms ease both;
+}
+html[data-auth-transition]::view-transition-new(auth-form) {
+  animation: auth-form-in 260ms 300ms ease both;
+}
+@keyframes auth-form-out { to { opacity: 0; } }
+@keyframes auth-form-in { from { opacity: 0; } to { opacity: 1; } }
+/* Swap artwork between snapshots without overlapping two sets of lettering. */
+html[data-auth-transition]::view-transition-group(auth-visual) {
+  background: color-mix(in srgb, var(--accent) 5%, var(--card));
+}
+html[data-auth-transition]::view-transition-old(auth-frame) { animation: none; opacity: 0; }
+html[data-auth-transition]::view-transition-new(auth-frame) { animation: none; height: 100%; object-fit: fill; }
+@keyframes auth-visual-out { 0%, 25% { opacity: 1; } 45%, 100% { opacity: 0; } }
+@keyframes auth-visual-in { 0%, 50% { opacity: 0; } 75%, 100% { opacity: 1; } }

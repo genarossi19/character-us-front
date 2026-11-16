@@ -1,221 +1,211 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
+import { Dialog } from "radix-ui";
+import { motion, MotionConfig, useReducedMotion } from "motion/react";
+import { Check, Clock3, Crown, Ellipsis, Gamepad2, Globe2, LoaderCircle, Lock, LogOut, Play, Users, VenetianMask, X } from "lucide-react";
 import { useRoomStore } from "@/store/useRoomStore";
 import { useSocketRoom } from "@/hooks/useSocketRoom";
 import { useUserStore } from "@/store/useUserStore";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import BackgroundAnimate from "@/components/BackgroundAnimate";
+import { FormActionButton } from "@/components/ui/form-actions";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { ThemeToggleButton } from "@/components/ui/shadcn-io/theme-toggle-button";
-import { AVATAR_URLS } from "@/constants/avatars";
 import { fetchCategories, type Category } from "@/services/api/category";
-import { toast } from "sonner";
 import RoomInvite from "@/components/RoomInvite";
-import { Check, Clock3, Copy, Crown, LoaderCircle, LogOut, Play, Users } from "lucide-react";
+import LobbyAvatarPicker from "@/components/LobbyAvatarPicker";
+import type { Player } from "@/types/game";
 
 export default function WaitingRoomV2() {
   const { room, currentPlayer, players } = useRoomStore();
   const isLoggedIn = useUserStore((state) => state.isLoggedIn);
   const { leaveRoom, startGame, kickPlayer, changeAvatar, lobbyReady } = useSocketRoom();
   const navigate = useNavigate();
-  const selectedAvatar = currentPlayer?.avatarUrl;
-  const [changingAvatar, setChangingAvatar] = useState(false);
-  const [markingReady, setMarkingReady] = useState(false);
-  const [starting, setStarting] = useState(false);
+  const reducedMotion = useReducedMotion();
+  const [action, setAction] = useState<"ready" | "start" | "leave" | "kick" | null>(null);
+  const busy = useRef(false);
+  const [actionError, setActionError] = useState("");
+  const [kickTarget, setKickTarget] = useState<Player | null>(null);
+  const [kickError, setKickError] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
-
-  useEffect(() => {
-    fetchCategories().then(setCategories).catch(() => {});
-  }, []);
-
-  const isHost = currentPlayer?.isHost;
-  const readyPlayers = players.filter((p) => p.isLobbyReady && p.isOnline).length;
+  const [categoryAttempt, setCategoryAttempt] = useState(0);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const pendingStart = useRef(false);
+  const [avatarPreview, setAvatarPreview] = useState<{ roomId: string; playerId: string; url: string } | null>(null);
+  const isHost = currentPlayer?.isHost === true;
+  const readyPlayers = players.filter((player) => player.isLobbyReady && player.isOnline).length;
   const minimumPlayers = Math.max(3, (room?.settings.impostorCount ?? 1) + 1);
   const allReady = players.length > 0 && readyPlayers === players.length;
   const canStartGame = isHost && players.length >= minimumPlayers && allReady && room?.status === "waiting";
 
   useEffect(() => {
-    if (!room || !currentPlayer) {
-      navigate(isLoggedIn ? "/menu" : "/join", { replace: true });
-    }
+    let active = true;
+    void fetchCategories().then((data) => { if (active) { setCategories(data); setLoadingCategories(false); } });
+    return () => { active = false; };
+  }, [categoryAttempt]);
+
+  useEffect(() => {
+    if (!room || !currentPlayer) navigate(isLoggedIn ? "/menu" : "/join", { replace: true });
   }, [room, currentPlayer, isLoggedIn, navigate]);
 
-  const handleStart = async () => {
-    if (!room || !canStartGame || starting) return;
-    setStarting(true);
-    try {
-      await startGame(room.id);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No se pudo iniciar la partida");
-    } finally {
-      setStarting(false);
+  useEffect(() => {
+    if (avatarPreview?.roomId === room?.id && avatarPreview?.playerId === currentPlayer?.socketId && avatarPreview?.url === currentPlayer?.avatarUrl) {
+      setAvatarPreview(null);
     }
-  };
+  }, [avatarPreview, room?.id, currentPlayer?.socketId, currentPlayer?.avatarUrl]);
 
-  const handleReady = async () => {
-    if (!room || markingReady || currentPlayer?.isLobbyReady) return;
-    setMarkingReady(true);
-    try {
-      await lobbyReady(room.id);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No se pudo confirmar que estás listo");
-    } finally {
-      setMarkingReady(false);
-    }
-  };
-
-  const handleLeave = async () => {
-    if (!room) return;
-    try {
-      await leaveRoom(room.id);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No se pudo salir de la sala");
-    }
-  };
-
-  const handleKick = (playerId: string) => {
-    if (!room) return;
-    kickPlayer(room.id, playerId);
-    toast.success("Jugador expulsado");
-  };
-
-  const handleCopyCode = async () => {
-    if (!room) return;
-    try {
-      await navigator.clipboard.writeText(String(room.code));
-      toast.success("Código copiado al portapapeles");
-    } catch {
-      toast.error("No se pudo copiar el código. Puedes seleccionarlo para compartirlo.");
-    }
-  };
-
-  const usedAvatars = players
-    .filter((p) => p.socketId !== currentPlayer?.socketId)
-    .map((p) => p.avatarUrl);
-
-  const handleSelectAvatar = async (avatar: string) => {
-    if (!room || changingAvatar || avatar === selectedAvatar || usedAvatars.includes(avatar)) return;
-    setChangingAvatar(true);
+  const selectAvatar = async (avatar: string) => {
+    if (!room || !currentPlayer) return;
+    const previous = avatarPreview;
+    setAvatarPreview({ roomId: room.id, playerId: currentPlayer.socketId, url: avatar });
     try {
       await changeAvatar(room.id, avatar);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No se pudo cambiar el avatar");
+    } catch (cause) {
+      // A room update can confirm the change even if its acknowledgement times out.
+      const latest = useRoomStore.getState();
+      if (latest.room?.id === room.id && latest.currentPlayer?.socketId === currentPlayer.socketId && latest.currentPlayer.avatarUrl === avatar) return;
+      setAvatarPreview(previous);
+      throw cause;
+    }
+  };
+
+  const runAction = async (kind: "ready" | "start" | "leave") => {
+    if (!room || busy.current || pendingStart.current) return;
+    if (kind === "ready" && (currentPlayer?.isLobbyReady || !currentPlayer?.isOnline)) return;
+    if (kind === "start" && !canStartGame) return;
+    busy.current = true;
+    setAction(kind);
+    setActionError("");
+    try {
+      if (kind === "ready") await lobbyReady(room.id);
+      if (kind === "leave") await leaveRoom(room.id);
+      if (kind === "start") {
+        await startGame(room.id);
+        // gameStarted owns navigation. Keep start locked until that authoritative event.
+        pendingStart.current = true;
+      }
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : "No se pudo completar la acción. Intenta otra vez.");
     } finally {
-      setChangingAvatar(false);
+      busy.current = false;
+      if (!pendingStart.current) setAction(null);
+    }
+  };
+
+  const handleKick = async () => {
+    if (!room || !isHost || !kickTarget || busy.current) return;
+    busy.current = true;
+    setAction("kick");
+    setKickError("");
+    try {
+      await kickPlayer(room.id, kickTarget.socketId);
+      setKickTarget(null);
+    } catch (cause) {
+      setKickError(cause instanceof Error ? cause.message : "No se pudo expulsar al jugador. Intenta otra vez.");
+    } finally {
+      busy.current = false;
+      setAction(null);
     }
   };
 
   if (!room || !currentPlayer) return null;
 
   const modeLabel = { classic: "Clásico", anonymous: "Anónimo", special: "Especial" }[room.settings.mode];
+  const category = categories.find((candidate) => candidate.id === room.settings.category);
   const startHint = players.length < minimumPlayers
     ? `Se necesitan al menos ${minimumPlayers} jugadores.`
-    : !allReady ? "Todos deben estar conectados y listos para comenzar." : "Todo listo para comenzar.";
+    : !allReady ? "Todos deben estar conectados y listos." : "";
+  const displayPlayer = avatarPreview?.roomId === room.id && avatarPreview.playerId === currentPlayer.socketId
+    ? { ...currentPlayer, avatarUrl: avatarPreview.url }
+    : currentPlayer;
+  const twoRows = players.length > 4;
+  const readyStatus = currentPlayer.isLobbyReady && currentPlayer.isOnline;
 
   return (
-    <div className="min-h-screen px-4 py-5 sm:px-6 lg:px-8 lg:py-4">
-      <BackgroundAnimate />
-      <div className="relative mx-auto max-w-7xl space-y-5 lg:space-y-4">
-        <header className="flex items-center justify-between gap-3 text-white">
-          <div className="min-w-0">
-            <h1 className="text-2xl font-bold sm:text-3xl">Sala de espera</h1>
-            <p className="truncate text-sm text-white/70">{room.name}</p>
-          </div>
-          <div className="flex shrink-0 items-center gap-1">
-            <ThemeToggleButton className="text-white" />
-            <Button variant="ghost" onClick={handleLeave} className="text-white hover:bg-white/10"><LogOut className="size-4" aria-hidden="true" />Salir<span className="hidden sm:inline">de la sala</span></Button>
+    <MotionConfig reducedMotion="user">
+      <div className="min-h-screen bg-background text-foreground">
+        <header className="border-b border-border bg-card">
+          <div className="page-container flex h-20 items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <img src="/logo.webp" alt="" className="size-12 shrink-0 rounded-md" />
+              <span className="hidden text-3xl font-extrabold text-accent sm:inline">CharacterUs</span>
+            </div>
+            <div className="flex shrink-0 items-center gap-1 sm:gap-3">
+              <ThemeToggleButton />
+              <Button type="button" size="lg" variant="ghost" onClick={() => void runAction("leave")} disabled={!!action} className="px-3 text-base sm:text-lg"><LogOut aria-hidden="true" />{action === "leave" ? "Saliendo…" : "Salir"}</Button>
+            </div>
           </div>
         </header>
 
-        <main className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_360px]">
-          <Card className="min-w-0 gap-4 border-border/50 bg-card py-5 shadow-lg">
-            <CardHeader className="gap-3 px-4 sm:px-5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <CardTitle className="flex items-center gap-2 text-lg"><Users className="size-5 text-accent" aria-hidden="true" />Jugadores <span className="text-sm font-normal text-muted-foreground">{players.length}/{room.settings.maxPlayers}</span></CardTitle>
-                <Badge className="bg-accent/15 text-teal-800 dark:text-teal-200">{readyPlayers}/{players.length} listos</Badge>
+        <main className="page-container py-5">
+          <h1 className="mb-5 text-3xl font-bold sm:text-4xl">Sala de espera<span className="text-accent">.</span></h1>
+          <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_360px]">
+            <motion.section initial={{ opacity: 0, y: reducedMotion ? 0 : 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }} className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card shadow-sm" aria-labelledby="players-title">
+              <div className="flex items-center justify-between gap-3 px-5 py-4 sm:px-6">
+                <h2 id="players-title" tabIndex={-1} className="flex items-center gap-2 text-xl font-semibold"><Users className="size-5 text-accent" aria-hidden="true" />Jugadores</h2>
+                <p className="text-base text-muted-foreground" aria-label={`${players.length} de ${room.settings.maxPlayers} jugadores`}>{players.length}<span className="mx-1 text-muted-foreground/50">/</span>{room.settings.maxPlayers}</p>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-5 px-4 sm:px-5 lg:space-y-4">
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                {players.map((player) => {
+
+              <div className={`grid grid-cols-2 gap-x-3 gap-y-6 bg-accent/[0.035] px-5 py-6 sm:grid-cols-4 sm:px-6 ${twoRows ? "sm:gap-y-4 sm:py-4" : ""}`}>
+                {players.map((player, index) => {
                   const mine = player.socketId === currentPlayer.socketId;
                   const ready = player.isLobbyReady && player.isOnline;
                   return (
-                    <div key={player.socketId} className={`relative flex min-w-0 flex-col items-center gap-2 rounded-xl border p-3 lg:gap-1 lg:p-2 xl:gap-2 xl:p-3 ${mine ? "border-accent/50 bg-accent/5" : "border-border bg-muted/30"}`}>
-                      <div className="relative">
-                        <img src={player.avatarUrl} alt="" className="size-16 rounded-full object-cover sm:size-20 lg:size-14 xl:size-20" />
-                        {player.isHost && <span title="Anfitrión" className="absolute -right-1 -top-1 rounded-full bg-warning p-1 text-warning-foreground"><Crown className="size-3.5" aria-label="Anfitrión" /></span>}
+                    <motion.article key={player.socketId} aria-label={`Jugador ${player.username}${mine ? ", tú" : ""}${player.isHost ? ", anfitrión" : ""}`} initial={{ opacity: 0, y: reducedMotion ? 0 : 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18, delay: reducedMotion ? 0 : Math.min(index * 0.03, 0.18) }} className="relative flex min-w-0 flex-col items-center pt-3">
+                      {isHost && !mine && <DropdownMenu><DropdownMenuTrigger asChild><Button type="button" size="icon" variant="ghost" disabled={!!action} className="absolute -right-1 top-0 size-8" aria-label={`Opciones de ${player.username}`}><Ellipsis className="size-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="bg-card text-foreground"><DropdownMenuItem onSelect={() => { setKickError(""); setKickTarget(player); }} className="text-red-700 focus:bg-red-50 focus:text-red-800 dark:text-red-300 dark:focus:bg-red-400/10 dark:focus:text-red-200"><LogOut aria-hidden="true" />Expulsar de la sala</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}
+                      <div className={`relative flex size-24 items-center justify-center rounded-full ${twoRows ? "mb-3 sm:mb-2 sm:size-20" : "mb-3 sm:size-28"} ${mine ? "bg-accent/15 ring-1 ring-accent/40" : "bg-accent/[0.07]"}`}>
+                        <img src={mine ? displayPlayer.avatarUrl : player.avatarUrl} alt="" className={`size-20 object-contain ${twoRows ? "sm:size-[72px]" : "sm:size-24"} ${!player.isOnline ? "grayscale opacity-50" : ""}`} />
+                        {player.isHost && <span className="absolute -top-3 left-1/2 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-900 dark:bg-amber-300 dark:text-amber-950"><Crown className="size-3" aria-hidden="true" />Anfitrión</span>}
                       </div>
-                      <div className="w-full text-center">
-                        <p className="truncate text-sm font-semibold" title={player.username}>{player.username}</p>
-                        <p className="text-xs text-muted-foreground">{mine ? "Tú" : player.isHost ? "Anfitrión" : "Jugador"}</p>
-                      </div>
-                      <span className={`flex items-center gap-1 text-xs ${ready ? "text-teal-800 dark:text-teal-200" : "text-muted-foreground"}`}>
-                        {ready ? <Check className="size-3.5" aria-hidden="true" /> : <Clock3 className="size-3.5" aria-hidden="true" />}
-                        {!player.isOnline ? "Sin conexión" : ready ? "Listo" : "Preparándose"}
-                      </span>
-                      {isHost && !mine && <button onClick={() => handleKick(player.socketId)} aria-label={`Expulsar a ${player.username}`} className="absolute right-0 top-0 flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-danger/15 hover:text-danger">×</button>}
-                    </div>
+                      <div className="flex max-w-full items-baseline justify-center gap-1.5"><h3 className="truncate text-base font-semibold" title={player.username}>{player.username}</h3>{mine && <span className="shrink-0 text-xs text-muted-foreground">Tú</span>}</div>
+                      <p className={`mt-1 flex items-center gap-1 text-sm ${ready ? "text-teal-800 dark:text-teal-200" : "text-muted-foreground"}`}>
+                        {ready ? <Check className="size-3.5" aria-hidden="true" /> : <Clock3 className="size-3.5" aria-hidden="true" />}{!player.isOnline ? "Sin conexión" : ready ? "Listo" : "Preparándose"}
+                      </p>
+                    </motion.article>
                   );
                 })}
               </div>
 
-              <div className="space-y-3 border-t border-border pt-4">
-                {!currentPlayer.isLobbyReady ? (
-                  <Button onClick={handleReady} disabled={markingReady || starting || !currentPlayer.isOnline} className="h-11 w-full bg-accent text-accent-foreground hover:bg-accent/90">
-                    {markingReady ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Check className="size-4" aria-hidden="true" />}
-                    {markingReady ? "Confirmando…" : "Estoy listo"}
-                  </Button>
-                ) : (
-                  <p role="status" className="flex items-center justify-center gap-2 rounded-xl border border-teal-600/25 bg-teal-50 px-3 py-3 text-center text-sm font-medium text-teal-900 dark:border-teal-300/25 dark:bg-teal-400/10 dark:text-teal-100">
-                    <Check className="size-4 shrink-0" aria-hidden="true" />{isHost ? "Estás listo para iniciar la partida" : "Esperando que el anfitrión inicie"}
-                  </p>
-                )}
-                {isHost && <Button onClick={handleStart} disabled={!canStartGame || starting} aria-describedby="start-hint" className="h-11 w-full text-base">
-                  {starting ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Play className="size-4" aria-hidden="true" />}{starting ? "Iniciando partida…" : "Iniciar partida"}
-                </Button>}
-                <p id="start-hint" aria-live="polite" className="text-center text-xs text-muted-foreground">{startHint}</p>
+              <div className="border-t border-border px-5 py-4 sm:px-6">
+                <LobbyAvatarPicker player={displayPlayer} players={players} disabled={!!action || room.status !== "waiting" || !currentPlayer.isOnline} onSelect={selectAvatar} />
               </div>
+              <div className="space-y-3 border-t border-border px-5 py-4 sm:px-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+                  {!readyStatus ? <div className="w-full sm:w-auto sm:min-w-44"><FormActionButton tone="accent" disabled={!!action || !currentPlayer.isOnline || room.status !== "waiting"} onClick={() => void runAction("ready")}>
+                    {action === "ready" ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Check aria-hidden="true" />}{action === "ready" ? "Confirmando…" : "Estoy listo"}
+                  </FormActionButton></div> : <p role="status" className="flex min-h-10 items-center justify-center gap-2 text-base text-teal-900 sm:mr-auto dark:text-teal-100"><Check className="size-4 shrink-0" aria-hidden="true" />{isHost ? "Estás listo" : "Esperando que el anfitrión inicie"}</p>}
+                  {isHost && <div className="w-full sm:w-auto sm:min-w-48"><FormActionButton tone="accent" disabled={!canStartGame || !!action} aria-describedby={startHint ? "start-hint" : undefined} onClick={() => void runAction("start")}>{action === "start" ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Play aria-hidden="true" />}{action === "start" ? "Iniciando…" : "Iniciar partida"}</FormActionButton></div>}
+                </div>
+                {isHost && startHint && <p id="start-hint" aria-live="polite" className="text-sm text-muted-foreground sm:text-right">{startHint}</p>}
+                {actionError && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-400/10 dark:text-red-200">{actionError}</p>}
+              </div>
+            </motion.section>
 
-              <section className="border-t border-border pt-4" aria-labelledby="avatar-title">
-                <h2 id="avatar-title" className="mb-3 text-sm font-medium">Tu avatar</h2>
-                {currentPlayer.isGuest ? <p className="text-xs text-muted-foreground">Tu avatar se asignó al unirte a la sala.</p> : (
-                  <div className="grid grid-cols-4 gap-3 sm:grid-cols-8">
-                    {AVATAR_URLS.map((avatar, index) => {
-                      const taken = usedAvatars.includes(avatar);
-                      const selected = selectedAvatar === avatar;
-                      return <button key={avatar} onClick={() => handleSelectAvatar(avatar)} disabled={taken || changingAvatar} aria-pressed={selected} aria-label={`Avatar ${index + 1}${taken ? ", ocupado" : selected ? ", seleccionado" : ""}`} className={`mx-auto aspect-square w-full max-w-14 rounded-full border-2 p-0.5 transition-colors focus-visible:outline-2 focus-visible:outline-ring ${selected ? "border-accent bg-accent/20" : "border-transparent hover:border-accent/50"} ${taken ? "cursor-not-allowed opacity-30" : "cursor-pointer"}`}>
-                        <img src={avatar} alt="" className="size-full rounded-full object-cover" />
-                      </button>;
-                    })}
-                  </div>
-                )}
+            <aside className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card shadow-sm lg:sticky lg:top-5" aria-label="Invitación y resumen de la partida">
+              <section aria-labelledby="invite-title" className="p-5">
+                <h2 id="invite-title" className="mb-4 text-xl font-semibold">Invitación</h2>
+                <RoomInvite code={room.code} isPrivate={room.settings.privacy === "private"} />
               </section>
-            </CardContent>
-          </Card>
-
-          <aside className="min-w-0 space-y-4">
-            <Card className="gap-3 border-border/50 bg-card py-5 shadow-lg">
-              <CardHeader className="px-5"><CardTitle className="text-base">Invita a tus amigos</CardTitle></CardHeader>
-              <CardContent className="space-y-3 px-5">
-                <button onClick={handleCopyCode} aria-label={`Copiar código de sala ${room.code}`} className="flex w-full items-center justify-between gap-2 rounded-xl bg-accent/10 px-4 py-2 text-accent hover:bg-accent/20 focus-visible:outline-2 focus-visible:outline-ring">
-                  <span className="text-left"><span className="block text-xs text-muted-foreground">Código de sala</span><span className="text-3xl font-semibold tracking-widest">{room.code}</span></span><Copy className="size-5 shrink-0" aria-hidden="true" />
-                </button>
-                <RoomInvite code={room.code} />
-              </CardContent>
-            </Card>
-            <Card className="gap-3 border-border/50 bg-card py-5 shadow-lg">
-              <CardHeader className="px-5"><CardTitle className="text-base">Configuración de la partida</CardTitle></CardHeader>
-              <CardContent className="px-5">
-                <dl className="space-y-3 text-sm">
-                  {[["Categoría", categories.find((c) => c.id === room.settings.category)?.name || "Categoría seleccionada"], ["Impostores", room.settings.impostorCount], ["Modo", modeLabel], ["Duración", "Hasta que haya ganador"]].map(([label, value]) => <div key={label} className="flex justify-between gap-4"><dt className="text-muted-foreground">{label}</dt><dd className="min-w-0 break-words text-right font-medium">{value}</dd></div>)}
-                </dl>
-              </CardContent>
-            </Card>
-          </aside>
+              <section aria-labelledby="summary-title" className="border-t border-border p-5">
+                <div className="mb-4 flex items-center gap-3"><Gamepad2 className="size-5 shrink-0 text-accent" aria-hidden="true" /><div className="min-w-0"><h2 id="summary-title" className="text-sm text-muted-foreground">Categoría</h2><p className="break-words text-xl font-semibold leading-snug">{category?.name || (loadingCategories ? "Cargando…" : "No disponible")}</p></div></div>
+                <div className="space-y-4">
+                  {!category && !loadingCategories && <button type="button" onClick={() => { setLoadingCategories(true); setCategoryAttempt((attempt) => attempt + 1); }} className="text-sm text-teal-800 underline underline-offset-2 dark:text-teal-200">Reintentar cargar categoría</button>}
+                  <div className="flex flex-wrap gap-2 text-sm"><span className="rounded-md bg-accent/10 px-2 py-1 text-teal-900 dark:text-teal-100">{modeLabel}</span><span className="flex items-center gap-1.5 rounded-md bg-muted/50 px-2 py-1">{room.settings.privacy === "private" ? <Lock className="size-3.5" aria-hidden="true" /> : <Globe2 className="size-3.5" aria-hidden="true" />}{room.settings.privacy === "private" ? "Privada" : "Pública"}</span><span className="flex items-center gap-1.5 rounded-md bg-muted/50 px-2 py-1"><VenetianMask className="size-3.5 text-purple-600 dark:text-purple-300" aria-hidden="true" />{room.settings.impostorCount} {room.settings.impostorCount === 1 ? "impostor" : "impostores"}</span></div>
+                  <dl className="space-y-2.5 text-sm">{[["Tipo de partida", room.settings.playMode === "in_person" ? "Presencial" : "En línea"], ["Impostores se conocen", room.settings.impostorsKnowEachOther ? "Sí" : "No"], ["Objetivos de los votos", room.settings.visibleVotes ? "Visibles" : "Ocultos"]].map(([label, value]) => <div key={label} className="flex justify-between gap-3"><dt className="text-muted-foreground">{label}</dt><dd className="text-right font-medium">{value}</dd></div>)}</dl>
+                </div>
+              </section>
+            </aside>
+          </div>
         </main>
+
+        <Dialog.Root open={!!kickTarget} onOpenChange={(open) => { if (!open && action !== "kick") setKickTarget(null); }}>
+          <Dialog.Portal><Dialog.Overlay className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm" /><Dialog.Content onCloseAutoFocus={(event) => { event.preventDefault(); document.getElementById("players-title")?.focus(); }} className="fixed left-1/2 top-1/2 z-[61] w-[calc(100%_-_2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 text-foreground shadow-xl">
+            <div className="flex items-start justify-between gap-3"><Dialog.Title className="text-2xl font-bold">¿Expulsar a {kickTarget?.username}?</Dialog.Title><Dialog.Close asChild><Button type="button" variant="ghost" size="icon" aria-label="Cerrar confirmación" disabled={action === "kick"}><X className="size-5" /></Button></Dialog.Close></div>
+            <Dialog.Description className="mt-3 text-base text-muted-foreground">Saldrá de esta sala. Podrá volver a unirse con la invitación.</Dialog.Description>
+            {kickError && <p role="alert" className="mt-4 text-sm text-red-700 dark:text-red-300">{kickError}</p>}
+            <div className="mt-6 flex flex-wrap justify-end gap-2"><Dialog.Close asChild><Button type="button" variant="outline" size="lg" disabled={action === "kick"} className="px-5 text-base">Cancelar</Button></Dialog.Close><Button type="button" size="lg" disabled={!!action} onClick={() => void handleKick()} className="bg-red-600 px-5 text-base text-white hover:bg-red-700">{action === "kick" && <LoaderCircle className="animate-spin" aria-hidden="true" />}{action === "kick" ? "Expulsando…" : "Expulsar"}</Button></div>
+          </Dialog.Content></Dialog.Portal>
+        </Dialog.Root>
       </div>
-    </div>
+    </MotionConfig>
   );
 }

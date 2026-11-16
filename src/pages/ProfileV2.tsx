@@ -32,7 +32,7 @@ export default function ProfileV2() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="fixed top-0 left-0 w-full z-50 h-16 md:h-20 px-6 flex items-center justify-between bg-card shadow-sm">
+      <header className="fixed top-0 left-0 w-full z-50 h-16 md:h-20 page-gutter flex items-center justify-between bg-card shadow-sm">
         <div className="flex items-center gap-4">
           <Button
             onClick={() => navigate(-1)}
@@ -51,7 +51,7 @@ export default function ProfileV2() {
       </header>
 
       {/* Main */}
-      <main className="flex-1 flex items-center justify-center p-6 pt-24">
+      <main className="flex-1 flex items-center justify-center page-gutter pb-10 pt-28">
         <div className="max-w-lg w-full space-y-6">
           <div className="text-center space-y-2">
             <h1 className="text-4xl font-bold text-foreground">Mi Perfil</h1>

@@ -1,6 +1,16 @@
 # Socket.IO en CharacterUs
 
+Modo presencial: `settings.playMode` separa `online` de `in_person` sin alterar `mode`. El frontend incorpora selección, turnos orales con Listo (`completeTurn`/`turnCompleted`), actividad de solo lectura y debate oral; votos/resultados se mantienen en la app. El backend aún debe implementar y confirmar este contrato: no hay simulación de avance local. Ver [contrato presencial](docs/PRESENTIAL_MODE.md).
+
+Invitaciones en Render: los nuevos enlaces/QR usan `/?code=123456` (en producción, `https://characterus-front.onrender.com/?code=123456`) y abren el mismo formulario de unión, con código validado y sin incluir contraseña/token. `/join/:code` se conserva para enlaces anteriores. El frontend necesita un rewrite `/*` → `/index.html` para aperturas y recargas de rutas de BrowserRouter. Ver [despliegue en Render](docs/RENDER.md).
+
+Crear partida conserva `createRoom: { username, token, settings }` y sus acks. Los ajustes visibles corresponden directamente a `RoomSettings`: `mode` usa `classic`/`anonymous`/`special`; no existe un `roomType` Virtual/Presencial. El resumen y sus indicadores son locales y no emiten eventos. Al elegir privacidad pública se elimina `settings.password`; el resumen nunca expone ese secreto.
+
+La ronda de ejemplo del inicio es una demostración local; seleccionar una pista o revelar al impostor no utiliza Socket.IO.
+
 ## Preparación del lobby
+
+El rediseño conserva eventos y payloads. `kickPlayer` y `leaveRoom` ahora esperan su ack hasta 10 segundos y rechazan con `ACK_TIMEOUT`; no confirman expulsión ni limpian sesión de forma optimista. `kickPlayer` devuelve una promesa desde `useSocketRoom`; las bajas y cambios de anfitrión siguen llegando por eventos. El enlace, QR y compartir contienen solo `/?code=123456`, sin contraseña ni credenciales.
 
 - Emisión `lobbyReady: { roomId }`: confirma preparación del jugador estable de esa conexión; admite invitados. Requiere membresía, conexión y sala en `waiting`. Repetir es idempotente.
 - Ack `{ success: true }` o error con `INVALID_PAYLOAD`, `ROOM_NOT_FOUND`, `NOT_IN_ROOM` o `ROOM_NOT_WAITING`. El frontend espera hasta 10 segundos y permite reintentar ante rechazo/timeout.
@@ -106,7 +116,7 @@ Solo `wordHintRevealed`/`allWordsSubmitted` (sin omisiones) y `voteUpdate` produ
 
 Los listeners retornan una función de cleanup y desuscriben el mismo callback que registraron.
 
-El contrato actual de `changeAvatar` se verificó en `character-us-server/src/sockets/handlers/room.handlers.ts`: usa `avatarId` (`avatar-1` a `avatar-8`), valida disponibilidad y emite la sala completa en `roomUpdated`. La UI refleja ese estado confirmado y propaga errores del ack (incluidos `AVATAR_TAKEN`, `INVALID_AVATAR`, `GAME_IN_PROGRESS` y `GUEST_ACTION_FORBIDDEN`). El emisor deja de esperar después de 10 segundos y permite reintentar. El servidor asigna un avatar aleatorio disponible al crear/unirse; el avatar de perfil no determina el de sala.
+El contrato actual de `changeAvatar` se verificó en `character-us-server/src/sockets/handlers/room.handlers.ts`: usa `avatarId` (`avatar-1` a `avatar-8`), valida disponibilidad y emite la sala completa en `roomUpdated`. El estado canónico refleja esa confirmación; una vista local anticipa el avatar propio sin emitir eventos extra y hace rollback con toast ante rechazo. Se propagan errores del ack (incluidos `AVATAR_TAKEN`, `INVALID_AVATAR`, `GAME_IN_PROGRESS`). El emisor deja de esperar después de 10 segundos y permite reintentar. El servidor asigna un avatar aleatorio disponible al crear/unirse; el avatar de perfil no determina el de sala. El handler y servicio del backend vecino actuales permiten cambiarlo también a invitados; la UI no bloquea esa selección por `isGuest`. Servidores anteriores que lo prohíban deben actualizarse; sus rechazos se conservan como errores de la acción.
 
 ## Uso diagnóstico
 

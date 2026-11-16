@@ -111,12 +111,12 @@ export default function PublicRoomsV2() {
   return (
     <div className="bg-background min-h-screen flex flex-col transition-colors">
       {/* Header */}
-      <header className="fixed top-0 left-0 w-full z-50 h-16 md:h-20 px-6 flex items-center justify-between bg-card shadow-sm">
-        <div className="flex items-center gap-6">
+      <header className="fixed top-0 left-0 w-full z-50 h-16 md:h-20 page-gutter flex items-center justify-between bg-card shadow-sm">
+        <div className="min-w-0 flex items-center gap-3">
           <Link to="/menu">
-            <div className="flex items-center gap-4">
-              <img className="h-12 w-12 rounded-md" src="/logo.webp" alt="" />
-              <span className="text-5xl font-extrabold bg-gradient-to-b from-accent/60 via-accent/80 to-accent bg-clip-text text-transparent">
+            <div className="flex min-w-0 items-center gap-2">
+              <img className="size-8 rounded-md sm:size-12" src="/logo.webp" alt="" />
+              <span className="text-2xl font-extrabold sm:text-4xl bg-gradient-to-b from-accent/60 via-accent/80 to-accent bg-clip-text text-transparent">
                 CharacterUs
               </span>
             </div>
@@ -132,7 +132,7 @@ export default function PublicRoomsV2() {
                   alt="avatar"
                   className="w-10 h-10 rounded-full border-2 border-accent shadow"
                 />
-                <span className="font-semibold text-lg text-foreground">
+                <span className="hidden max-w-36 truncate font-semibold text-lg text-foreground sm:block">
                   {getDisplayName(user)}
                 </span>
               </button>
@@ -171,8 +171,8 @@ export default function PublicRoomsV2() {
       </header>
 
       {/* Main */}
-      <main className="flex-1 p-6 pt-24">
-        <div className="max-w-6xl mx-auto space-y-10">
+      <main className="flex-1 page-gutter pb-10 pt-28">
+        <div className="page-content space-y-10">
           {/* Encabezado */}
           <div className="text-center space-y-2">
             <h1 className="text-5xl font-bold text-foreground">

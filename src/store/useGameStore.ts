@@ -8,9 +8,11 @@ import type {
   Player,
   RoomSnapshot,
   GameResult,
+  TurnCompleted,
 } from "@/types/game";
 
 interface GameState {
+  completedTurns: TurnCompleted[];
   phase: GamePhase;
   currentRound: number;
   totalRounds: number;
@@ -73,6 +75,7 @@ interface GameState {
 }
 
 const initialGameState = {
+  completedTurns: [] as TurnCompleted[],
   phase: "waiting" as GamePhase,
   currentRound: 1,
   totalRounds: 5,
@@ -124,6 +127,7 @@ export const useGameStore = create<GameState>((set) => ({
       isImpostor: snapshot.characterAssignment?.isImpostor ?? false,
       impostorIds: snapshot.characterAssignment?.impostorIds ?? [],
       wordHints: snapshot.wordHints,
+      completedTurns: snapshot.completedTurns ?? [],
       currentTurnPlayerId: snapshot.room.gamePhase === "word" ? snapshot.currentTurnPlayerId : null,
       turnIndex: snapshot.turnIndex,
       totalTurns: snapshot.totalTurns,
@@ -135,7 +139,7 @@ export const useGameStore = create<GameState>((set) => ({
       votesVisible: snapshot.room.settings.visibleVotes,
       readyPlayerIds: snapshot.readyPlayerIds,
       readyPlayersTotal: snapshot.room.players.filter((player) => player.isAlive).length,
-      chatMessages: snapshot.chatMessages.filter((message) => message.type !== "system"),
+      chatMessages: snapshot.room.settings.playMode === "in_person" ? [] : snapshot.chatMessages.filter((message) => message.type !== "system"),
       roundResults: snapshot.roundResults,
       eliminatedPlayer: lastResult?.eliminatedPlayer ?? null,
       wasImpostor: lastResult?.wasImpostor ?? false,
@@ -151,7 +155,7 @@ export const useGameStore = create<GameState>((set) => ({
     ...(phase !== "word" ? { currentTurnPlayerId: null } : {}),
     // A new word/character phase begins a fresh set of clues, never debate.
     ...((phase === "character" || phase === "word") && state.phase !== phase
-      ? { wordHints: [], hasSubmittedWord: false, currentTurnPlayerId: null, turnIndex: 0, totalTurns: 0, hasVoted: false, votedFor: null, voterIds: [], votes: {}, votesVisible: null, readyPlayerIds: [], readyPlayersTotal: 0, eliminatedPlayer: null, wasImpostor: false }
+      ? { completedTurns: [], wordHints: [], hasSubmittedWord: false, currentTurnPlayerId: null, turnIndex: 0, totalTurns: 0, hasVoted: false, votedFor: null, voterIds: [], votes: {}, votesVisible: null, readyPlayerIds: [], readyPlayersTotal: 0, eliminatedPlayer: null, wasImpostor: false }
       : {}),
   })),
 
@@ -223,6 +227,7 @@ export const useGameStore = create<GameState>((set) => ({
 
   resetRound: () =>
     set(() => ({
+      completedTurns: [],
       wordHints: [],
       currentTurnPlayerId: null,
       turnIndex: 0,

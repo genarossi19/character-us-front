@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from "react";
-import { Navigate, Routes, Route } from "react-router";
+import { Navigate, Routes, Route, useSearchParams } from "react-router";
 import LoginScreenV2 from "./pages/LoginScreenV2";
 import SignupScreenV2 from "./pages/SignupScreenV2";
 import HomePage from "./pages/HomePage";
@@ -22,6 +22,11 @@ import { useRoomRecovery } from "./hooks/useRoomRecovery";
 import { useRoomSessionStore } from "./store/useRoomSessionStore";
 import RoomRecoveryScreen from "./components/RoomRecoveryScreen";
 
+function HomeEntry() {
+  const [params] = useSearchParams();
+  return params.has("code") ? <QuickJoinScreenV2 invitationCode={params.get("code") ?? ""} /> : <HomePage />;
+}
+
 function SessionBootstrap() {
   const restoreSession = useUserStore((state) => state.restoreSession);
 
@@ -38,7 +43,7 @@ function AuthenticatedOnlyRoute({ children }: { children: ReactNode }) {
 
   if (!isSessionReady) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-6">
+      <div className="flex min-h-screen items-center justify-center bg-background page-gutter">
         <p className="animate-pulse text-lg font-semibold text-muted-foreground">
           Validando tu sesión...
         </p>
@@ -68,7 +73,7 @@ function App() {
         {/* Auth & Landing */}
         <Route path="/signup" element={<SignupScreenV2 />} />
         <Route path="/login" element={<LoginScreenV2 />} />
-        <Route index element={<HomePage />} />
+        <Route index element={<HomeEntry />} />
 
         {/* Main flow (V2) */}
         <Route

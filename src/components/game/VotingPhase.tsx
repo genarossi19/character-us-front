@@ -42,7 +42,7 @@ export default function VotingPhase() {
                 <img src={player.avatarUrl} alt="" className="size-10 shrink-0 rounded-xl object-cover" />
                 <div className="min-w-0 flex-1">
                   <p className="break-words font-semibold">{player.username}</p>
-                  <p className="mt-1 break-words text-sm text-muted-foreground">{hint && !hint.skipped ? `Pista: ${hint.word}` : "Sin palabra"}</p>
+                  {room?.settings.playMode !== "in_person" && <p className="mt-1 break-words text-sm text-muted-foreground">{hint && !hint.skipped ? `Pista: ${hint.word}` : "Sin palabra"}</p>}
                   {visibleVotes && count > 0 && <p className="mt-1 text-xs text-accent">{count} voto{count === 1 ? "" : "s"}</p>}
                   {!visibleVotes && voterIds.includes(player.socketId) && <p className="mt-1 text-xs text-muted-foreground">Ya votó</p>}
                 </div>

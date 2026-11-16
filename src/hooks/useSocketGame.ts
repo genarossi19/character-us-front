@@ -3,6 +3,7 @@ import { useGameStore } from "@/store/useGameStore";
 import { useRoomStore } from "@/store/useRoomStore";
 import {
   emitSubmitWord,
+  emitCompleteTurn,
   emitVotePlayer,
   emitSendChatMessage,
   emitDebateReady,
@@ -10,6 +11,7 @@ import {
   onCharacterAssigned,
   onPhaseChanged,
   onTurnChanged,
+  onTurnCompleted,
   onWordHintRevealed,
   onAllWordsSubmitted,
   onVoteUpdate,
@@ -42,6 +44,7 @@ export function useSocketGame() {
     async (word: string): Promise<void> => {
       const trimmedWord = word.trim();
       if (!room) throw new Error("No estás en una sala.");
+      if (room.settings?.playMode === "in_person") throw new Error("En presencial la palabra se dice en voz alta.");
       if (!trimmedWord || trimmedWord.length > 20) {
         throw new Error("La palabra debe tener entre 1 y 20 caracteres.");
       }
@@ -65,6 +68,23 @@ export function useSocketGame() {
     [room]
   );
 
+  const completeTurn = useCallback(async (): Promise<void> => {
+    const current = useRoomStore.getState();
+    const game = useGameStore.getState();
+    if (!current.room || current.room.settings?.playMode !== "in_person") throw new Error("La sala no es presencial.");
+    if (game.phase !== "word" || !current.currentPlayer?.isAlive || game.currentTurnPlayerId !== current.currentPlayer.socketId || game.hasSubmittedWord) throw new Error("No puedes completar este turno.");
+    if (!isSocketConnected()) throw new Error("No hay conexión con el servidor.");
+    const payload = { roomId: current.room.id, round: game.currentRound, turnIndex: game.turnIndex };
+    await new Promise<void>((resolve, reject) => {
+      emitCompleteTurn(payload, (response) => {
+        if (!response.success) { reject(Object.assign(new Error(response.message), { code: response.code })); return; }
+        const latest = useGameStore.getState();
+        if (useRoomStore.getState().room?.id === payload.roomId && latest.phase === "word" && latest.currentRound === payload.round && latest.turnIndex === payload.turnIndex && latest.currentTurnPlayerId === current.currentPlayer?.socketId) latest.setHasSubmittedWord(true);
+        resolve();
+      });
+    });
+  }, []);
+
   const votePlayer = useCallback(
     (targetId: string) => {
       if (!room) return;
@@ -76,6 +96,7 @@ export function useSocketGame() {
   const sendChatMessage = useCallback(
     async (message: string): Promise<void> => {
       if (!room) throw new Error("No estás en una sala.");
+      if (room.settings?.playMode === "in_person") throw new Error("El chat está desactivado en presencial.");
       const text = message.trim();
       if (!text || text.length > 500) throw new Error("El mensaje debe tener entre 1 y 500 caracteres.");
       const phase = useGameStore.getState().phase;
@@ -98,6 +119,7 @@ export function useSocketGame() {
 
   return {
     submitWord,
+    completeTurn,
     votePlayer,
     sendChatMessage,
     debateReady,
@@ -120,12 +142,20 @@ export function useSocketGameEvents() {
         useGameStore.setState({ phaseExpiresAt: duration ? Date.now() + offset + duration : null });
       }),
 
+      onTurnCompleted((data) => {
+        const game = useGameStore.getState();
+        if (useRoomStore.getState().room?.settings?.playMode !== "in_person" || data.round !== game.currentRound || game.phase !== "word") return;
+        const completedTurns = [...game.completedTurns.filter((turn) => turn.playerId !== data.playerId), data].sort((a, b) => a.turnIndex - b.turnIndex);
+        useGameStore.setState({ completedTurns });
+        if (data.playerId === useRoomStore.getState().currentPlayer?.socketId) game.setHasSubmittedWord(true);
+      }),
       onTurnChanged((data) => {
         useGameStore.getState().setCurrentTurnPlayer(data.playerId);
         useGameStore.setState({ turnIndex: data.turnIndex, totalTurns: data.total, turnExpiresAt: Date.now() + useGameStore.getState().serverClockOffset + 60_000 });
       }),
 
       onWordHintRevealed((data) => {
+        if (useRoomStore.getState().room?.settings?.playMode === "in_person") return;
         const game = useGameStore.getState();
         game.addWordHint({
           playerId: data.playerId,
@@ -141,6 +171,7 @@ export function useSocketGameEvents() {
       }),
 
       onAllWordsSubmitted((data) => {
+        if (useRoomStore.getState().room?.settings?.playMode === "in_person") return;
         const game = useGameStore.getState();
         game.setWordHints(data.hints);
         game.setCurrentTurnPlayer(null);
@@ -186,7 +217,7 @@ export function useSocketGameEvents() {
       onChatMessage((message: ChatMessage) => {
         // Votes have a structured entry from voteUpdate. Other system notices
         // are already displayed on the board, so don't repeat them here.
-        if (message.type !== "system") useGameStore.getState().addChatMessage(message);
+        if (useRoomStore.getState().room?.settings?.playMode !== "in_person" && message.type !== "system") useGameStore.getState().addChatMessage(message);
       }),
       onDebateReadyUpdate((data) => {
         useGameStore.getState().setDebateReady(data.readyPlayers, data.total);

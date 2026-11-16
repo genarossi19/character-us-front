@@ -1,0 +1,12 @@
+# Apply through a Render Blueprint. For an existing manually configured Static
+# Site, add the same rewrite in its Redirects/Rewrites dashboard settings.
+services:
+  - type: web
+    name: characterus-front
+    runtime: static
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

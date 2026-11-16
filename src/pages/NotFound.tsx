@@ -6,7 +6,7 @@ const NotFound: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-900 to-red-700 dark:from-red-950 dark:to-red-800 p-4 transition-colors">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-900 to-red-700 dark:from-red-950 dark:to-red-800 page-padding transition-colors">
       <div className="max-w-4xl w-full flex flex-col md:flex-row items-center bg-red-50 dark:bg-red-900/90 rounded-2xl shadow-2xl overflow-hidden transition-colors backdrop-blur-sm">
         <div className="md:w-1/2 w-full flex justify-center items-center bg-red-100 dark:bg-red-950/70 p-6 transition-colors backdrop-blur-sm">
           <img

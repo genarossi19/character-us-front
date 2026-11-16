@@ -29,6 +29,7 @@ export type GamePhase =
   | "finished";
 
 export interface RoomSettings {
+  playMode?: "online" | "in_person";
   category: string;
   impostorCount: number;
   totalRounds: number;
@@ -124,6 +125,20 @@ export interface SubmitWordPayload {
   word: string;
 }
 
+export interface CompleteTurnPayload {
+  roomId: string;
+  round: number;
+  turnIndex: number;
+}
+
+export interface TurnCompleted {
+  playerId: string;
+  username: string;
+  round: number;
+  turnIndex: number;
+  skipped: boolean;
+}
+
 export interface VotePayload {
   roomId: string;
   targetId: string;
@@ -173,6 +188,7 @@ export interface RoomSession {
 }
 
 export interface RoomSnapshot {
+  completedTurns?: TurnCompleted[];
   serverTime: number;
   room: Room;
   playerId: string;

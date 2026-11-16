@@ -23,7 +23,7 @@ export default function NavBarLoggued() {
   };
 
   return (
-    <header className="fixed top-0 left-0 w-full z-50 h-16 md:h-20 px-6 flex items-center justify-between bg-card shadow-sm">
+    <header className="fixed top-0 left-0 w-full z-50 h-16 md:h-20 page-gutter flex items-center justify-between bg-card shadow-sm">
       <div className="flex items-center gap-6">
         <Link to="/menu">
           <div className="flex items-center gap-4">

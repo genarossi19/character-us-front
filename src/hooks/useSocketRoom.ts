@@ -81,6 +81,7 @@ export function useSocketRoom() {
         emitCreateRoom(payload, (response) => {
           try {
             const data = getRoomFromAck(response);
+            if (payload.settings?.playMode === "in_person" && data.room.settings?.playMode !== "in_person") throw new Error("El servidor todavía no admite partidas presenciales.");
             commitRoom(data);
             navigate("/lobby");
             resolve(data.room);
@@ -118,6 +119,7 @@ export function useSocketRoom() {
   const leaveRoom = useCallback(
     (roomId: string) =>
       new Promise<void>((resolve, reject) => {
+        assertConnected();
         emitLeaveRoom(roomId, (response) => {
           if (!response.success) {
             reject(new Error(response.message));
@@ -162,8 +164,17 @@ export function useSocketRoom() {
   }, []);
 
   const kickPlayer = useCallback(
-    (roomId: string, targetId: string) => {
-      emitKickPlayer({ roomId, targetId });
+    async (roomId: string, targetId: string): Promise<void> => {
+      assertConnected();
+      await new Promise<void>((resolve, reject) => {
+        emitKickPlayer({ roomId, targetId }, (response) => {
+          if (!response.success) {
+            reject(new SocketAckError(response.code, response.message));
+            return;
+          }
+          resolve();
+        });
+      });
     },
     []
   );

@@ -3,6 +3,7 @@ import type {
   VotePayload,
   SendChatPayload,
   AckCallback,
+  CompleteTurnPayload,
 } from "@/types/game";
 import { getSocket } from "../socket";
 import { assertRoomActionsReady } from "../eventDelivery";
@@ -47,5 +48,12 @@ export const emitSendChatMessage = (
       return;
     }
     callback?.(response);
+  });
+};
+
+export const emitCompleteTurn = (payload: CompleteTurnPayload, callback?: AckCallback): void => {
+  assertRoomActionsReady();
+  getSocket().timeout(5_000).emit("completeTurn", payload, (error: Error | null, response: Parameters<AckCallback>[0]) => {
+    callback?.(error ? { success: false, code: "ACK_TIMEOUT", message: "No se pudo confirmar tu turno. Revisa el estado e intenta de nuevo." } : response);
   });
 };
