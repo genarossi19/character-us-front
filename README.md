@@ -1,8 +1,20 @@
 # CharacterUs Frontend
 
+Modo presencial: `settings.playMode` separa `online` de `in_person` sin alterar `mode`. El frontend incorpora selección, turnos orales con Listo (`completeTurn`/`turnCompleted`), actividad de solo lectura y debate oral; votos/resultados se mantienen en la app. El backend aún debe implementar y confirmar este contrato: no hay simulación de avance local. Ver [contrato presencial](docs/PRESENTIAL_MODE.md).
+
+Invitaciones en Render: los nuevos enlaces/QR usan `/?code=123456` (en producción, `https://characterus-front.onrender.com/?code=123456`) y abren el mismo formulario de unión, con código validado y sin incluir contraseña/token. `/join/:code` se conserva para enlaces anteriores. El frontend necesita un rewrite `/*` → `/index.html` para aperturas y recargas de rutas de BrowserRouter. Ver [despliegue en Render](docs/RENDER.md).
+
+Crear partida organiza categoría/modalidad, jugadores/roles y acceso/reglas, con resumen sincronizado al lado en escritorio. Presencial utiliza el nuevo campo independiente `playMode`; el backend debe implementar el contrato documentado antes de habilitarlo entre dispositivos.
+
+Login y Registrarse se enlazan sin recarga, con un barrido lateral del panel visual en escritorio. La transición respeta movimiento reducido y conserva una alternativa compatible en móvil o navegadores sin View Transition API.
+
+Las convenciones de tamaños, variantes y componentes compartidos están en [la guía de interfaz](docs/UI_GUIDELINES.md). El login es la referencia para los botones de formularios y navegación.
+
+La página de inicio explica el juego mediante secciones al desplazarse, avatares animados y una ronda ilustrativa interactiva. Los márgenes exteriores compartidos se configuran en los tokens `--page-*` de `src/index.css`; ver [ritmo visual](docs/ARCHITECTURE.md).
+
 ## Interfaz y preparación de sala
 
-El inicio y el menú se adaptan a móvil. El login por correo o Google muestra un indicador y una barra de carga indeterminada; ante errores restaura el formulario conservando sus datos. La interfaz activa usa español. El lobby distribuye jugadores, invitación y configuración en dos columnas en escritorio y una en móvil, con espera legible en ambos temas.
+El inicio y el menú se adaptan a móvil. El login por correo o Google muestra un indicador y una barra de carga indeterminada; ante errores restaura el formulario conservando sus datos. La interfaz activa usa español. El lobby presenta solo a los jugadores presentes, con anfitrión identificado, preparación confirmada y selector de avatares siempre visible para todos. Código, enlace, QR y compartir del dispositivo facilitan la invitación. El resumen de categoría, modalidad, privacidad y reglas se mantiene al lado en escritorio; en móvil se apila. Hay un único contador de ocupación y no se dibujan lugares vacíos. La espera es legible en ambos temas.
 
 Todos, incluido el anfitrión, deben pulsar **Estoy listo**. El anfitrión dispone de un botón separado para iniciar, habilitado cuando se alcanza el mínimo y todos están conectados y listos. La regla también se exige en el backend vecino: actualizar y reiniciar el servidor junto con el frontend. El cambio coordinado está en [el parche del lobby](docs/backend-lobby-ready.patch); ver [el contrato](SOCKET.md).
 
@@ -16,7 +28,7 @@ El repositorio contiene una interfaz navegable y una simulación local del juego
 
 - Login y registro consumen `/api/auth` mediante un cliente Axios público. La sesión se conserva por pestaña en `sessionStorage`, se valida contra `GET /api/auth/me` al restaurarse y permite crear salas solo a usuarios autenticados por el backend. Un visitante no autenticado solo puede unirse mediante un código de sala.
 - Las pantallas V2 de crear, unirse, lobby y juego consumen el contrato Socket.IO de `backend.md`.
-- El avatar inicial de sala lo asigna el backend. La selección y las tarjetas del lobby muestran el avatar confirmado por `roomUpdated`; los errores al cambiarlo se muestran al jugador. El backend actual rechaza cambios de avatar de invitados.
+- El avatar inicial de sala lo asigna el backend. El jugador local ve el cambio de avatar inmediatamente en selector y tarjeta; ante rechazo vuelve al anterior y recibe un toast. El resto se actualiza mediante `roomUpdated`. El selector está disponible para usuarios e invitados; el backend vecino actual permite ambos y valida que el avatar esté disponible.
 - El backend conserva la autoridad sobre sala, fases, turnos, personaje, votos y resultados. El cliente no avanza fases con timers propios.
 - Sin ganador, después de 5 segundos de resultados comienza otra ronda de palabras para los vivos, con el mismo personaje, roles y eliminados. La ronda se toma de `roomUpdated.currentRound`; no hay límite por `totalRounds`. Con ganador se conserva el resultado final y la misma sala: “Volver al lobby” mantiene código, anfitrión, avatares y credencial de recuperación. El resultado se limpia recién al recibir el próximo `gameStarted`.
 - Las pistas se muestran a todos durante los turnos, apenas el servidor las acepta. El envío espera el ack (hasta 5 segundos), conserva el texto ante rechazo y sigue los eventos del servidor para avanzar al siguiente jugador o al debate.
@@ -50,7 +62,7 @@ npm run dev
 
 La URL de Vite aparece en la terminal. Para probar la integración actual, el backend debe exponer Socket.IO y la API HTTP en el origen configurado.
 
-Vite escucha en la red local (`host: true`). El lobby muestra un QR y un enlace `/join/:code` junto al código de sala. En desarrollo, al abrir desde `localhost`, el QR usa la URL Network y el puerto efectivo de Vite; en otros hosts usa el origen de la página. Desde el celular, las URLs HTTP y Socket.IO deben apuntar a una dirección alcanzable del backend, no a `localhost` del dispositivo.
+Vite escucha en la red local (`host: true`). El lobby muestra un QR y un enlace `/?code=123456` junto al código de sala. En desarrollo, al abrir desde `localhost`, el QR usa la URL Network y el puerto efectivo de Vite; en otros hosts usa el origen de la página. Desde el celular, las URLs HTTP y Socket.IO deben apuntar a una dirección alcanzable del backend, no a `localhost` del dispositivo.
 
 ```env
 VITE_SOCKET_URL=http://localhost:3000
@@ -75,7 +87,7 @@ Las pruebas focalizadas usan el runner nativo de Node y ejercitan stores, recupe
 
 | Ruta | Función actual |
 | --- | --- |
-| `/` | Landing pública |
+| `/` | Landing pública; con `?code=123456` abre la invitación de sala |
 | `/signup`, `/login` | Registro e inicio de sesión con JWT contra la API |
 | `/menu` | Acceso autenticado a creación, PIN y salas públicas |
 | `/create` | Consulta categorías y crea una sala vía Socket.IO; valida sesión HTTP y envía el JWT solo en `createRoom` |
@@ -94,3 +106,7 @@ Al desplegar, el hosting debe redirigir rutas desconocidas a `index.html`; de lo
 ## Verificación conocida
 
 Al 5 de septiembre de 2026, `npm run lint` y `npm run build` detectan problemas preexistentes. No deben presentarse como una regresión nueva sin comparar el resultado; el detalle y las propuestas están en [docs/RECOMMENDATIONS.md](docs/RECOMMENDATIONS.md).
+
+## Ramas
+
+El desarrollo y las correcciones se realizan en `developer`. `main` queda reservada para producción; los cambios se promueven desde `developer` cuando se decide publicar una versión.

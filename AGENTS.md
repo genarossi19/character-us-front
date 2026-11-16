@@ -47,3 +47,9 @@
 - Do not silently repair game rules: tie behavior, elimination persistence, round transitions, reconnect recovery, and room-code format need product decisions.
 - Keep prototype, diagnostic, and integrated behavior explicitly labeled; do not delete unused integration components without checking whether they are work in progress.
 - If routes, environment variables, event names, payloads, state ownership, commands, or integration status change, update the corresponding `README.md`, `docs/ARCHITECTURE.md`, `SOCKET.md`, and `docs/RECOMMENDATIONS.md` in the same change.
+
+## Branch Workflow
+
+- Work on `developer` by default for new development and fixes.
+- Reserve `main` for production releases; promote reviewed changes from `developer` explicitly.
+- Publish development work to `origin/developer` unless the user explicitly requests a production release.
