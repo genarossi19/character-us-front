@@ -1,112 +1,46 @@
-# CharacterUs Frontend
+# CharacterUs · Frontend
 
-Modo presencial: `settings.playMode` separa `online` de `in_person` sin alterar `mode`. El frontend incorpora selección, turnos orales con Listo (`completeTurn`/`turnCompleted`), actividad de solo lectura y debate oral; votos/resultados se mantienen en la app. El backend aún debe implementar y confirmar este contrato: no hay simulación de avance local. Ver [contrato presencial](docs/PRESENTIAL_MODE.md).
+Juego social del impostor en React 19, TypeScript, Vite, Tailwind, Zustand y Socket.IO. El backend vive en el repositorio vecino `../character-us-server`.
 
-Invitaciones en Render: los nuevos enlaces/QR usan `/?code=123456` (en producción, `https://characterus-front.onrender.com/?code=123456`) y abren el mismo formulario de unión, con código validado y sin incluir contraseña/token. `/join/:code` se conserva para enlaces anteriores. El frontend necesita un rewrite `/*` → `/index.html` para aperturas y recargas de rutas de BrowserRouter. Ver [despliegue en Render](docs/RENDER.md).
+| Si trabajás en… | Consultá |
+| --- | --- |
+| Rutas, stores, autenticación o recuperación | [Arquitectura](docs/ARCHITECTURE.md) |
+| Componentes y diseño adaptable | [Guía de interfaz](docs/UI_GUIDELINES.md) |
+| Eventos, ACK y privacidad | [Contrato del servidor](https://github.com/genarossi19/character-us-server/blob/developer/frontend.md) y [tipos del cliente](src/types/game.ts) |
+| Cambios de protocolo en curso | [Coordinación con el backend](FOR_BACKEND.md) |
 
-Crear partida organiza categoría/modalidad, jugadores/roles y acceso/reglas, con resumen sincronizado al lado en escritorio. Presencial utiliza el nuevo campo independiente `playMode`; el backend debe implementar el contrato documentado antes de habilitarlo entre dispositivos.
+Para cambios de integración, priorizá el código de ambos checkouts. El contrato remoto refleja lo publicado en `developer`.
 
-Login y Registrarse se enlazan sin recarga, con un barrido lateral del panel visual en escritorio. La transición respeta movimiento reducido y conserva una alternativa compatible en móvil o navegadores sin View Transition API.
+## Desarrollo local
 
-Las convenciones de tamaños, variantes y componentes compartidos están en [la guía de interfaz](docs/UI_GUIDELINES.md). El login es la referencia para los botones de formularios y navegación.
+Usá Node 20.19+ o 22.12+ y el lockfile. Copiá [`.env.example`](.env.example) a `.env.local` y ejecutá:
 
-La página de inicio explica el juego mediante secciones al desplazarse, avatares animados y una ronda ilustrativa interactiva. Los márgenes exteriores compartidos se configuran en los tokens `--page-*` de `src/index.css`; ver [ritmo visual](docs/ARCHITECTURE.md).
-
-## Interfaz y preparación de sala
-
-El inicio y el menú se adaptan a móvil. El login por correo o Google muestra un indicador y una barra de carga indeterminada; ante errores restaura el formulario conservando sus datos. La interfaz activa usa español. El lobby presenta solo a los jugadores presentes, con anfitrión identificado, preparación confirmada y selector de avatares siempre visible para todos. Código, enlace, QR y compartir del dispositivo facilitan la invitación. El resumen de categoría, modalidad, privacidad y reglas se mantiene al lado en escritorio; en móvil se apila. Hay un único contador de ocupación y no se dibujan lugares vacíos. La espera es legible en ambos temas.
-
-Todos, incluido el anfitrión, deben pulsar **Estoy listo**. El anfitrión dispone de un botón separado para iniciar, habilitado cuando se alcanza el mínimo y todos están conectados y listos. La regla también se exige en el backend vecino: actualizar y reiniciar el servidor junto con el frontend. El cambio coordinado está en [el parche del lobby](docs/backend-lobby-ready.patch); ver [el contrato](SOCKET.md).
-
-Frontend de CharacterUs, un juego social del impostor orientado a personajes. En cada ronda todos los jugadores salvo el impostor conocen el personaje elegido; cada participante aporta una palabra relacionada y el impostor intenta pasar inadvertido antes de la votación.
-
-## Estado actual
-
-El login incluye el botón oficial de Google Identity Services. Configurar `VITE_GOOGLE_CLIENT_ID` con el mismo Client ID público que `GOOGLE_CLIENT_ID` del backend y reiniciar Vite. Google entrega una credencial efímera que se intercambia por el JWT de CharacterUs en `POST /api/auth/google`; solo la sesión de CharacterUs se conserva en `sessionStorage`. Ver [configuración y verificación](docs/GOOGLE_LOGIN.md).
-
-El repositorio contiene una interfaz navegable y una simulación local del juego, junto con una capa inicial de integración con el backend. No toda la experiencia visible está conectada todavía:
-
-- Login y registro consumen `/api/auth` mediante un cliente Axios público. La sesión se conserva por pestaña en `sessionStorage`, se valida contra `GET /api/auth/me` al restaurarse y permite crear salas solo a usuarios autenticados por el backend. Un visitante no autenticado solo puede unirse mediante un código de sala.
-- Las pantallas V2 de crear, unirse, lobby y juego consumen el contrato Socket.IO de `backend.md`.
-- El avatar inicial de sala lo asigna el backend. El jugador local ve el cambio de avatar inmediatamente en selector y tarjeta; ante rechazo vuelve al anterior y recibe un toast. El resto se actualiza mediante `roomUpdated`. El selector está disponible para usuarios e invitados; el backend vecino actual permite ambos y valida que el avatar esté disponible.
-- El backend conserva la autoridad sobre sala, fases, turnos, personaje, votos y resultados. El cliente no avanza fases con timers propios.
-- Sin ganador, después de 5 segundos de resultados comienza otra ronda de palabras para los vivos, con el mismo personaje, roles y eliminados. La ronda se toma de `roomUpdated.currentRound`; no hay límite por `totalRounds`. Con ganador se conserva el resultado final y la misma sala: “Volver al lobby” mantiene código, anfitrión, avatares y credencial de recuperación. El resultado se limpia recién al recibir el próximo `gameStarted`.
-- Las pistas se muestran a todos durante los turnos, apenas el servidor las acepta. El envío espera el ack (hasta 5 segundos), conserva el texto ante rechazo y sigue los eventos del servidor para avanzar al siguiente jugador o al debate.
-- La UI de partida mantiene una identidad compacta durante palabras, debate y votación. Las pistas se muestran por autor y, al votar, dentro de cada opción sin repetir el tablero. En escritorio el chat es lateral; en móvil se abre desde la cabecera con contador y borrador conservado. Su actividad se limita a palabras (autor y texto destacados) y votos (autor/objetivo si son públicos; solo “Ha votado” si son ocultos). La conversación usa globos y los fantasmas una franja violeta con etiqueta. Se permite escribir en debate y votación con ack de hasta 5 segundos y texto conservado ante error.
-- El cierre destaca los nombres y avatares de los impostores a partir de `gameEnded.impostorIds`. Requiere el backend actualizado; el parche coordinado está en `docs/backend-game-reveal.patch`. El ganador `innocent` del servidor se presenta como victoria de los inocentes.
-- El backend avisa cinco minutos antes del cierre por inactividad. El frontend muestra el contador y solo el anfitrión puede extender la sala otros 40 minutos.
-- Las salas públicas siguen siendo mock hasta que el backend exponga un contrato para listarlas.
-- Un invitado solo puede unirse a una sala existente mediante su código y participar de esa partida; no puede crear ni explorar salas.
-- Al crear/unirse se guarda una credencial privada de recuperación en `sessionStorage` por pestaña. Tras recargar o reconectar se recupera automáticamente el mismo jugador, incluido el invitado, dentro de los 60 segundos de gracia del backend.
-
-Consulta [Arquitectura](docs/ARCHITECTURE.md), [Socket.IO](SOCKET.md) y [Recomendaciones](docs/RECOMMENDATIONS.md) antes de integrar nuevas funcionalidades.
-
-## Stack
-
-- React 19, TypeScript y Vite 7.
-- React Router 7 con `BrowserRouter`.
-- Tailwind CSS 4, componentes Radix/shadcn y Motion.
-- Axios para HTTP, Zustand para sesión persistida, Zod para formularios y `jwt-decode` para claims de acceso.
-- `socket.io-client` 4 para tiempo real.
-- Backend externo en Express con PostgreSQL/Supabase. Este repositorio no contiene su implementación ni sus migraciones.
-
-## Puesta en marcha
-
-Vite 7 requiere Node.js `20.19+` o `22.12+`. El lockfile corresponde a npm.
-
-```bash
+```sh
 npm ci
-cp .env.example .env.local
 npm run dev
 ```
 
-La URL de Vite aparece en la terminal. Para probar la integración actual, el backend debe exponer Socket.IO y la API HTTP en el origen configurado.
+- `VITE_API_URL`: base HTTP, por defecto `http://localhost:3000/api`.
+- `VITE_SOCKET_URL`: origen Socket.IO, por defecto `http://localhost:3000`.
+- `VITE_GOOGLE_CLIENT_ID`: ID OAuth web público. Debe coincidir con `GOOGLE_CLIENT_ID` del servidor. Habilitá el origen del frontend en Google y en el CORS del servidor. Para desarrollo, usá `http://localhost:5173`. Sin Client ID sigue disponible el acceso por contraseña.
 
-Vite escucha en la red local (`host: true`). El lobby muestra un QR y un enlace `/?code=123456` junto al código de sala. En desarrollo, al abrir desde `localhost`, el QR usa la URL Network y el puerto efectivo de Vite; en otros hosts usa el origen de la página. Desde el celular, las URLs HTTP y Socket.IO deben apuntar a una dirección alcanzable del backend, no a `localhost` del dispositivo.
+Reiniciá Vite al cambiar variables. Para probar desde un celular, usá URLs del backend alcanzables desde el dispositivo y habilitá el origen LAN. Vite publica el origen LAN para que los QR generados desde localhost funcionen en la red.
 
-```env
-VITE_SOCKET_URL=http://localhost:3000
-VITE_API_URL=http://localhost:3000/api
-```
+## Verificación
 
-`VITE_SOCKET_URL` controla Socket.IO y `VITE_API_URL` controla HTTP. Ambos tienen valores locales por defecto.
-
-## Comandos
-
-```bash
-npm run dev       # servidor Vite con HMR
-npm run lint      # ESLint sobre todo el repositorio
-npm run build     # TypeScript project build y luego bundle Vite
-npm run preview   # sirve dist/ después de un build exitoso
-node --test tests/*.test.mjs # regresiones de palabras, turnos y recuperación
-```
-
-Las pruebas focalizadas usan el runner nativo de Node y ejercitan stores, recuperación, listeners, emisores y handlers de UI con un socket simulado; no conectan clientes reales ni acceden a Supabase. `src/test` contiene interfaces de diagnóstico manual compiladas junto con la aplicación.
-
-## Rutas
-
-| Ruta | Función actual |
+| Comando | Alcance |
 | --- | --- |
-| `/` | Landing pública; con `?code=123456` abre la invitación de sala |
-| `/signup`, `/login` | Registro e inicio de sesión con JWT contra la API |
-| `/menu` | Acceso autenticado a creación, PIN y salas públicas |
-| `/create` | Consulta categorías y crea una sala vía Socket.IO; valida sesión HTTP y envía el JWT solo en `createRoom` |
-| `/join`, `/join/:code` | Unión por código de seis dígitos vía Socket.IO; el enlace/QR evita escribirlo manualmente y conserva el ingreso de nombre y contraseña cuando corresponda |
-| `/public-rooms` | Lista mock temporal para usuarios autenticados; la unión usa Socket.IO |
-| `/lobby` | Lobby sincronizado por eventos Socket.IO; el anfitrión puede renovar la inactividad cuando el servidor avisa |
-| `/game` | Fases, pistas, chat, votos y resultados dirigidos por Socket.IO |
-| `/test` | Diagnóstico manual de Socket.IO + categorías HTTP |
+| `npm run build` | TypeScript y bundle Vite en `dist/` |
+| `npm run lint` | ESLint global. Compará con la base de la rama para identificar regresiones. |
+| `npx tsc -p tsconfig.app.json --noEmit --incremental false` | Tipos de la aplicación |
+| `node --test tests/*.test.mjs` | Regresiones con dependencias simuladas |
 
-`/profile` está registrada solo para usuarios autenticados. Las rutas `/menu`, `/create`, `/public-rooms` y `/profile` redirigen a `/join` cuando no hay una sesión autenticada; el visitante puede continuar a lobby y partida únicamente después de unirse mediante código. La sesión HTTP se restaura por pestaña solo después de que `GET /api/auth/me` confirme el token. La recuperación de sala es independiente: no autentica HTTP ni habilita crear salas. El socket permanece sin autenticación de handshake; el backend autoriza la creación de sala mediante el token del payload `createRoom`.
+`/test` es un diagnóstico manual incluido en el build. Para verificar la integración, usá dos pestañas y el backend real. Probá crear, unirse, confirmar preparación, jugar, recuperar la sala al recargar y volver al mismo lobby. Probá Google con un origen autorizado y una cuenta real si el cambio afecta el acceso.
 
-Durante una recuperación se muestra “Recuperando partida” y se bloquean rutas y acciones hasta aplicar el snapshot privado. Los timeouts conservan la credencial y permiten reintentar; una sesión vencida o una sala eliminada la limpian. Salir correctamente, ser expulsado o cerrarse la sala también limpia la credencial. En esos casos, el usuario autenticado vuelve a `/menu` y el visitante a `/join`. Reiniciar el backend pierde la partida, ya que el servidor la conserva en memoria.
+## Render
 
-Al desplegar, el hosting debe redirigir rutas desconocidas a `index.html`; de lo contrario, recargar una ruta de `BrowserRouter` devolverá 404.
+El frontend se sirve como Static Site. [Producción](https://characterus-front.onrender.com/) · [Configuración del Blueprint](render.yaml).
 
-## Verificación conocida
-
-Al 5 de septiembre de 2026, `npm run lint` y `npm run build` detectan problemas preexistentes. No deben presentarse como una regresión nueva sin comparar el resultado; el detalle y las propuestas están en [docs/RECOMMENDATIONS.md](docs/RECOMMENDATIONS.md).
-
-## Ramas
-
-El desarrollo y las correcciones se realizan en `developer`. `main` queda reservada para producción; los cambios se promueven desde `developer` cuando se decide publicar una versión.
+- Build `npm ci && npm run build` y publicación de `dist`. Definí las variables de Vite en el servicio antes del build.
+- Configurá el rewrite `/*` → `/index.html` para abrir y recargar rutas de BrowserRouter. Un servicio creado manualmente requiere agregar la regla en **Redirects/Rewrites**. El Blueprint ya la declara.
+- Las invitaciones nuevas usan `/?code=123456`. `/join/:code` sigue disponible para enlaces anteriores. Después de desplegar, verificá la apertura directa de `/login` y de ambos formatos de invitación.
