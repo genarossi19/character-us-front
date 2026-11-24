@@ -9,6 +9,11 @@ export const publicApi = axios.create({
   baseURL: API_BASE_URL,
 });
 
+export const cookieAuthApi = axios.create({
+  baseURL: import.meta.env.DEV ? "/api" : API_BASE_URL,
+  withCredentials: true,
+});
+
 export const authenticatedApi = axios.create({
   baseURL: API_BASE_URL,
 });

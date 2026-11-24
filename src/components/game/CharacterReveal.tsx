@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useGameStore } from "@/store/useGameStore";
-import { ShieldAlert } from "lucide-react";
+import CharacterPortrait from "./CharacterPortrait";
+import ImpostorTeammates from "./ImpostorTeammates";
 
 export default function CharacterReveal() {
   const { character, isImpostor } = useGameStore();
@@ -26,10 +27,11 @@ export default function CharacterReveal() {
           >
             <p className="text-xs uppercase tracking-widest text-muted-foreground">Tu identidad · solo tú puedes verla</p>
             <div className={`flex size-36 items-center justify-center overflow-hidden rounded-3xl border-2 shadow-xl sm:size-56 ${isImpostor ? "border-impostor/40 bg-impostor/10" : "border-accent/40"}`}>
-              {isImpostor ? <ShieldAlert className="size-28 text-impostor" aria-hidden="true" /> : <img
-                src={character?.imageUrl || "/logo.webp"}
-                alt={character?.name || "Personaje"}
-                className="size-full object-cover"
+              {isImpostor ? <img src="/impostor.webp" alt="" className="size-full object-cover" /> : <CharacterPortrait
+                key={character?.imageUrl}
+                imageUrl={character?.imageUrl}
+                name={character?.name}
+                fallbackClassName="size-24 text-accent"
               />}
             </div>
 
@@ -43,6 +45,7 @@ export default function CharacterReveal() {
             >
               {isImpostor ? "Eres el Impostor" : character?.name}
             </motion.h2>
+            <ImpostorTeammates />
 
             <motion.p
               initial={{ opacity: 0 }}

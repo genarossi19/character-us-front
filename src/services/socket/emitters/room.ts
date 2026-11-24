@@ -28,6 +28,12 @@ export const emitJoinRoom = (
 ): void => {
   assertRoomActionsReady();
   const socket = getSocket();
+  if (payload.listedRoomId) {
+    socket.timeout(10_000).emit("joinRoom", payload, (error: Error | null, response: Parameters<AckCallback<RoomResponse>>[0]) => {
+      callback?.(error ? { success: false, code: "ACK_TIMEOUT", message: "El servidor no confirmó la entrada a la sala." } : response);
+    });
+    return;
+  }
   socket.emit("joinRoom", payload, callback);
 };
 

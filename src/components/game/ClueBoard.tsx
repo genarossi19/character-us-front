@@ -2,7 +2,7 @@ import { Check, Clock3, MessageSquareText, PencilLine, UserRoundX } from "lucide
 import { useGameStore } from "@/store/useGameStore";
 import { useRoomStore } from "@/store/useRoomStore";
 
-export default function ClueBoard() {
+export default function ClueBoard({ isTurnPlayerTyping = false }: { isTurnPlayerTyping?: boolean } = {}) {
   const { phase, wordHints, currentTurnPlayerId } = useGameStore();
   const { players, currentPlayer } = useRoomStore();
   // Retain accepted clues even if their author leaves the room.
@@ -31,7 +31,7 @@ export default function ClueBoard() {
               </div>
               {hint ? <p className={`max-w-[45%] break-words text-right text-base font-semibold sm:max-w-none sm:text-left sm:text-lg ${hint.skipped ? "text-sm text-muted-foreground" : "text-foreground"}`}>{hint.skipped ? "Sin palabra" : hint.word}</p> : (
                 <p className={`max-w-[42%] text-right text-xs sm:max-w-none sm:text-left sm:text-sm ${active ? "font-medium text-accent" : "text-muted-foreground"}`}>
-                  {active ? "Escribiendo su pista…" : !player?.isAlive ? "Eliminado" : phase === "word" ? "Esperando su turno" : "Sin pista esta ronda"}
+                  {active ? isTurnPlayerTyping ? "Escribiendo su pista…" : "Tiene el turno" : !player?.isAlive ? "Eliminado" : phase === "word" ? "Esperando su turno" : "Sin pista esta ronda"}
                 </p>
               )}
             </article>

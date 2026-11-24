@@ -1,4 +1,4 @@
-import { authenticatedApi, getApiError, publicApi } from "./client";
+import { authenticatedApi, cookieAuthApi, getApiError, publicApi } from "./client";
 
 export interface AuthUserResponse {
   id: string;
@@ -35,7 +35,8 @@ async function requestAuth<TBody>(
   body: TBody
 ): Promise<AuthResponse> {
   try {
-    const response = await publicApi.post<AuthResponse>(`/auth/${path}`, body);
+    const client = path === "google" ? cookieAuthApi : publicApi;
+    const response = await client.post<AuthResponse>(`/auth/${path}`, body);
     return response.data;
   } catch (error) {
     throw getApiError(error);
@@ -48,6 +49,19 @@ export function loginRequest(email: string, password: string): Promise<AuthRespo
 
 export function googleLoginRequest(credential: string): Promise<AuthResponse> {
   return requestAuth("google", { credential });
+}
+
+export async function refreshGoogleSessionRequest(): Promise<AuthResponse> {
+  try {
+    const { data } = await cookieAuthApi.post<AuthResponse>("/auth/refresh", {}, { timeout: 8_000 });
+    return data;
+  } catch (error) {
+    throw getApiError(error);
+  }
+}
+
+export async function logoutGoogleSessionRequest(): Promise<void> {
+  await cookieAuthApi.post("/auth/logout", {}, { timeout: 8_000 });
 }
 
 export function signupRequest(

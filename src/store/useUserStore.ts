@@ -5,6 +5,8 @@ import {
   getCurrentUserRequest,
   loginRequest,
   googleLoginRequest,
+  refreshGoogleSessionRequest,
+  logoutGoogleSessionRequest,
   signupRequest,
   type AuthUserResponse,
   type SignupPayload,
@@ -68,10 +70,25 @@ interface UserState {
   logout: () => void;
   setUser: (user: User) => void;
   restoreSession: () => Promise<void>;
+  renewGoogleSession: () => Promise<void>;
 }
 
 const SESSION_KEY = "characterus.session";
 const LEGACY_SESSION_KEY = "characterus-session";
+const GOOGLE_SESSION_HINT = "characterus.google-session";
+const RENEW_BEFORE_MS = 2 * 60 * 1000;
+let accountGeneration = 0;
+let renewal: Promise<void> | undefined;
+
+function googleSessionHint(value?: boolean): boolean {
+  try {
+    if (value === true) localStorage.setItem(GOOGLE_SESSION_HINT, "1");
+    if (value === false) localStorage.removeItem(GOOGLE_SESSION_HINT);
+    return localStorage.getItem(GOOGLE_SESSION_HINT) === "1";
+  } catch {
+    return false;
+  }
+}
 
 if (typeof window !== "undefined") {
   // Do not keep a JWT in the legacy localStorage session after this migration.
@@ -139,6 +156,7 @@ export const useUserStore = create<UserState>()(
       isSessionReady: false,
 
       loginAsGuest: (username) => {
+        accountGeneration++;
         setAccessToken(null);
         set({
           user: {
@@ -162,6 +180,8 @@ export const useUserStore = create<UserState>()(
         const avatarUrl = get().user?.avatarUrl;
         const user = createRegisteredUser(response.user, avatarUrl);
 
+        accountGeneration++;
+        googleSessionHint(false);
         setAccessToken(response.token);
         set({
           user,
@@ -176,6 +196,8 @@ export const useUserStore = create<UserState>()(
       loginWithGoogle: async (credential) => {
         const response = await googleLoginRequest(credential);
         const claims = decodeAccessToken(response.token);
+        accountGeneration++;
+        googleSessionHint(true);
         setAccessToken(response.token);
         set({ user: createRegisteredUser(response.user, get().user?.avatarUrl), token: response.token, claims, isLoggedIn: true, isRestoringSession: false, isSessionReady: true });
       },
@@ -185,6 +207,8 @@ export const useUserStore = create<UserState>()(
         const claims = decodeAccessToken(response.token);
         const user = createRegisteredUser(response.user);
 
+        accountGeneration++;
+        googleSessionHint(false);
         setAccessToken(response.token);
         set({
           user,
@@ -197,6 +221,10 @@ export const useUserStore = create<UserState>()(
       },
 
       logout: () => {
+        accountGeneration++;
+        const hadGoogleSession = googleSessionHint();
+        googleSessionHint(false);
+        if (hadGoogleSession) void logoutGoogleSessionRequest().catch(() => {});
         disableGoogleAutoSelect();
         setAccessToken(null);
         set({
@@ -210,6 +238,41 @@ export const useUserStore = create<UserState>()(
         removeStoredSession();
       },
 
+      renewGoogleSession: async () => {
+        const { claims } = get();
+        if (!googleSessionHint() || (claims && claims.exp * 1000 - Date.now() > RENEW_BEFORE_MS)) return;
+        if (renewal) return renewal;
+        const generation = accountGeneration;
+        const request = (async () => {
+          try {
+            const response = await refreshGoogleSessionRequest();
+            if (accountGeneration !== generation || !googleSessionHint()) return;
+            const currentUser = get().user;
+            if (currentUser && !currentUser.isGuest && currentUser.id !== response.user.id) return;
+            const claims = decodeAccessToken(response.token);
+            setAccessToken(response.token);
+            set({ user: createRegisteredUser(response.user, currentUser?.avatarUrl), token: response.token, claims, isLoggedIn: true });
+          } catch (error) {
+            if (accountGeneration === generation && (error as { status?: number })?.status === 401) {
+              googleSessionHint(false);
+              if (!claims || claims.exp * 1000 <= Date.now()) {
+                setAccessToken(null);
+                set({ user: null, token: null, claims: null, isLoggedIn: false });
+                removeStoredSession();
+              }
+            } else if (accountGeneration === generation && (!claims || claims.exp * 1000 <= Date.now())) {
+              throw error;
+            }
+          }
+        })();
+        renewal = request;
+        try {
+          await request;
+        } finally {
+          if (renewal === request) renewal = undefined;
+        }
+      },
+
       setUser: (user) => {
         const token = user.isGuest ? null : get().token;
         setAccessToken(token);
@@ -220,6 +283,9 @@ export const useUserStore = create<UserState>()(
         if (get().isRestoringSession || get().isSessionReady) return;
 
         set({ isRestoringSession: true });
+        const generation = accountGeneration;
+        await get().renewGoogleSession().catch(() => {});
+        if (accountGeneration !== generation) return;
         const { token, user } = get();
 
         if (!token || !user || user.isGuest) {
@@ -249,8 +315,14 @@ export const useUserStore = create<UserState>()(
             isRestoringSession: false,
             isSessionReady: true,
           });
-        } catch {
-          if (get().token !== token) return;
+        } catch (error) {
+          if (accountGeneration !== generation || get().token !== token) return;
+          const status = (error as { status?: number })?.status;
+          const expiresAt = (get().claims?.exp ?? 0) * 1000;
+          if (status !== 401 && status !== 403 && expiresAt > Date.now()) {
+            set({ isLoggedIn: true, isRestoringSession: false, isSessionReady: true });
+            return;
+          }
 
           setAccessToken(null);
           set({

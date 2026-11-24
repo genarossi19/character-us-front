@@ -8,7 +8,7 @@ import * as jsxRuntime from "react/jsx-runtime";
 
 // Exercise the real stores, listeners, emitters and component handlers without
 // opening sockets or needing an authenticated backend/Supabase connection.
-function loadSource(path, dependencies) {
+function loadSource(path, dependencies, globals = {}) {
   const { outputText } = ts.transpileModule(readFileSync(path, "utf8"), {
     compilerOptions: {
       module: ts.ModuleKind.CommonJS,
@@ -20,6 +20,7 @@ function loadSource(path, dependencies) {
   vm.runInNewContext(outputText, {
     exports,
     Error,
+    ...globals,
     require(name) {
       assert.ok(name in dependencies, `Missing dependency: ${name}`);
       return dependencies[name];
@@ -207,7 +208,7 @@ function componentHarness(client) {
     if (node?.props) return [node, ...flatten(node.props.children)];
     return node == null ? [] : [node];
   }
-  return () => { cursor = 0; return flatten(WordSubmission()); };
+  return (props) => { cursor = 0; return flatten(WordSubmission(props)); };
 }
 
 test("UI retains rejected input, prevents duplicate sends and shows public clues during word", async () => {
@@ -239,6 +240,9 @@ test("UI retains rejected input, prevents duplicate sends and shows public clues
   elements = render();
   assert.ok(elements.includes("Luna"));
   assert.ok(elements.includes("Turno de Host"));
+  assert.ok(elements.includes("Tiene el turno"));
+  assert.ok(!elements.includes("Escribiendo su pista…"));
+  assert.ok(render({ isTurnPlayerTyping: true }).includes("Escribiendo su pista…"));
   assert.equal(elements.some((node) => node.type === "input"), false);
 });
 
@@ -350,8 +354,92 @@ function chatHarness(client) {
     if (node?.props) return [node, ...flatten(node.props.children)];
     return node == null ? [] : [node];
   }
-  return () => { cursor = 0; return flatten(Chat()); };
+  return (props) => { cursor = 0; return flatten(Chat(props)); };
 }
+
+test("chat stacks one bubble with avatar per typer in the history and reports typing without draft text", () => {
+  const client = fixture();
+  client.game.getState().setPhase("debate");
+  const changes = [];
+  const render = chatHarness(client);
+  const props = { typingPlayers: [
+    { socketId: "ana", username: "Ana", avatarUrl: "/avatar1.webp", isAlive: true },
+    { socketId: "luis", username: "Luis", avatarUrl: "/avatar2.webp", isAlive: true },
+  ], onTypingChange: (active) => changes.push(active) };
+  const elements = render(props);
+  const history = elements.find((node) => node?.props?.role === "log");
+  const rows = history.props.children.at(-1);
+  assert.deepEqual(Array.from(rows, (row) => row.props.children[0].props.src), ["/avatar1.webp", "/avatar2.webp"]);
+  assert.ok(elements.includes("Ana"));
+  assert.ok(elements.includes("Luis"));
+  assert.equal(elements.filter((node) => node === " está escribiendo…").length, 2);
+  const input = elements.find((node) => node.type === "input");
+  input.props.onChange({ target: { value: "pista" } });
+  input.props.onChange({ target: { value: "" } });
+  input.props.onBlur();
+  assert.deepEqual(changes, [true, false, false]);
+  assert.equal(client.requests.length, 0);
+});
+
+test("typing expires, ignores a previous turn and clears on disconnect", () => {
+  const client = fixture();
+  client.roomStore.getState().room.settings = { playMode: "online" };
+  client.roomStore.getState().updatePlayer("socket-host", { isOnline: true });
+  client.game.setState({ phase: "word", currentTurnPlayerId: "socket-host", turnIndex: 1 });
+  const timeouts = new Map();
+  const callbacks = new Map();
+  const slots = [];
+  let cursor = 0;
+  let nextTimer = 0;
+  let dispose;
+  const useState = (initial) => {
+    const index = cursor++;
+    if (!(index in slots)) slots[index] = initial;
+    return [slots[index], (update) => { slots[index] = typeof update === "function" ? update(slots[index]) : update; }];
+  };
+  const subscribe = (name, callback) => callbacks.set(name, callback);
+  const unsubscribe = (name, callback) => {
+    assert.equal(callbacks.get(name), callback);
+    callbacks.delete(name);
+  };
+  const { useGameTyping } = loadSource("src/hooks/useGameTyping.ts", {
+    react: {
+      useState,
+      useRef: (value) => useState({ current: value })[0],
+      useEffect: (setup) => { dispose ??= setup(); },
+    },
+    "@/services/socket/eventDelivery": { onServerEvent: (name, callback) => {
+      subscribe(name, callback);
+      return () => unsubscribe(name, callback);
+    } },
+    "@/services/socket/socket": { getSocket: () => ({ on: subscribe, off: unsubscribe }) },
+    "@/store/useGameStore": { useGameStore: () => client.game.getState() },
+    "@/store/useRoomStore": { useRoomStore: client.roomStore },
+    "@/store/useRoomSessionStore": { isRecoveringRoom: () => false },
+  }, {
+    setTimeout: (callback, delay) => { timeouts.set(++nextTimer, { callback, delay }); return nextTimer; },
+    clearTimeout: (id) => timeouts.delete(id),
+  });
+  const render = () => { cursor = 0; return useGameTyping(); };
+  const receive = (turnIndex) => callbacks.get("playerTyping")({
+    roomId: "room-1", playerId: "socket-host", round: 1, phase: "word", turnIndex, active: true, ttlMs: 2500,
+  });
+  assert.equal(render().isWordTyping, false);
+  receive(0);
+  assert.equal(render().isWordTyping, false);
+  receive(1);
+  assert.equal(render().isWordTyping, true);
+  const timer = [...timeouts.values()][0];
+  assert.equal(timer.delay, 2500);
+  timer.callback();
+  assert.equal(render().isWordTyping, false);
+  receive(1);
+  callbacks.get("disconnect")();
+  assert.equal(render().isWordTyping, false);
+  assert.equal(timeouts.size, 0);
+  dispose();
+  assert.equal(callbacks.size, 0);
+});
 
 test("results to word preserves assignment and eliminated players beyond totalRounds", () => {
   for (const isImpostor of [false, true]) {
@@ -441,6 +529,73 @@ test("presential turn sends no word, waits for server and rejects chat/written c
   assert.equal(f.game.getState().hasSubmittedWord, true);
   assert.equal(f.game.getState().currentTurnPlayerId, "socket-guest", "Only turnChanged advances");
   await assert.rejects(actions.completeTurn(), /No puedes/);
+});
+
+function oralTurnHarness(client) {
+  const slots = [];
+  let cursor = 0;
+  const useState = (initial) => {
+    const index = cursor++;
+    if (!(index in slots)) slots[index] = initial;
+    return [slots[index], (value) => { slots[index] = value; }];
+  };
+  const { default: OralTurn } = loadSource("src/components/game/OralTurn.tsx", {
+    "react/jsx-runtime": jsxRuntime,
+    react: { useState, useRef: (value) => useState({ current: value })[0] },
+    "lucide-react": { Check: "svg", LoaderCircle: "svg" },
+    "@/store/useGameStore": { useGameStore: () => client.game.getState() },
+    "@/store/useRoomStore": { useRoomStore: client.roomStore },
+    "@/hooks/useSocketGame": { useSocketGame: client.hooks.useSocketGame },
+    "@/components/ui/form-actions": { FormActionButton: "button" },
+  });
+  function flatten(node) {
+    if (Array.isArray(node)) return node.flatMap(flatten);
+    if (node?.props) return [node, ...flatten(node.props.children)];
+    return node == null ? [] : [node];
+  }
+  return () => { cursor = 0; return flatten(OralTurn()); };
+}
+
+test("oral UI confirms before deadline, blocks double click, retains retry and follows server advance", async () => {
+  const f = fixture(); f.mount();
+  f.roomStore.getState().room.settings = { playMode: "in_person" };
+  f.game.setState({ phase: "word", currentTurnPlayerId: "socket-guest", turnIndex: 0, turnExpiresAt: Date.now() + 45_000 });
+  const render = oralTurnHarness(f);
+  assert.ok(render().includes("Ya dije mi palabra"));
+  const button = render().find((node) => node.type === "button");
+  button.props.onClick(); button.props.onClick();
+  assert.equal(f.requests.length, 1);
+  assert.equal(f.requests[0].event, "completeTurn");
+  assert.equal(render().find((node) => node.type === "button").props.disabled, true);
+  assert.equal(f.game.getState().currentTurnPlayerId, "socket-guest");
+  f.requests[0].respond(null, { success: false, code: "RETRY", message: "Intenta otra vez" });
+  await new Promise(setImmediate);
+  assert.equal(render().find((node) => node.props?.role === "alert").props.children, "Intenta otra vez");
+  assert.equal(render().find((node) => node.type === "button").props.disabled, false);
+  render().find((node) => node.type === "button").props.onClick();
+  f.requests[1].respond(null, { success: true });
+  await new Promise(setImmediate);
+  assert.equal(render().some((node) => node.type === "button"), false);
+  assert.equal(f.game.getState().currentTurnPlayerId, "socket-guest", "Ack alone does not advance");
+  f.receive("turnCompleted", { playerId: "socket-guest", username: "Invitado", round: 1, turnIndex: 0, skipped: false });
+  f.receive("turnChanged", { playerId: "socket-host", turnIndex: 1, total: 2 });
+  assert.equal(f.game.getState().currentTurnPlayerId, "socket-host");
+  assert.equal(render().some((node) => node.type === "button"), false);
+  assert.ok(f.game.getState().turnExpiresAt > Date.now(), "Next turn gets a fresh deadline from the existing turn contract");
+  f.unmount();
+});
+
+test("last oral confirmation enters debate immediately on the server phase event", () => {
+  const f = fixture(); f.mount();
+  f.roomStore.getState().room.settings = { playMode: "in_person" };
+  f.game.setState({ phase: "word", currentTurnPlayerId: "socket-guest", turnIndex: 1, turnExpiresAt: Date.now() + 45_000 });
+  f.receive("turnCompleted", { playerId: "socket-guest", username: "Invitado", round: 1, turnIndex: 1, skipped: false });
+  assert.equal(f.game.getState().phase, "word");
+  f.receive("phaseChanged", { phase: "debate" });
+  assert.equal(f.game.getState().phase, "debate");
+  assert.equal(f.game.getState().currentTurnPlayerId, null);
+  assert.equal(f.game.getState().turnExpiresAt, null);
+  f.unmount();
 });
 
 test("presential turn rejects wrong player, eliminated, wrong mode and permits retry after timeout", async () => {

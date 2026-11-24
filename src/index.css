@@ -491,3 +491,16 @@ html[data-auth-transition]::view-transition-old(auth-frame) { animation: none; o
 html[data-auth-transition]::view-transition-new(auth-frame) { animation: none; height: 100%; object-fit: fill; }
 @keyframes auth-visual-out { 0%, 25% { opacity: 1; } 45%, 100% { opacity: 0; } }
 @keyframes auth-visual-in { 0%, 50% { opacity: 0; } 75%, 100% { opacity: 1; } }
+
+@media (prefers-reduced-motion: no-preference) {
+  .chat-typing-dots > span {
+    animation: chat-typing-hop 900ms ease-in-out infinite;
+  }
+  .chat-typing-dots > span:nth-child(2) { animation-delay: 225ms; }
+  .chat-typing-dots > span:nth-child(3) { animation-delay: 450ms; }
+}
+
+@keyframes chat-typing-hop {
+  0%, 25%, 100% { transform: translateY(0); }
+  12.5% { transform: translateY(-4px); }
+}

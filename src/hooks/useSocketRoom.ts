@@ -39,6 +39,19 @@ function assertConnected(): void {
   }
 }
 
+function roomTokenRenewal(token?: string): Promise<string> | undefined {
+  if (!token) return;
+  const session = useUserStore.getState();
+  if (session.token !== token || !session.claims || session.claims.exp * 1000 - Date.now() > 120_000) return;
+  return session.renewGoogleSession().then(() => {
+    const current = useUserStore.getState();
+    if (!current.token || current.user?.id !== session.user?.id) {
+      throw new SocketAckError("AUTH_REQUIRED", "Inicia sesión para continuar.");
+    }
+    return current.token;
+  });
+}
+
 export function useSocketRoom() {
   const { setRoom, setCurrentPlayer, reset: resetRoom } =
     useRoomStore();
@@ -70,15 +83,17 @@ export function useSocketRoom() {
   };
 
   const createRoom = useCallback(
-    (payload: CreateRoomPayload) =>
-      new Promise<Room>((resolve, reject) => {
+    async (payload: CreateRoomPayload) => {
+      const renewal = roomTokenRenewal(payload.token);
+      const token = renewal ? await renewal : payload.token;
+      return new Promise<Room>((resolve, reject) => {
         try {
           assertConnected();
         } catch (error) {
           reject(error);
           return;
         }
-        emitCreateRoom(payload, (response) => {
+        emitCreateRoom({ ...payload, token }, (response) => {
           try {
             const data = getRoomFromAck(response);
             if (payload.settings?.playMode === "in_person" && data.room.settings?.playMode !== "in_person") throw new Error("El servidor todavía no admite partidas presenciales.");
@@ -89,20 +104,23 @@ export function useSocketRoom() {
             reject(error);
           }
         });
-      }),
+      });
+    },
     [commitRoom, navigate]
   );
 
   const joinRoom = useCallback(
-    (payload: JoinRoomPayload) =>
-      new Promise<Room>((resolve, reject) => {
+    async (payload: JoinRoomPayload) => {
+      const renewal = roomTokenRenewal(payload.token);
+      const token = renewal ? await renewal : payload.token;
+      return new Promise<Room>((resolve, reject) => {
         try {
           assertConnected();
         } catch (error) {
           reject(error);
           return;
         }
-        emitJoinRoom(payload, (response) => {
+        emitJoinRoom(token ? { ...payload, token } : payload, (response) => {
           try {
             const data = getRoomFromAck(response);
             commitRoom(data);
@@ -112,7 +130,8 @@ export function useSocketRoom() {
             reject(error);
           }
         });
-      }),
+      });
+    },
     [commitRoom, navigate]
   );
 

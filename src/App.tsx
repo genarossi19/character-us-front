@@ -29,10 +29,22 @@ function HomeEntry() {
 
 function SessionBootstrap() {
   const restoreSession = useUserStore((state) => state.restoreSession);
+  const renewGoogleSession = useUserStore((state) => state.renewGoogleSession);
 
   useEffect(() => {
     void restoreSession();
-  }, [restoreSession]);
+    const renew = () => {
+      if (!useUserStore.getState().isRestoringSession) void renewGoogleSession().catch(() => {});
+    };
+    const timer = window.setInterval(renew, 30_000);
+    window.addEventListener("focus", renew);
+    window.addEventListener("online", renew);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", renew);
+      window.removeEventListener("online", renew);
+    };
+  }, [restoreSession, renewGoogleSession]);
 
   return null;
 }

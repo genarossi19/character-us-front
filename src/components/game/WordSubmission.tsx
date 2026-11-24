@@ -8,7 +8,10 @@ import { Input } from "@/components/ui/input";
 import { CheckCircle2, Clock3, Send } from "lucide-react";
 import ClueBoard from "./ClueBoard";
 
-export default function WordSubmission() {
+export default function WordSubmission({ onTypingChange, isTurnPlayerTyping }: {
+  onTypingChange?: (active: boolean) => void;
+  isTurnPlayerTyping?: boolean;
+} = {}) {
   const { phase, currentTurnPlayerId, wordHints, hasSubmittedWord, isImpostor } = useGameStore();
   const currentPlayer = useRoomStore((s) => s.currentPlayer);
   const players = useRoomStore((s) => s.players);
@@ -31,6 +34,7 @@ export default function WordSubmission() {
   const handleSubmit = useCallback(async () => {
     if (!canWrite || !word.trim() || word.trim().length > 20 || sendingRef.current) return;
     sendingRef.current = true;
+    onTypingChange?.(false);
     setSending(true);
     setError(null);
     try {
@@ -42,7 +46,7 @@ export default function WordSubmission() {
       sendingRef.current = false;
       setSending(false);
     }
-  }, [word, canWrite, submitWord]);
+  }, [word, canWrite, submitWord, onTypingChange]);
 
   // Auto-submit on Enter
   const handleKeyDown = useCallback(
@@ -87,7 +91,11 @@ export default function WordSubmission() {
         >
           <Input
             value={word}
-            onChange={(e) => setWord(e.target.value)}
+            onChange={(event) => {
+              setWord(event.target.value);
+              onTypingChange?.(Boolean(event.target.value.trim()));
+            }}
+            onBlur={() => onTypingChange?.(false)}
             onKeyDown={handleKeyDown}
             placeholder="Escribe tu palabra..."
             maxLength={20}
@@ -124,7 +132,7 @@ export default function WordSubmission() {
       )}
 
       </section>
-      <ClueBoard />
+      <ClueBoard isTurnPlayerTyping={isTurnPlayerTyping} />
     </div>
   );
 }

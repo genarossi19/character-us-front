@@ -1,312 +1,181 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { AnimatePresence, motion } from "motion/react";
+import { ArrowLeft, Gamepad2, RefreshCw, Search, Users } from "lucide-react";
 import { useUserStore } from "@/store/useUserStore";
-import { getDisplayName } from "@/lib/displayName";
-import { useSocketRoom } from "@/hooks/useSocketRoom";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { useSocketRoom, SocketAckError } from "@/hooks/useSocketRoom";
+import { ApiError } from "@/services/api/client";
+import { fetchCategories, type Category } from "@/services/api/category";
+import { fetchPublicRooms, type PublicRoomSummary } from "@/services/api/rooms";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectTrigger,
-  SelectContent,
-  SelectItem,
-  SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ThemeToggleButton } from "@/components/ui/shadcn-io/theme-toggle-button";
-import { Users, Gamepad2, Search, LogOut, User } from "lucide-react";
-import { toast } from "sonner";
 
-// TODO: Replace when the backend exposes a public-room listing contract.
-const mockRooms = [
-  {
-    id: "1",
-    name: "Sala Magia Disney",
-    category: "Disney",
-    mode: "Clásico (1 Impostor)",
-    creator: "Ana",
-    currentPlayers: 5,
-    maxPlayers: 8,
-    img: "/disney.webp",
-    code: 123456,
-  },
-  {
-    id: "2",
-    name: "Desafío Clash Royale",
-    category: "Clash Royale",
-    mode: "Especial (Pista)",
-    creator: "Luis",
-    currentPlayers: 0,
-    maxPlayers: 8,
-    img: "/clash-royale.webp",
-    code: 789012,
-  },
-  {
-    id: "3",
-    name: "Preguntas de Los Simpson",
-    category: "Los Simpson",
-    mode: "Clásico (2 Impostores)",
-    creator: "Carla",
-    currentPlayers: 4,
-    maxPlayers: 6,
-    img: "/los-simpson.webp",
-    code: 345678,
-  },
-];
+const MODE_LABELS = { classic: "Clásico", anonymous: "Anónimo", special: "Especial" } as const;
+const REFRESH_INTERVAL_MS = 5_000;
 
 export default function PublicRoomsV2() {
   const navigate = useNavigate();
-  const { user, logout, token } = useUserStore();
+  const { user, token, logout } = useUserStore();
   const { joinRoom } = useSocketRoom();
+  const [rooms, setRooms] = useState<PublicRoomSummary[] | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState("");
-  const [modeFilter, setModeFilter] = useState("all");
-  const [showEmpty, setShowEmpty] = useState(true);
+  const [mode, setMode] = useState("all");
+  const [refreshAttempt, setRefreshAttempt] = useState(0);
+  const [listError, setListError] = useState<string | null>(null);
+  const [joinError, setJoinError] = useState<string | null>(null);
+  const [joiningRoomId, setJoiningRoomId] = useState<string | null>(null);
+  const joiningRef = useRef(false);
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
+  useEffect(() => {
+    let active = true;
+    void fetchCategories().then((catalog) => {
+      if (active) setCategories(catalog);
+    });
+    return () => { active = false; };
+  }, []);
 
-  const handleJoinRoom = async (roomCode: number) => {
-    if (!user) return;
+  useEffect(() => {
+    if (!token) return;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
 
-    try {
-      await joinRoom({
-        code: roomCode,
-        username: user.username,
-        token: token || undefined,
-      });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No se pudo unir a la sala");
+    async function refresh() {
+      try {
+        await useUserStore.getState().renewGoogleSession();
+        if (controller.signal.aborted) return;
+        const availableRooms = await fetchPublicRooms(controller.signal);
+        if (controller.signal.aborted) return;
+        setRooms(availableRooms);
+        setListError(null);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+          logout();
+          navigate("/login", { replace: true });
+          return;
+        }
+        setListError("No pudimos actualizar las salas públicas.");
+      }
+      timer = setTimeout(refresh, REFRESH_INTERVAL_MS);
     }
-  };
 
-  const filteredRooms = mockRooms.filter((room) => {
-    const matchesSearch =
-      room.name.toLowerCase().includes(search.toLowerCase()) ||
-      room.category.toLowerCase().includes(search.toLowerCase());
-    const matchesMode =
-      modeFilter === "all" || room.mode.toLowerCase().includes(modeFilter);
-    const matchesEmpty = showEmpty ? true : room.currentPlayers > 0;
+    void refresh();
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [token, refreshAttempt, logout, navigate]);
 
-    return matchesSearch && matchesMode && matchesEmpty;
-  });
+  async function handleJoinRoom(room: PublicRoomSummary) {
+    if (!user || !token || joiningRef.current) return;
+    joiningRef.current = true;
+    setJoiningRoomId(room.id);
+    setJoinError(null);
+    try {
+      await joinRoom({ code: room.code, listedRoomId: room.id, username: user.username, token });
+    } catch (error) {
+      if (error instanceof SocketAckError && (error.code === "AUTH_REQUIRED" || error.code === "AUTH_INVALID")) {
+        logout();
+        navigate("/login", { replace: true });
+        return;
+      }
+      setJoinError(error instanceof Error ? error.message : "No pudimos unirte a la sala.");
+      setRefreshAttempt((attempt) => attempt + 1);
+    } finally {
+      joiningRef.current = false;
+      setJoiningRoomId(null);
+    }
+  }
+
+  const categoryNames = new Map(categories.map((category) => [category.id, category.name]));
+  const query = search.trim().toLocaleLowerCase();
+  const filteredRooms = rooms?.filter((room) =>
+    (mode === "all" || room.mode === mode) &&
+    (!query || room.name.toLocaleLowerCase().includes(query) ||
+      categoryNames.get(room.categoryId)?.toLocaleLowerCase().includes(query))
+  ) ?? [];
 
   return (
-    <div className="bg-background min-h-screen flex flex-col transition-colors">
-      {/* Header */}
-      <header className="fixed top-0 left-0 w-full z-50 h-16 md:h-20 page-gutter flex items-center justify-between bg-card shadow-sm">
-        <div className="min-w-0 flex items-center gap-3">
-          <Link to="/menu">
-            <div className="flex min-w-0 items-center gap-2">
-              <img className="size-8 rounded-md sm:size-12" src="/logo.webp" alt="" />
-              <span className="text-2xl font-extrabold sm:text-4xl bg-gradient-to-b from-accent/60 via-accent/80 to-accent bg-clip-text text-transparent">
-                CharacterUs
-              </span>
-            </div>
-          </Link>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-accent/20 transition">
-                <img
-                  src={user?.avatarUrl || "/avatars/astronaut.webp"}
-                  alt="avatar"
-                  className="w-10 h-10 rounded-full border-2 border-accent shadow"
-                />
-                <span className="hidden max-w-36 truncate font-semibold text-lg text-foreground sm:block">
-                  {getDisplayName(user)}
-                </span>
-              </button>
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent
-              align="end"
-              className="w-48 bg-card text-foreground border border-border shadow-md"
-            >
-              <DropdownMenuLabel className="text-foreground">
-                Mi Cuenta
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-
-              <DropdownMenuItem
-                onClick={() => navigate("/profile")}
-                className="group flex items-center gap-2 text-foreground hover:bg-accent hover:text-light transition-colors"
-              >
-                <User className="h-4 w-4 text-foreground group-hover:text-light" />
-                Perfil
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onClick={handleLogout}
-                variant="destructive"
-                className="group flex items-center gap-2 text-foreground hover:bg-accent hover:text-light transition-colors"
-              >
-                <LogOut className="h-4 w-4 text-foreground group-hover:text-light" />
-                Cerrar sesión
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
+    <div className="min-h-dvh bg-background text-foreground">
+      <header className="border-b border-border bg-card">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 page-gutter">
+          <Button variant="ghost" asChild>
+            <Link to="/menu"><ArrowLeft aria-hidden="true" /> Volver</Link>
+          </Button>
           <ThemeToggleButton />
         </div>
       </header>
 
-      {/* Main */}
-      <main className="flex-1 page-gutter pb-10 pt-28">
-        <div className="page-content space-y-10">
-          {/* Encabezado */}
-          <div className="text-center space-y-2">
-            <h1 className="text-5xl font-bold text-foreground">
-              Salas Públicas
-            </h1>
-            <p className="text-lg text-muted-foreground">
-              Filtra y encuentra la mejor sala para unirte
-            </p>
-          </div>
-
-          {/* Barra de búsqueda y filtros */}
-          <div className="bg-card/70 border border-border shadow-sm rounded-lg p-6 space-y-6 backdrop-blur-sm">
-            <div className="flex flex-col md:flex-row gap-4 items-center">
-              <div className="relative w-full md:w-1/3">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="Buscar por nombre o categoría..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10 bg-background text-foreground border-border"
-                />
-              </div>
-
-              <div className="w-full md:w-1/3">
-                <Label className="text-sm text-foreground">Modo de juego</Label>
-                <Select
-                  value={modeFilter}
-                  onValueChange={(val) => setModeFilter(val)}
-                >
-                  <SelectTrigger className="w-full bg-background text-foreground border-border">
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-card text-foreground border-border">
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="clásico">Clásico</SelectItem>
-                    <SelectItem value="anónimo">Anónimo</SelectItem>
-                    <SelectItem value="especial">Especial</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="w-full md:w-1/3 flex items-center justify-start md:justify-end gap-2">
-                <Label
-                  htmlFor="empty-switch"
-                  className="text-sm text-foreground"
-                >
-                  Mostrar vacías
-                </Label>
-                <Switch
-                  id="empty-switch"
-                  checked={showEmpty}
-                  onCheckedChange={(val) => setShowEmpty(val)}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Lista de salas */}
-          {filteredRooms.length > 0 ? (
-            <motion.div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              <AnimatePresence>
-                {filteredRooms.map((room, index) => (
-                  <motion.div
-                    key={room.id}
-                    layout
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.3, delay: index * 0.05 }}
-                  >
-                    <Card className="shadow-md hover:shadow-xl transition border-border bg-card text-foreground relative">
-                      <CardHeader className="flex flex-row items-center justify-between pb-2 relative">
-                        <CardTitle className="text-xl font-bold">
-                          {room.name}
-                        </CardTitle>
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-accent border-2 border-background shadow-md overflow-hidden">
-                          <img
-                            src={room.img || "/logo.webp"}
-                            alt={room.name}
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-                      </CardHeader>
-
-                      <CardContent className="space-y-3">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Gamepad2 className="h-4 w-4" />
-                          <span>{room.mode}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Users className="h-4 w-4" />
-                          <span>
-                            {room.currentPlayers} / {room.maxPlayers} jugadores
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <span>
-                            Categoría:{" "}
-                            <strong className="text-foreground">
-                              {room.category}
-                            </strong>
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <span>
-                            Creador:{" "}
-                            <strong className="text-foreground">
-                              {room.creator}
-                            </strong>
-                          </span>
-                        </div>
-
-                        <Button
-                          onClick={() => handleJoinRoom(room.code)}
-                          disabled={room.currentPlayers >= room.maxPlayers}
-                          className="w-full bg-gradient-to-br from-accent to-secondary hover:from-secondary hover:to-accent text-light font-semibold"
-                        >
-                          {room.currentPlayers >= room.maxPlayers
-                            ? "Sala Llena"
-                            : "Unirse"}
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </motion.div>
-          ) : (
-            <div className="text-center text-muted-foreground text-lg">
-              No se encontraron salas con esos filtros
-            </div>
-          )}
+      <main className="mx-auto max-w-6xl space-y-6 page-padding">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-3xl font-semibold sm:text-4xl">Salas públicas</h1>
+          <Button variant="outline" onClick={() => setRefreshAttempt((attempt) => attempt + 1)}>
+            <RefreshCw aria-hidden="true" /> Actualizar
+          </Button>
         </div>
+
+        <div className="grid items-end gap-4 rounded-2xl border border-border bg-card p-4 sm:grid-cols-[minmax(0,1fr)_13rem]">
+          <div className="space-y-2">
+            <Label htmlFor="room-search">Buscar sala o categoría</Label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <Input id="room-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} className="pl-9" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="room-mode">Modalidad</Label>
+            <Select value={mode} onValueChange={setMode}>
+              <SelectTrigger id="room-mode" className="w-full" size="default"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                {Object.entries(MODE_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {listError && <p role="alert" className="text-sm text-danger">{listError}</p>}
+        {joinError && <p role="alert" className="text-sm text-danger">{joinError}</p>}
+        {!rooms && !listError && <p role="status" className="py-8 text-center text-muted-foreground">Buscando salas públicas…</p>}
+        {rooms && !filteredRooms.length && !listError && (
+          <section className="rounded-2xl border border-dashed border-border px-5 py-10 text-center">
+            <p role="status" className="text-muted-foreground">
+              {rooms.length ? "No hay salas que coincidan con la búsqueda." : "Por ahora no hay salas públicas disponibles."}
+            </p>
+            {!rooms.length && <Button variant="outline" className="mt-4" asChild><Link to="/create">Crear partida</Link></Button>}
+          </section>
+        )}
+        {filteredRooms.length > 0 && (
+          <ul aria-label="Salas disponibles" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {filteredRooms.map((room) => (
+              <li key={room.id}>
+                <Card className="h-full gap-4">
+                  <CardHeader>
+                    <CardTitle className="break-words text-xl">{room.name}</CardTitle>
+                    <p className="text-sm text-muted-foreground">{categoryNames.get(room.categoryId) ?? "Categoría no disponible"}</p>
+                  </CardHeader>
+                  <CardContent className="flex flex-1 flex-col gap-4">
+                    <div className="space-y-2 text-sm text-muted-foreground">
+                      <p className="flex items-center gap-2"><Gamepad2 className="size-4 shrink-0" aria-hidden="true" />
+                        {MODE_LABELS[room.mode]} · {room.playMode === "in_person" ? "Presencial" : "En línea"}
+                      </p>
+                      <p className="flex items-center gap-2"><Users className="size-4 shrink-0" aria-hidden="true" />
+                        {room.playerCount} / {room.maxPlayers} jugadores · {room.impostorCount} {room.impostorCount === 1 ? "impostor" : "impostores"}
+                      </p>
+                    </div>
+                    <Button className="mt-auto w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={joiningRoomId !== null} onClick={() => void handleJoinRoom(room)}>
+                      {joiningRoomId === room.id ? "Uniéndose…" : "Unirse"}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </li>
+            ))}
+          </ul>
+        )}
       </main>
     </div>
   );

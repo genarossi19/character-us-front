@@ -6,8 +6,14 @@ import { useSocketGame } from "@/hooks/useSocketGame";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ServerDeadline from "./ServerDeadline";
+import type { Player } from "@/types/game";
 
-export default function DebateChat({ onClose, active = true }: { onClose?: () => void; active?: boolean } = {}) {
+export default function DebateChat({ onClose, active = true, onTypingChange, typingPlayers = [] }: {
+  onClose?: () => void;
+  active?: boolean;
+  onTypingChange?: (active: boolean) => void;
+  typingPlayers?: Player[];
+} = {}) {
   const { phase, chatMessages, finalResult } = useGameStore();
   const { currentPlayer, players } = useRoomStore();
   const { sendChatMessage } = useSocketGame();
@@ -21,6 +27,7 @@ export default function DebateChat({ onClose, active = true }: { onClose?: () =>
   const canChat = phase === "debate" || phase === "voting";
   const isGhost = !(phase === "finished" ? finalResult?.players.find((player) => player.socketId === currentPlayer?.socketId) ?? currentPlayer : currentPlayer)?.isAlive;
   const messages = chatMessages.filter((message) => message.type !== "ghost" || isGhost);
+  const typingCount = canChat ? typingPlayers.length : 0;
 
   useEffect(() => {
     if (!active) return;
@@ -32,10 +39,18 @@ export default function DebateChat({ onClose, active = true }: { onClose?: () =>
     }
   }, [chatMessages, active]);
 
+  useEffect(() => {
+    const container = scrollRef.current;
+    if (active && typingCount && followRef.current && container) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }, [active, typingCount]);
+
   const handleSend = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!canChat || !newMessage.trim() || sendingRef.current) return;
     sendingRef.current = true;
+    onTypingChange?.(false);
     setSending(true);
     setError(null);
     try {
@@ -68,7 +83,7 @@ export default function DebateChat({ onClose, active = true }: { onClose?: () =>
         followRef.current = element.scrollHeight - element.scrollTop - element.clientHeight < 60;
         if (followRef.current) setUnread(0);
       }} className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4">
-        {messages.length === 0 && <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-muted-foreground"><Activity className="size-8 text-accent/60" aria-hidden="true" /><p className="text-sm">La partida también se cuenta aquí.</p><p className="max-w-52 text-xs">Las acciones aparecerán a medida que jueguen.</p></div>}
+        {messages.length === 0 && typingCount === 0 && <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-muted-foreground"><Activity className="size-8 text-accent/60" aria-hidden="true" /><p className="text-sm">La partida también se cuenta aquí.</p><p className="max-w-52 text-xs">Las acciones aparecerán a medida que jueguen.</p></div>}
         {messages.map((message) => {
           const mine = message.senderId === currentPlayer?.socketId;
           const player = players.find((candidate) => candidate.socketId === message.senderId);
@@ -95,6 +110,19 @@ export default function DebateChat({ onClose, active = true }: { onClose?: () =>
             </div>
           );
         })}
+        {canChat && typingPlayers.map((player) => (
+          <div key={player.socketId} className="flex items-start gap-2">
+            {player.avatarUrl ? <img src={player.avatarUrl} alt="" className="size-8 shrink-0 rounded-xl object-cover" /> : <MessageCircle className="size-8 shrink-0 rounded-xl bg-muted p-2 text-muted-foreground" aria-hidden="true" />}
+            <div className={`min-w-0 max-w-[85%] rounded-2xl rounded-tl-sm border border-dashed px-3 py-2 ${player.isAlive ? "border-accent/30 bg-accent/5 text-muted-foreground" : "border-purple/40 bg-purple/10 text-purple"}`}>
+              <p className="break-words text-xs font-medium">{player.username}<span className="sr-only"> está escribiendo…</span></p>
+              <span aria-hidden="true" className="chat-typing-dots mt-2 flex h-2 items-center gap-1">
+                <span className="size-1.5 rounded-full bg-current" />
+                <span className="size-1.5 rounded-full bg-current" />
+                <span className="size-1.5 rounded-full bg-current" />
+              </span>
+            </div>
+          </div>
+        ))}
       </div>
       {unread > 0 && <Button variant="ghost" onClick={goToLatest} className="mx-4 mb-2 shrink-0 gap-2 text-accent"><ArrowDown className="size-4" aria-hidden="true" />Ver actividad nueva</Button>}
       <div className="shrink-0 border-t border-border p-4">
@@ -102,7 +130,10 @@ export default function DebateChat({ onClose, active = true }: { onClose?: () =>
           <form onSubmit={handleSend} className="space-y-2">
             {isGhost && <p className="flex items-center gap-1.5 text-xs text-purple"><Ghost className="size-3.5" aria-hidden="true" /> Solo los eliminados reciben tus mensajes.</p>}
             <div className="flex gap-2">
-              <Input aria-label="Mensaje para el chat" placeholder={isGhost ? "Habla con los eliminados…" : "Comparte tus sospechas…"} value={newMessage} onChange={(event) => setNewMessage(event.target.value)} disabled={sending} maxLength={500} className="min-w-0 flex-1 rounded-xl bg-muted/30" />
+              <Input aria-label="Mensaje para el chat" placeholder={isGhost ? "Habla con los eliminados…" : "Comparte tus sospechas…"} value={newMessage} onChange={(event) => {
+                setNewMessage(event.target.value);
+                onTypingChange?.(Boolean(event.target.value.trim()));
+              }} onBlur={() => onTypingChange?.(false)} disabled={sending} maxLength={500} className="min-w-0 flex-1 rounded-xl bg-muted/30" />
               <Button type="submit" aria-label={sending ? "Enviando mensaje" : "Enviar mensaje"} disabled={!newMessage.trim() || sending} className="size-10 shrink-0 rounded-xl bg-accent p-0 text-accent-foreground hover:bg-accent/90"><Send className="size-4" aria-hidden="true" /></Button>
             </div>
             {error && <p role="alert" className="text-xs text-danger">{error}</p>}

@@ -26,9 +26,9 @@ export default function OralTurn() {
   };
   return <section className="space-y-5 rounded-2xl border border-border bg-card p-6 text-center">
     {active && <img src={active.avatarUrl} alt="" className="mx-auto size-24 object-contain" />}
-    <h2 className="text-2xl font-semibold">{mine && !done ? "Tu turno" : active && !turnDone ? `Turno de ${active.username}` : "Esperando el siguiente turno"}</h2>
-    <p className="text-base text-muted-foreground">{canConfirm ? "Di tu palabra en voz alta y confirma cuando termines." : !currentPlayer?.isAlive ? "Estás observando la partida." : mine && done ? "Tu turno terminó." : "Escucha la palabra del grupo."}</p>
-    {canConfirm && <div className="mx-auto max-w-xs"><FormActionButton tone="accent" disabled={sending} onClick={() => void confirm()}>{sending ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Check aria-hidden="true" />}{sending ? "Confirmando…" : "Listo"}</FormActionButton></div>}
+    <h2 aria-live="polite" className="text-2xl font-semibold">{mine && !done ? "Tu turno" : active && !turnDone ? `Turno de ${active.username}` : "Esperando el siguiente turno"}</h2>
+    <p className="text-base text-muted-foreground">{canConfirm ? "Di tu palabra en voz alta y pulsa el botón para pasar al siguiente turno sin esperar a que termine el tiempo." : !currentPlayer?.isAlive ? "Estás observando la partida." : mine && done ? "Palabra confirmada. Esperando el siguiente turno del servidor." : "Escucha la palabra del grupo."}</p>
+    {canConfirm && <div className="mx-auto max-w-xs"><FormActionButton tone="accent" disabled={sending} onClick={() => void confirm()}>{sending ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <Check className="size-4" aria-hidden="true" />}{sending ? "Confirmando…" : "Ya dije mi palabra"}</FormActionButton></div>}
     {error && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{error}</p>}
   </section>;
 }

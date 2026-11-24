@@ -14,6 +14,7 @@ import { fetchCategories, type Category } from "@/services/api/category";
 import RoomInvite from "@/components/RoomInvite";
 import LobbyAvatarPicker from "@/components/LobbyAvatarPicker";
 import type { Player } from "@/types/game";
+import { getMinimumPlayers } from "@/lib/roomModeRules";
 
 export default function WaitingRoomV2() {
   const { room, currentPlayer, players } = useRoomStore();
@@ -33,7 +34,7 @@ export default function WaitingRoomV2() {
   const [avatarPreview, setAvatarPreview] = useState<{ roomId: string; playerId: string; url: string } | null>(null);
   const isHost = currentPlayer?.isHost === true;
   const readyPlayers = players.filter((player) => player.isLobbyReady && player.isOnline).length;
-  const minimumPlayers = Math.max(3, (room?.settings.impostorCount ?? 1) + 1);
+  const minimumPlayers = getMinimumPlayers(room?.settings.impostorCount ?? 1);
   const allReady = players.length > 0 && readyPlayers === players.length;
   const canStartGame = isHost && players.length >= minimumPlayers && allReady && room?.status === "waiting";
 
@@ -190,7 +191,7 @@ export default function WaitingRoomV2() {
                 <div className="space-y-4">
                   {!category && !loadingCategories && <button type="button" onClick={() => { setLoadingCategories(true); setCategoryAttempt((attempt) => attempt + 1); }} className="text-sm text-teal-800 underline underline-offset-2 dark:text-teal-200">Reintentar cargar categoría</button>}
                   <div className="flex flex-wrap gap-2 text-sm"><span className="rounded-md bg-accent/10 px-2 py-1 text-teal-900 dark:text-teal-100">{modeLabel}</span><span className="flex items-center gap-1.5 rounded-md bg-muted/50 px-2 py-1">{room.settings.privacy === "private" ? <Lock className="size-3.5" aria-hidden="true" /> : <Globe2 className="size-3.5" aria-hidden="true" />}{room.settings.privacy === "private" ? "Privada" : "Pública"}</span><span className="flex items-center gap-1.5 rounded-md bg-muted/50 px-2 py-1"><VenetianMask className="size-3.5 text-purple-600 dark:text-purple-300" aria-hidden="true" />{room.settings.impostorCount} {room.settings.impostorCount === 1 ? "impostor" : "impostores"}</span></div>
-                  <dl className="space-y-2.5 text-sm">{[["Tipo de partida", room.settings.playMode === "in_person" ? "Presencial" : "En línea"], ["Impostores se conocen", room.settings.impostorsKnowEachOther ? "Sí" : "No"], ["Objetivos de los votos", room.settings.visibleVotes ? "Visibles" : "Ocultos"]].map(([label, value]) => <div key={label} className="flex justify-between gap-3"><dt className="text-muted-foreground">{label}</dt><dd className="text-right font-medium">{value}</dd></div>)}</dl>
+                  <dl className="space-y-2.5 text-sm">{[["Tipo de partida", room.settings.playMode === "in_person" ? "Presencial" : "En línea"], ["Rondas", room.settings.maxRounds ?? "Sin límite"], ["Impostores se conocen", room.settings.impostorsKnowEachOther ? "Sí" : "No"], ["Objetivos de los votos", room.settings.visibleVotes ? "Visibles" : "Ocultos"]].map(([label, value]) => <div key={label} className="flex justify-between gap-3"><dt className="text-muted-foreground">{label}</dt><dd className="text-right font-medium">{value}</dd></div>)}</dl>
                 </div>
               </section>
             </aside>

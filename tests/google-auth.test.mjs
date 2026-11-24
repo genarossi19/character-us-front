@@ -21,7 +21,7 @@ test("Google sends only credential to the public auth endpoint and propagates co
   const result = { token: "characterus-jwt" };
   let rejection;
   const auth = load("src/services/api/auth.ts", { "./client": {
-    publicApi: { post: async (url, body) => { calls.push({ url, body }); if (rejection) throw rejection; return { data: result }; } },
+    cookieAuthApi: { post: async (url, body) => { calls.push({ url, body }); if (rejection) throw rejection; return { data: result }; } },
     getApiError: (error) => error,
   } });
   assert.equal(await auth.googleLoginRequest("google-id-token"), result);
@@ -37,16 +37,21 @@ test("Google stores only CharacterUs session, retains backend username/name and 
   const sessionStorage = { getItem: (key) => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: (key) => storage.delete(key) };
   let token;
   let disabled = 0;
+  let revoked = 0;
   let fail = false;
   const user = { id: "id", username: "google_stable_id", name: "Nombre Google", email: "test@example.com", gamesPlayed: 2, isGuest: false };
-  const { useUserStore: store } = load("src/store/useUserStore.ts", {
+  const hints = new Map();
+  const localStorage = { getItem: (key) => hints.get(key), setItem: (key, value) => hints.set(key, value), removeItem: (key) => hints.delete(key) };
+  const dependencies = {
     zustand: { create }, "zustand/middleware": middleware,
     "jwt-decode": { jwtDecode: () => ({ userId: "id", username: user.username, email: user.email, exp: Date.now() / 1000 + 3600 }) },
-    "@/services/api/auth": { googleLoginRequest: async () => { if (fail) throw new Error("Conflicto 409"); return { token: "characterus-jwt", user }; }, getCurrentUserRequest: async () => user },
+    "@/services/api/auth": { googleLoginRequest: async () => { if (fail) throw new Error("Conflicto 409"); return { token: "characterus-jwt", user }; }, getCurrentUserRequest: async () => user,
+      refreshGoogleSessionRequest: async () => ({ token: "renewed-jwt", user }), logoutGoogleSessionRequest: async () => { revoked++; } },
     "@/constants/avatars": { AVATAR_URLS: ["/avatar1.webp"] },
     "@/services/auth/accessToken": { setAccessToken: (value) => { token = value; } },
     "@/services/auth/googleIdentity": { disableGoogleAutoSelect: () => disabled++ },
-  }, { window: {}, sessionStorage, localStorage: { removeItem() {} } });
+  };
+  const { useUserStore: store } = load("src/store/useUserStore.ts", dependencies, { window: {}, sessionStorage, localStorage });
   await store.getState().loginWithGoogle("private-google-credential");
   assert.equal(token, "characterus-jwt");
   assert.equal(store.getState().user.username, user.username);
@@ -56,9 +61,15 @@ test("Google stores only CharacterUs session, retains backend username/name and 
   fail = true;
   await assert.rejects(store.getState().loginWithGoogle("invalid"), /409/);
   assert.equal(store.getState().token, "characterus-jwt");
+  storage.clear();
+  const { useUserStore: reopened } = load("src/store/useUserStore.ts", dependencies, { window: {}, sessionStorage, localStorage });
+  await reopened.getState().restoreSession();
+  assert.equal(reopened.getState().token, "renewed-jwt");
+  assert.equal(reopened.getState().isLoggedIn, true);
   store.getState().logout();
   assert.equal(token, null);
   assert.equal(disabled, 1);
+  assert.equal(revoked, 1);
   assert.equal(storage.has("characterus.session"), false);
 });
 

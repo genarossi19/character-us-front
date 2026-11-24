@@ -17,6 +17,14 @@ export interface Player {
 }
 
 export type RoomPrivacy = "public" | "private";
+
+export type TypingActivityPayload = {
+  roomId: string;
+  round: number;
+  active: boolean;
+} & ({ phase: "word"; turnIndex: number } | { phase: "debate" | "voting" });
+
+export type PlayerTyping = TypingActivityPayload & { playerId: string; ttlMs: number };
 export type RoomMode = "classic" | "anonymous" | "special";
 export type RoomStatus = "waiting" | "playing" | "finished";
 export type GamePhase =
@@ -33,6 +41,7 @@ export interface RoomSettings {
   category: string;
   impostorCount: number;
   totalRounds: number;
+  maxRounds?: 3 | 5 | 10 | null;
   maxPlayers: number;
   privacy: RoomPrivacy;
   mode: RoomMode;
@@ -100,6 +109,7 @@ export interface RoundResult {
 }
 
 export interface GameResult {
+  reason?: "round_limit";
   winner: "innocent" | "impostor";
   rounds: RoundResult[];
   players: Player[];
@@ -116,6 +126,7 @@ export interface CreateRoomPayload {
 export interface JoinRoomPayload {
   code: number;
   username: string;
+  listedRoomId?: string;
   token?: string;
   password?: string;
 }

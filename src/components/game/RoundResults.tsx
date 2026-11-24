@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "motion/react";
 import { useGameStore } from "@/store/useGameStore";
 import { useRoomStore } from "@/store/useRoomStore";
-import { ArrowRight, Handshake, ShieldAlert, UserRoundX } from "lucide-react";
+import { ArrowRight, Handshake, UserRoundX } from "lucide-react";
 
 export default function RoundResults() {
   const { eliminatedPlayer, wasImpostor, currentRound, votes } =
@@ -34,7 +34,7 @@ export default function RoundResults() {
             exit={{ opacity: 0, scale: 0.8 }}
             className="flex flex-col items-center gap-4"
           >
-            {wasImpostor ? <ShieldAlert className="size-12 text-impostor" aria-hidden="true" /> : <UserRoundX className="size-12 text-muted-foreground" aria-hidden="true" />}
+            {wasImpostor ? <img src="/impostor.webp" alt="" className="size-12 rounded-xl object-cover" /> : <UserRoundX className="size-12 text-muted-foreground" aria-hidden="true" />}
             <h3 className="text-2xl font-bold text-red-500">
               Jugador Eliminado
             </h3>
