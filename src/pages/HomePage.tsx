@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { MotionConfig, motion, useReducedMotion, useScroll, useSpring } from "motion/react";
 import { ArrowDown, ArrowRight, Check, Eye, Fingerprint, MessageCircle, Sparkles, Swords, Users, Vote } from "lucide-react";
+import { useUserStore } from "@/store/useUserStore";
 import NavMenu from "@/components/NavBar";
 import { Button } from "@/components/ui/button";
 
@@ -18,13 +19,13 @@ function Reveal({ children, className = "" }: { children: ReactNode; className?:
 }
 
 export default function HomePage() {
+  const isLoggedIn = useUserStore(state => state.isLoggedIn);
   const reduced = useReducedMotion();
   const { scrollYProgress } = useScroll();
   const progress = useSpring(scrollYProgress, { stiffness: 120, damping: 30 });
   const [revealed, setRevealed] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
-  const [paused, setPaused] = useState(false);
-  const moving = !reduced && !paused;
+  const moving = !reduced;
 
   return (
     <MotionConfig reducedMotion="user">
@@ -35,13 +36,13 @@ export default function HomePage() {
           <section className="page-container home-section home-hero" aria-labelledby="home-title">
             <Reveal className="min-w-0">
               <p className="home-eyebrow"><Sparkles className="size-4" aria-hidden="true" />Amigos, personajes y un poquito de caos</p>
-              <h1 id="home-title" className="home-title">Alguien aquí<br />está <span className="home-highlight">improvisando.</span></h1>
+              <h1 id="home-title" className="home-title">Alguien aquí<br />está <span className="home-highlight">mintiendo.</span></h1>
               <p className="home-lead">Todos conocen al personaje. Menos uno.<br className="hidden sm:block" /> Da tu pista, escucha las demás y descubre al impostor entre tus amigos.</p>
               <div className="home-actions">
-                <Button asChild className="home-button"><Link to="/signup">Crear mi cuenta<ArrowRight aria-hidden="true" /></Link></Button>
+                <Button asChild className="home-button"><Link to={isLoggedIn ? "/menu" : "/signup"}>{isLoggedIn ? "Ir al menú" : "Crear mi cuenta"}<ArrowRight aria-hidden="true" /></Link></Button>
                 <Button asChild variant="outline" className="home-button"><Link to="/join">Tengo un código</Link></Button>
               </div>
-              <p className="mt-5 text-sm text-muted-foreground">Para crear una sala necesitas una cuenta. Para unirte, solo el código.</p>
+              {!isLoggedIn && <p className="mt-5 text-sm text-muted-foreground">Para crear una sala necesitas una cuenta. Para unirte, solo el código.</p>}
               <a href="#como-jugar" className="mt-8 inline-flex items-center gap-2 text-sm font-medium underline-offset-4 hover:underline">Así se juega<ArrowDown className="size-4" aria-hidden="true" /></a>
             </Reveal>
 
@@ -52,9 +53,8 @@ export default function HomePage() {
               {[{ image: 7, className: "home-avatar-left", rotate: -12, delay: 0 }, { image: 1, className: "home-avatar-center", rotate: 4, delay: 0.5 }, { image: 8, className: "home-avatar-right", rotate: 12, delay: 1 }].map((avatar) => (
                 <motion.img key={avatar.image} src={`/avatar${avatar.image}.webp`} alt="" className={`home-avatar ${avatar.className}`} animate={moving ? { y: [0, -16, 0], rotate: [avatar.rotate, avatar.rotate + 4, avatar.rotate] } : { y: 0, rotate: avatar.rotate }} transition={moving ? { duration: 4, repeat: Infinity, delay: avatar.delay, ease: "easeInOut" } : { duration: 0 }} />
               ))}
-              <span className="home-sticker home-sticker-bottom"><Fingerprint className="size-5" aria-hidden="true" />¿Y tú por qué dudas tanto?</span>
+              <span className="home-sticker home-sticker-bottom"><Fingerprint className="size-5" aria-hidden="true" />¿Quién no está diciendo toda la verdad?</span>
               <span className="home-cast-star" aria-hidden="true">✦</span>
-              <button type="button" onClick={() => setPaused(!paused)} aria-pressed={paused} className="absolute bottom-0 right-0 rounded-md border border-border bg-card px-4 py-2 text-xs hover:bg-muted">{paused ? "Animar personajes" : "Pausar personajes"}</button>
             </div>
           </section>
 
@@ -83,8 +83,22 @@ export default function HomePage() {
 
           <section className="page-container home-section" aria-labelledby="cast-title">
             <Reveal className="home-section-heading text-center"><p className="home-eyebrow justify-center">03 / El ingrediente secreto es tu grupo</p><h2 id="cast-title" className="home-heading">Elige tu cara.<br />Que no te <span className="text-accent">delate.</span></h2><p className="home-lead mx-auto">El que sospecha de todos. La que se ríe cuando miente. El que habla demasiado. Ya sabes a quién vas a invitar.</p></Reveal>
-            <div className="home-avatar-line" aria-hidden="true">{[7, 2, 4, 1, 5, 8].map((id, index) => <motion.img key={id} src={`/avatar${id}.webp`} alt="" className="w-full min-w-0 object-contain" initial={reduced ? false : { y: 24, opacity: 0 }} whileInView={{ y: 0, opacity: 1 }} viewport={{ once: true }} transition={{ delay: index * 0.08 }} whileHover={reduced ? undefined : { y: -16, rotate: index % 2 ? 8 : -8, scale: 1.08 }} />)}</div>
-            <Reveal className="home-finale"><span className="home-eyebrow justify-center"><Sparkles className="size-5" aria-hidden="true" />La próxima sospecha tiene nombre y apellido</span><h2 className="home-heading">¿Quién de tus amigos<br />mentirá mejor?</h2><p className="home-lead mx-auto">Crea una sala, comparte el código y que empiecen las teorías.</p><div className="home-actions justify-center"><Button asChild className="home-button"><Link to="/signup">Empezar la aventura<ArrowRight aria-hidden="true" /></Link></Button><Button asChild variant="outline" className="home-button"><Link to="/join">Unirme a mis amigos</Link></Button></div></Reveal>
+            <div className="home-avatar-line" aria-hidden="true">
+              {[7, 2, 4, 1, 5, 8].map((id, index) => (
+                <div key={id} className="home-avatar-slot">
+                  <motion.div
+                    className="pointer-events-none"
+                    initial={reduced ? false : { y: 24, opacity: 0 }}
+                    whileInView={{ y: 0, opacity: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.08 }}
+                  >
+                    <img src={`/avatar${id}.webp`} alt="" draggable={false} className="w-full min-w-0 object-contain" />
+                  </motion.div>
+                </div>
+              ))}
+            </div>
+            <Reveal className="home-finale"><span className="home-eyebrow justify-center"><Sparkles className="size-5" aria-hidden="true" />La próxima sospecha tiene nombre y apellido</span><h2 className="home-heading">¿Quién de tus amigos<br />mentirá mejor?</h2><p className="home-lead mx-auto">Crea una sala, comparte el código y que empiecen las teorías.</p><div className="home-actions justify-center"><Button asChild className="home-button"><Link to={isLoggedIn ? "/menu" : "/signup"}>{isLoggedIn ? "Ir al menú" : "Empezar la aventura"}<ArrowRight aria-hidden="true" /></Link></Button><Button asChild variant="outline" className="home-button"><Link to="/join">Unirme a mis amigos</Link></Button></div></Reveal>
           </section>
         </main>
         <footer className="page-container flex flex-wrap items-center justify-between gap-5 border-t border-border py-8 text-sm text-muted-foreground"><Link to="/" className="text-lg font-semibold text-foreground">CharacterUs<span className="text-accent"> ✦</span></Link><p>Confía en tus amigos. O casi.</p><a href="#home-title" className="underline-offset-4 hover:underline">Volver arriba ↑</a></footer>

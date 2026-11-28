@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { isAuthTransitionActive, useAuthNavigation } from "@/hooks/useAuthNavigation";
 import { useUserStore } from "@/store/useUserStore";
-import { BackButton, FormActionButton } from "@/components/ui/form-actions";
+import { FormActionButton } from "@/components/ui/form-actions";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion, MotionConfig, useReducedMotion } from "motion/react";
 import { Input } from "@/components/ui/input";
 import { Mail, Lock, LoaderCircle, Eye, EyeOff, AlertCircle } from "lucide-react";
-import { ThemeToggleButton } from "@/components/ui/shadcn-io/theme-toggle-button";
+import { AccessHeader } from "@/components/AccessHeader";
 import GoogleSignInButton from "@/components/GoogleSignInButton";
 
 export default function LoginScreenV2() {
@@ -74,10 +74,7 @@ export default function LoginScreenV2() {
   return (
     <MotionConfig reducedMotion="user">
       <div className="flex min-h-screen flex-col bg-background page-gutter pb-10 pt-24 text-foreground lg:pb-6">
-        <header className="fixed left-0 top-0 z-50 flex h-16 w-full items-center justify-between bg-background/95 page-gutter backdrop-blur-sm md:h-20">
-          <BackButton onClick={() => navigate(-1)} />
-          <ThemeToggleButton className="text-foreground hover:text-foreground" />
-        </header>
+        <AccessHeader onBack={() => navigate(-1)} />
 
         <main className="mx-auto flex w-full max-w-xl flex-1 items-center py-6 sm:max-w-2xl lg:max-w-6xl lg:py-0">
           <motion.div className="w-full" initial={reduced ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>

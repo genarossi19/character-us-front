@@ -113,3 +113,9 @@ export const emitRenewRoomInactivity = (
   const socket = getSocket();
   socket.emit("renewRoomInactivity", payload, callback);
 };
+export const emitLobbyMessage = (roomId: string, message: string, callback: AckCallback): void => {
+  assertRoomActionsReady();
+  getSocket().timeout(5_000).emit("sendLobbyMessage", { roomId, message }, (error: Error | null, response: Parameters<AckCallback>[0]) => {
+    callback(error ? { success: false, code: "ACK_TIMEOUT", message: "No llegó la confirmación del mensaje." } : response);
+  });
+};

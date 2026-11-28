@@ -3,15 +3,13 @@ import { QRCodeSVG } from "qrcode.react";
 import { Check, Copy, Link2, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export default function RoomInvite({ code, isPrivate = false }: { code: number; isPrivate?: boolean }) {
+export default function RoomInvite({ roomId, code, isPrivate = false }: { roomId: string; code: number; isPrivate?: boolean }) {
   const [copied, setCopied] = useState<"code" | "link" | null>(null);
   const [error, setError] = useState("");
   const networkOrigin = document.querySelector<HTMLMetaElement>('meta[name="room-invite-network-origin"]')?.content;
   const isLocalhost = ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname);
   const origin = isLocalhost && networkOrigin ? networkOrigin : window.location.origin;
-  const invitation = new URL("/", origin);
-  invitation.searchParams.set("code", String(code));
-  const inviteUrl = invitation.href;
+  const inviteUrl = new URL(`/join/${roomId}`, origin).href;
 
   const copy = async (kind: "code" | "link") => {
     setError("");
@@ -27,7 +25,7 @@ export default function RoomInvite({ code, isPrivate = false }: { code: number; 
   const share = async () => {
     setError("");
     try {
-      await navigator.share({ title: "¡Vamos a jugar a CharacterUs!", text: `Únete a mi partida. Código: ${code}`, url: inviteUrl });
+      await navigator.share({ title: "¡Vamos a jugar a CharacterUs!", text: "Únete a mi partida.", url: inviteUrl });
     } catch (cause) {
       if (cause instanceof Error && cause.name === "AbortError") return;
       await copy("link");
@@ -47,7 +45,7 @@ export default function RoomInvite({ code, isPrivate = false }: { code: number; 
       </div>
       <div className="flex min-w-0 items-center gap-3">
         <div className="shrink-0 overflow-hidden rounded-lg border border-border bg-white p-1">
-          <QRCodeSVG value={inviteUrl} size={88} level="M" marginSize={2} title={`Escanea para entrar a la sala ${code}`} />
+          <QRCodeSVG value={inviteUrl} size={88} level="M" marginSize={2} title="Escanea para entrar a la sala" />
         </div>
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap gap-2">

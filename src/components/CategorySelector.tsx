@@ -59,6 +59,7 @@ export function CategorySelector({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
+        className="enabled:cursor-pointer disabled:cursor-not-allowed"
         style={{ padding: "8px", borderRadius: "4px" }}
       >
         {categories.map((cat) => (

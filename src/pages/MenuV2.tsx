@@ -1,3 +1,4 @@
+import { NavbarBrand } from "@/components/NavbarBrand";
 import { Link, useNavigate } from "react-router";
 import { useUserStore } from "@/store/useUserStore";
 import { getDisplayName } from "@/lib/displayName";
@@ -29,14 +30,7 @@ export default function MenuV2() {
       {/* Header */}
       <header className="fixed top-0 left-0 w-full z-50 h-16 md:h-20 page-gutter flex items-center justify-between bg-card shadow-sm">
         <div className="min-w-0 flex items-center gap-3">
-          <Link to="/">
-            <div className="flex min-w-0 items-center gap-2">
-              <img className="size-8 rounded-md sm:size-12" src="/logo.webp" alt="" />
-              <span className="text-2xl font-extrabold sm:text-4xl bg-gradient-to-b from-accent/60 via-accent/80 to-accent bg-clip-text text-transparent">
-                CharacterUs
-              </span>
-            </div>
-          </Link>
+          <NavbarBrand to="/" />
         </div>
 
         <div className="flex shrink-0 items-center gap-1">

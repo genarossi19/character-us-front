@@ -1,3 +1,4 @@
+import { SoundToggle } from "@/components/SoundToggle";
 import { Moon, Sun } from "lucide-react";
 import { useCallback } from "react";
 import { Button } from "../../button";
@@ -150,6 +151,8 @@ export const ThemeToggleButton = ({
   }, [theme, setTheme, variant, start, url, startTransition]);
 
   return (
+    <>
+    <SoundToggle />
     <Button
       variant="ghost"
       size={showLabel ? "default" : "icon"}
@@ -170,5 +173,6 @@ export const ThemeToggleButton = ({
         <span className="text-sm">{theme === "light" ? "Claro" : "Oscuro"}</span>
       )}
     </Button>
+    </>
   );
 };

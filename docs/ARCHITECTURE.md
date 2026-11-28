@@ -23,8 +23,8 @@ Las pantallas V2 activas consumen REST y Socket.IO. `/public-rooms` requiere ses
 | `useGameStore` | Fase, turno, asignación privada, pistas, votos, chat y resultados |
 
 - Login, registro y Google devuelven un JWT de CharacterUs. Google envía su credencial solo a `POST /api/auth/google` y permite renovar el JWT con una cookie HttpOnly de 14 días. `useUserStore` restaura la cuenta independientemente de la sala y guarda solo un indicador de renovación en `localStorage`. `GET /api/auth/me` valida el perfil al restaurar.
-- Los invitados se unen por código. Los usuarios envían el JWT en `createRoom` o `joinRoom` según corresponda. La recuperación de sala no habilita funciones de cuenta.
-- `Room.id` identifica acciones; `Room.code` identifica invitaciones. `Player.socketId` es el ID estable del jugador. La conexión Socket.IO tiene su propio `socket.id`.
+- Los invitados se unen por código manual o por invitación con el UUID. Los usuarios envían el JWT en `createRoom` o `joinRoom` según corresponda. La recuperación de sala no habilita funciones de cuenta.
+- `Room.id` identifica acciones e invitaciones por enlace o QR. `Room.code` se usa para el ingreso manual. `Player.socketId` es el ID estable del jugador. La conexión Socket.IO tiene su propio `socket.id`.
 
 ## Recuperación
 

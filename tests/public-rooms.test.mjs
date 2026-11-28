@@ -24,7 +24,7 @@ function flatten(node) {
 
 test("public rooms refresh the authenticated listing and join the selected room through Socket.IO", async () => {
   const room = { id: "room-id", code: 123456, name: "Sala de Ana", categoryId: "category-id",
-    mode: "anonymous", playMode: "in_person", impostorCount: 1, playerCount: 2, maxPlayers: 4 };
+    mode: "anonymous", playMode: "online", impostorCount: 1, playerCount: 2, maxPlayers: 4 };
   const requests = [];
   let availableRooms = [];
   const api = {
@@ -50,7 +50,7 @@ test("public rooms refresh the authenticated listing and join the selected room 
     "react/jsx-runtime": jsxRuntime,
     react: { useState, useRef: (value) => useState({ current: value })[0], useEffect: (fn) => effects.push(fn) },
     "react-router": { Link: "a", useNavigate: () => () => {} },
-    "lucide-react": Object.fromEntries(["ArrowLeft", "Gamepad2", "RefreshCw", "Search", "Users"].map((name) => [name, "svg"])),
+    "lucide-react": Object.fromEntries(["ArrowLeft", "Gamepad2", "Plus", "RefreshCw", "Search", "Users"].map((name) => [name, "svg"])),
     "@/store/useUserStore": { useUserStore: Object.assign(() => ({ user: { username: "Viewer" }, token: "access-token" }), { getState: () => ({ renewGoogleSession: async () => {} }) }) },
     "@/hooks/useSocketRoom": { useSocketRoom: () => ({ joinRoom: async (payload) => { joins.push(payload); } }) },
     "@/services/api/client": api,
@@ -61,18 +61,22 @@ test("public rooms refresh the authenticated listing and join the selected room 
     "@/components/ui/input": { Input: "input" },
     "@/components/ui/label": { Label: "label" },
     "@/components/ui/select": Object.fromEntries(["Select", "SelectContent", "SelectItem", "SelectTrigger", "SelectValue"].map((name) => [name, name])),
-    "@/components/ui/shadcn-io/theme-toggle-button": { ThemeToggleButton: "button" },
+    "@/components/NavBarLoggued": { default: "header" },
   }, { AbortController, setTimeout: (fn) => { refresh = fn; }, clearTimeout: () => {} });
   const render = () => { cursor = 0; return flatten(PublicRoomsV2()); };
   render();
   const cleanups = effects.splice(0).map((setup) => setup());
   await new Promise(setImmediate);
-  assert.ok(render().includes("Por ahora no hay salas públicas disponibles."));
+  const empty = render();
+  assert.ok(empty.includes("No hay salas públicas disponibles"));
+  assert.ok(empty.includes("Crear sala pública"));
+  assert.ok(empty.some(node => node?.props?.to === "/create?privacy=public"));
 
-  availableRooms = [room];
+  availableRooms = [room, { ...room, id: "in-person-room", name: "Sala presencial", playMode: "in_person" }];
   await refresh();
   const cards = render();
   assert.ok(cards.includes("Sala de Ana"));
+  assert.ok(!cards.includes("Sala presencial"));
   assert.ok(cards.includes("Personajes"));
   const join = cards.find((element) => element?.props?.children === "Unirse");
   assert.ok(join);

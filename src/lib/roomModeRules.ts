@@ -3,8 +3,6 @@ import type { RoomMode, RoomSettings } from "@/types/game";
 const modeRules: Record<RoomMode, Pick<RoomSettings, "impostorsKnowEachOther" | "visibleVotes">> = {
   classic: { impostorsKnowEachOther: true, visibleVotes: true },
   anonymous: { impostorsKnowEachOther: false, visibleVotes: false },
-  // Preserve the previous defaults until Special has its own product rules.
-  special: { impostorsKnowEachOther: false, visibleVotes: false },
 };
 
 export function applyRoomModeRules(settings: RoomSettings): RoomSettings {

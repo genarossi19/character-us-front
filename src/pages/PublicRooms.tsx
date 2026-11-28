@@ -38,7 +38,7 @@ const mockRooms = [
     id: "2",
     name: "Clash Royale Challenge",
     category: "Clash Royale",
-    mode: "Especial (Pista)",
+    mode: "Anónimo (1 Impostor)",
     creator: "Luis",
     currentPlayers: 0,
     maxPlayers: 8,
@@ -120,7 +120,6 @@ export default function PublicRoomsPage() {
                     <SelectItem value="all">Todos</SelectItem>
                     <SelectItem value="clásico">Clásico</SelectItem>
                     <SelectItem value="anónimo">Anónimo</SelectItem>
-                    <SelectItem value="especial">Especial</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

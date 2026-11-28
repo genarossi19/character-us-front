@@ -134,7 +134,7 @@ export default function DebateChat({ onClose, active = true, onTypingChange, typ
                 setNewMessage(event.target.value);
                 onTypingChange?.(Boolean(event.target.value.trim()));
               }} onBlur={() => onTypingChange?.(false)} disabled={sending} maxLength={500} className="min-w-0 flex-1 rounded-xl bg-muted/30" />
-              <Button type="submit" aria-label={sending ? "Enviando mensaje" : "Enviar mensaje"} disabled={!newMessage.trim() || sending} className="size-10 shrink-0 rounded-xl bg-accent p-0 text-accent-foreground hover:bg-accent/90"><Send className="size-4" aria-hidden="true" /></Button>
+              <Button data-chat-send type="submit" aria-label={sending ? "Enviando mensaje" : "Enviar mensaje"} disabled={!newMessage.trim() || sending} className="size-10 shrink-0 rounded-xl bg-accent p-0 text-accent-foreground hover:bg-accent/90"><Send className="size-4" aria-hidden="true" /></Button>
             </div>
             {error && <p role="alert" className="text-xs text-danger">{error}</p>}
           </form>

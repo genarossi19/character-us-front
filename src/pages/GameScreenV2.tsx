@@ -1,3 +1,4 @@
+import { NavbarBrand } from "@/components/NavbarBrand";
 import { Navigate } from "react-router";
 import { useEffect, useRef, useState } from "react";
 import { Activity, ArrowLeft, MessageCircle } from "lucide-react";
@@ -77,13 +78,12 @@ export default function GameScreenV2() {
       <header className="sticky top-0 z-20 flex shrink-0 items-center justify-between gap-2 border-b border-border bg-card page-gutter py-3">
         <div className="flex items-center gap-2 sm:gap-4">
           <Button onClick={handleExit} variant="ghost" className="gap-2"><ArrowLeft className="size-4" aria-hidden="true" /><span className="hidden sm:inline">Salir</span><span className="sr-only sm:hidden">Salir de la partida</span></Button>
-          <img src="/logo.webp" alt="" className="size-8 object-contain" />
-          <span className="hidden text-lg font-semibold sm:inline">Character<span className="text-accent">Us</span></span>
+          <NavbarBrand iconOnlyOnMobile />
         </div>
         <div className="flex items-center gap-3 sm:gap-5">
           <ServerDeadline />
           <span className="hidden whitespace-nowrap text-sm text-muted-foreground sm:inline">{phase === "finished" ? "Final" : roundLabel}</span>
-          <div className="hidden sm:block"><ThemeToggleButton /></div>
+          <ThemeToggleButton />
           <Button ref={chatButtonRef} variant="ghost" aria-label={`Abrir ${inPerson ? "actividad" : "chat"}${unread ? `, ${unread} novedades sin leer` : ""}`} aria-haspopup="dialog" aria-expanded={chatOpen} aria-controls="game-chat" onClick={() => { setReadIds(new Set(messages.map((message) => message.id))); setChatOpen(true); }} className="relative size-11 p-0 lg:hidden">{inPerson ? <Activity className="size-5" aria-hidden="true" /> : <MessageCircle className="size-5" aria-hidden="true" />}{!inPerson && unread > 0 && <span className="absolute -right-1 top-0 flex min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-accent-foreground">{unread > 99 ? "99+" : unread}</span>}</Button>
         </div>
       </header>

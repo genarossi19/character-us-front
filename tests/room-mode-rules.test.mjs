@@ -32,9 +32,6 @@ test("changing modality overrides conflicting flags and preserves the other room
   assert.deepEqual(restored, classic);
   for (const key of ["category", "privacy", "password", "playMode", "maxPlayers", "impostorCount", "maxRounds"]) assert.equal(anonymous[key], initial[key]);
   assert.equal(initial.visibleVotes, false);
-  const special = applyRoomModeRules({ ...classic, mode: "special" });
-  assert.equal(special.impostorsKnowEachOther, false);
-  assert.equal(special.visibleVotes, false);
 });
 
 test("teammates use private server assignment and are hidden for anonymous and innocent players", () => {

@@ -1,3 +1,4 @@
+import { ProfileStats } from "@/components/ProfileStats";
 import { useNavigate } from "react-router";
 import { useUserStore } from "@/store/useUserStore";
 import { getDisplayName } from "@/lib/displayName";
@@ -122,6 +123,8 @@ export default function ProfileV2() {
                   </div>
                 </div>
               </div>
+
+              {!user.isGuest && <ProfileStats key={user.id} id={user.id} />}
 
               {/* Avatar selection */}
               <div className="space-y-3">

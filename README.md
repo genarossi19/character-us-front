@@ -43,4 +43,4 @@ El frontend se sirve como Static Site. [Producción](https://characterus-front.o
 
 - Build `npm ci && npm run build` y publicación de `dist`. Definí las variables de Vite en el servicio antes del build.
 - Configurá el rewrite `/*` → `/index.html` para abrir y recargar rutas de BrowserRouter. Un servicio creado manualmente requiere agregar la regla en **Redirects/Rewrites**. El Blueprint ya la declara.
-- Las invitaciones nuevas usan `/?code=123456`. `/join/:code` sigue disponible para enlaces anteriores. Después de desplegar, verificá la apertura directa de `/login` y de ambos formatos de invitación.
+- Las invitaciones y los QR usan `/join/:roomId` con el UUID de la sala. El código de seis dígitos se ingresa en `/join`. Después de desplegar ambos servicios, verificá la apertura directa de `/login` y de una invitación válida.

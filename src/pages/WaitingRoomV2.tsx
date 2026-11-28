@@ -1,3 +1,4 @@
+import { NavbarBrand } from "@/components/NavbarBrand";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Dialog } from "radix-ui";
@@ -11,6 +12,7 @@ import { FormActionButton } from "@/components/ui/form-actions";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { ThemeToggleButton } from "@/components/ui/shadcn-io/theme-toggle-button";
 import { fetchCategories, type Category } from "@/services/api/category";
+import LobbyChat from "@/components/LobbyChat";
 import RoomInvite from "@/components/RoomInvite";
 import LobbyAvatarPicker from "@/components/LobbyAvatarPicker";
 import type { Player } from "@/types/game";
@@ -110,7 +112,7 @@ export default function WaitingRoomV2() {
 
   if (!room || !currentPlayer) return null;
 
-  const modeLabel = { classic: "Clásico", anonymous: "Anónimo", special: "Especial" }[room.settings.mode];
+  const modeLabel = { classic: "Clásico", anonymous: "Anónimo" }[room.settings.mode];
   const category = categories.find((candidate) => candidate.id === room.settings.category);
   const startHint = players.length < minimumPlayers
     ? `Se necesitan al menos ${minimumPlayers} jugadores.`
@@ -126,10 +128,7 @@ export default function WaitingRoomV2() {
       <div className="min-h-screen bg-background text-foreground">
         <header className="border-b border-border bg-card">
           <div className="page-container flex h-20 items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <img src="/logo.webp" alt="" className="size-12 shrink-0 rounded-md" />
-              <span className="hidden text-3xl font-extrabold text-accent sm:inline">CharacterUs</span>
-            </div>
+            <NavbarBrand iconOnlyOnMobile />
             <div className="flex shrink-0 items-center gap-1 sm:gap-3">
               <ThemeToggleButton />
               <Button type="button" size="lg" variant="ghost" onClick={() => void runAction("leave")} disabled={!!action} className="px-3 text-base sm:text-lg"><LogOut aria-hidden="true" />{action === "leave" ? "Saliendo…" : "Salir"}</Button>
@@ -179,12 +178,13 @@ export default function WaitingRoomV2() {
                 {isHost && startHint && <p id="start-hint" aria-live="polite" className="text-sm text-muted-foreground sm:text-right">{startHint}</p>}
                 {actionError && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-400/10 dark:text-red-200">{actionError}</p>}
               </div>
+              {room.settings.playMode !== "in_person" && <LobbyChat key={room.id} room={room} online={currentPlayer.isOnline} />}
             </motion.section>
 
             <aside className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card shadow-sm lg:sticky lg:top-5" aria-label="Invitación y resumen de la partida">
               <section aria-labelledby="invite-title" className="p-5">
                 <h2 id="invite-title" className="mb-4 text-xl font-semibold">Invitación</h2>
-                <RoomInvite code={room.code} isPrivate={room.settings.privacy === "private"} />
+                <RoomInvite roomId={room.id} code={room.code} isPrivate={room.settings.privacy === "private"} />
               </section>
               <section aria-labelledby="summary-title" className="border-t border-border p-5">
                 <div className="mb-4 flex items-center gap-3"><Gamepad2 className="size-5 shrink-0 text-accent" aria-hidden="true" /><div className="min-w-0"><h2 id="summary-title" className="text-sm text-muted-foreground">Categoría</h2><p className="break-words text-xl font-semibold leading-snug">{category?.name || (loadingCategories ? "Cargando…" : "No disponible")}</p></div></div>

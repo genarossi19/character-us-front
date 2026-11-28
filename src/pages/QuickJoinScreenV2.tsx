@@ -1,13 +1,12 @@
 import { useState, useRef, useCallback } from "react";
-import { useNavigate, useParams } from "react-router";
-import { Button } from "@/components/ui/button";
-import { BackButton, FormActionButton } from "@/components/ui/form-actions";
+import { Navigate, useLocation, useNavigate, useParams } from "react-router";
+import { FormActionButton } from "@/components/ui/form-actions";
 import { Input } from "@/components/ui/input";
 import RoomCodeInput from "@/components/RoomCodeInput";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion, MotionConfig, useReducedMotion } from "motion/react";
-import { ThemeToggleButton } from "@/components/ui/shadcn-io/theme-toggle-button";
-import { useSocketRoom } from "@/hooks/useSocketRoom";
+import { AccessHeader } from "@/components/AccessHeader";
+import { SocketAckError, useSocketRoom } from "@/hooks/useSocketRoom";
 import { useUserStore } from "@/store/useUserStore";
 import { getDisplayName } from "@/lib/displayName";
 import { AlertCircle, ArrowRight, Hash, LoaderCircle, LockKeyhole, Users } from "lucide-react";
@@ -16,13 +15,18 @@ type Step = "code" | "password" | "name";
 
 const JOIN_TIMEOUT_MS = 20_000;
 
-export default function QuickJoinScreenV2({ invitationCode }: { invitationCode?: string }) {
-  const { code: routeCode } = useParams();
-  const code = invitationCode ?? routeCode;
-  return <JoinRoomForm key={code ?? "manual"} initialCode={code} />;
+const ROOM_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export default function QuickJoinScreenV2() {
+  const { roomId } = useParams();
+  if (roomId && !ROOM_ID.test(roomId)) {
+    return <Navigate to="/join" replace state={{ invalidInvite: true }} />;
+  }
+  return <JoinRoomForm key={roomId ?? "manual"} inviteRoomId={roomId} />;
 }
 
-function JoinRoomForm({ initialCode }: { initialCode?: string }) {
+function JoinRoomForm({ inviteRoomId }: { inviteRoomId?: string }) {
+  const { state } = useLocation();
   const navigate = useNavigate();
   const reduced = useReducedMotion();
   const { joinRoom } = useSocketRoom();
@@ -30,16 +34,13 @@ function JoinRoomForm({ initialCode }: { initialCode?: string }) {
   const isLoggedIn = useUserStore((s) => s.isLoggedIn);
   const token = useUserStore((s) => s.token);
   const isSessionReady = useUserStore((s) => s.isSessionReady);
-  const validInitialCode = Boolean(initialCode && /^[1-9]\d{5}$/.test(initialCode));
-
-  const [step, setStep] = useState<Step>(validInitialCode ? "name" : "code");
-  const [roomCode, setRoomCode] = useState(validInitialCode ? initialCode! : "");
+  const [step, setStep] = useState<Step>(inviteRoomId ? "name" : "code");
+  const [roomCode, setRoomCode] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [joining, setJoining] = useState(false);
-  const [needsPassword, setNeedsPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(
-    initialCode && !validInitialCode ? "El enlace debe contener un código de sala de seis dígitos." : null
+    state?.invalidInvite ? "El enlace de invitación no es válido. Puedes ingresar el código de la sala." : null
   );
   const abortRef = useRef<AbortController | null>(null);
 
@@ -64,152 +65,50 @@ function JoinRoomForm({ initialCode }: { initialCode?: string }) {
     [joinRoom]
   );
 
-  const handleCodeSubmit = async () => {
-    if (roomCode.length !== 6 || joining || !isSessionReady) return;
-    clearError();
-    setJoining(true);
-    try {
-      await joinWithTimeout({
-        code: Number(roomCode),
-        username: isLoggedIn && user ? user.username : username.trim(),
-        token: isLoggedIn ? token || undefined : undefined,
-      });
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : "";
-      if (msg === "TIMEOUT") {
-        setErrorMsg("La sala no responde. Verifica el código e intenta de nuevo.");
-        setStep("code");
-      } else if (msg.toLowerCase().includes("conexión") || msg.toLowerCase().includes("conexion")) {
-        setErrorMsg(msg);
-      } else if (
-        msg.toLowerCase().includes("contraseña") ||
-        msg.toLowerCase().includes("password")
-      ) {
-        setNeedsPassword(true);
-        setStep("password");
-      } else if (
-        msg.toLowerCase().includes("no encontr") ||
-        msg.toLowerCase().includes("not found") ||
-        msg.toLowerCase().includes("existe")
-      ) {
-        setErrorMsg("No se encontró la sala. Verifica el código.");
-        setStep("code");
-      } else {
-        setErrorMsg(msg || "No se pudo unir a la sala.");
-      }
-    } finally {
-      setJoining(false);
-    }
-  };
-
-  const handlePasswordSubmit = async () => {
-    if (joining || !isSessionReady || !password) return;
-    if (!isLoggedIn && username.trim().length < 2) {
-      setStep("name");
-      return;
-    }
-    clearError();
-    setJoining(true);
-    try {
-      await joinWithTimeout({
-        code: Number(roomCode),
-        username: isLoggedIn && user ? user.username : username.trim(),
-        token: isLoggedIn ? token || undefined : undefined,
-        password,
-      });
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : "";
-      if (msg === "TIMEOUT") {
-        setErrorMsg("La sala no responde. Intenta de nuevo.");
-        setStep("code");
-      } else if (msg.toLowerCase().includes("conexión") || msg.toLowerCase().includes("conexion")) {
-        setErrorMsg(msg);
-      } else if (
-        msg.toLowerCase().includes("contraseña") ||
-        msg.toLowerCase().includes("password") ||
-        msg.toLowerCase().includes("incorrecta") ||
-        msg.toLowerCase().includes("invalid")
-      ) {
-        setErrorMsg("Contraseña incorrecta. Intenta de nuevo.");
-      } else if (
-        msg.toLowerCase().includes("no encontr") ||
-        msg.toLowerCase().includes("not found") ||
-        msg.toLowerCase().includes("existe")
-      ) {
-        setErrorMsg("No se encontró la sala. Verifica el código.");
-        setStep("code");
-      } else {
-        setErrorMsg(msg || "No se pudo unir a la sala.");
-      }
-    } finally {
-      setJoining(false);
-    }
-  };
-
-  const handleNameSubmit = async () => {
-    if (joining || !isSessionReady) return;
+  const submitJoin = async () => {
+    if (joining || !isSessionReady || (!inviteRoomId && roomCode.length !== 6)) return;
     const playerName = isLoggedIn && user ? user.username : username.trim();
-    if (playerName.length < 2) return;
+    if (playerName.length < 2 || (step === "password" && !password)) return;
+
     clearError();
     setJoining(true);
     try {
+      const target = inviteRoomId ? { inviteRoomId } : { code: Number(roomCode) };
       await joinWithTimeout({
-        code: Number(roomCode),
+        ...target,
         username: playerName,
         token: isLoggedIn ? token || undefined : undefined,
-        password: needsPassword ? password : undefined,
+        password: step === "password" ? password : undefined,
       });
     } catch (error) {
-      const msg = error instanceof Error ? error.message : "";
-      if (msg === "TIMEOUT") {
-        setErrorMsg("La sala no responde. Intenta de nuevo.");
-        setStep("code");
-      } else if (msg.toLowerCase().includes("conexión") || msg.toLowerCase().includes("conexion")) {
-        setErrorMsg(msg);
-      } else if (
-        msg.toLowerCase().includes("contraseña") ||
-        msg.toLowerCase().includes("password")
-      ) {
-        setNeedsPassword(true);
+      const code = error instanceof SocketAckError ? error.code : undefined;
+      if (code === "WRONG_PASSWORD") {
+        if (step === "password") setErrorMsg("Contraseña incorrecta. Intenta de nuevo.");
         setStep("password");
-      } else if (
-        msg.toLowerCase().includes("no encontr") ||
-        msg.toLowerCase().includes("not found") ||
-        msg.toLowerCase().includes("existe")
-      ) {
-        setErrorMsg("No se encontró la sala. Verifica el código.");
-        setStep("code");
+      } else if (code === "ROOM_NOT_FOUND") {
+        if (!inviteRoomId) setStep("code");
+        setErrorMsg(inviteRoomId ? "La sala de esta invitación ya no está disponible." : "No se encontró la sala. Verifica el código.");
+      } else if (error instanceof Error && error.message === "TIMEOUT") {
+        setErrorMsg("La sala no responde. Intenta de nuevo.");
       } else {
-        setErrorMsg(msg || "No se pudo unir a la sala.");
+        setErrorMsg(error instanceof Error ? error.message : "No se pudo unir a la sala.");
       }
     } finally {
       setJoining(false);
     }
   };
 
-  const handleCodeKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && roomCode.length === 6) {
-      e.preventDefault();
-      if (isLoggedIn) {
-        handleCodeSubmit();
-      } else {
-        setStep("name");
-      }
-    }
+  const handleCodeContinue = () => {
+    if (roomCode.length !== 6 || joining || !isSessionReady) return;
+    if (isLoggedIn) void submitJoin();
+    else setStep("name");
   };
 
-  const handleNameKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && username.trim().length >= 2) {
-      e.preventDefault();
-      handleNameSubmit();
-    }
-  };
-
-  const handlePasswordKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handlePasswordSubmit();
-    }
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    if (step === "code") handleCodeContinue();
+    else void submitJoin();
   };
 
   const submitLabel = joining ? "Uniéndose…" : step === "code" && !isLoggedIn ? "Continuar" : "Unirme a la sala";
@@ -241,19 +140,13 @@ function JoinRoomForm({ initialCode }: { initialCode?: string }) {
                 <RoomCodeInput
                   value={roomCode}
                   onChange={(value) => { setRoomCode(value); clearError(); }}
-                  onKeyDown={handleCodeKeyDown}
+                  onKeyDown={handleKeyDown}
                   invalid={Boolean(errorMsg)}
                   disabled={joining}
                 />
               </div>
               <FormActionButton tone="accent"
-                onClick={() => {
-                  if (isLoggedIn) {
-                    handleCodeSubmit();
-                  } else {
-                    setStep("name");
-                  }
-                }}
+                onClick={handleCodeContinue}
                 disabled={roomCode.length !== 6 || joining || !isSessionReady}
               >
                 {joining ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : null}
@@ -285,7 +178,7 @@ function JoinRoomForm({ initialCode }: { initialCode?: string }) {
                     setUsername(e.target.value);
                     clearError();
                   }}
-                  onKeyDown={handleNameKeyDown}
+                  onKeyDown={handleKeyDown}
                   placeholder="¿Cómo te llamas?"
                   maxLength={20}
                   autoFocus
@@ -293,7 +186,7 @@ function JoinRoomForm({ initialCode }: { initialCode?: string }) {
                 />
               </div>}
               <FormActionButton tone="accent"
-                onClick={handleNameSubmit}
+                onClick={() => void submitJoin()}
                 disabled={(!isLoggedIn && username.trim().length < 2) || joining || !isSessionReady}
               >
                 {joining ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : null}
@@ -324,14 +217,14 @@ function JoinRoomForm({ initialCode }: { initialCode?: string }) {
                     setPassword(e.target.value);
                     clearError();
                   }}
-                  onKeyDown={handlePasswordKeyDown}
+                  onKeyDown={handleKeyDown}
                   placeholder="Ingresa la contraseña"
                   autoFocus
                   disabled={joining} className="h-14 bg-muted/30 !text-lg text-foreground sm:h-16 sm:!text-xl"
                 />
               </div>
               <FormActionButton tone="accent"
-                onClick={handlePasswordSubmit}
+                onClick={() => void submitJoin()}
                 disabled={password.length === 0 || joining || !isSessionReady}
               >
                 {joining ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : null}
@@ -371,22 +264,19 @@ function JoinRoomForm({ initialCode }: { initialCode?: string }) {
     if (step === "code") {
       navigate(-1);
     } else if (step === "password") {
-      setStep("code");
+      setStep(inviteRoomId || !isLoggedIn ? "name" : "code");
       setPassword("");
+    } else if (inviteRoomId) {
+      navigate("/join");
     } else {
-      setStep(needsPassword ? "password" : "code");
-      setUsername("");
+      setStep("code");
     }
   };
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className="flex min-h-screen flex-col bg-background page-gutter pb-10 pt-36 text-foreground sm:pt-24">
-        <header className="fixed left-0 top-0 z-50 grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 bg-background/95 page-gutter py-4 backdrop-blur-sm sm:flex sm:h-20 sm:justify-between sm:py-0">
-          <BackButton onClick={handleBack} />
-          {!isLoggedIn && <Button type="button" onClick={() => navigate("/login")} size="lg" variant="ghost" className="order-3 col-span-2 text-lg font-semibold text-foreground hover:bg-accent/20 hover:text-foreground sm:order-none sm:ml-auto">Iniciar sesión</Button>}
-          <ThemeToggleButton className="justify-self-end text-foreground hover:text-foreground" />
-        </header>
+      <div className={`flex min-h-screen flex-col bg-background page-gutter pb-10 text-foreground ${isLoggedIn ? "pt-24" : "pt-28 sm:pt-24"}`}>
+        <AccessHeader onBack={handleBack} showSignIn={!isLoggedIn} />
         <main className="mx-auto flex w-full max-w-xl flex-1 sm:max-w-2xl items-center py-6">
           <motion.div className="w-full" initial={reduced ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
             <Card className="w-full gap-7 overflow-hidden border-accent/20 bg-card pb-7 pt-0 shadow-lg shadow-black/5 sm:pb-10">
@@ -395,7 +285,7 @@ function JoinRoomForm({ initialCode }: { initialCode?: string }) {
                   <p className="text-2xl font-semibold tracking-tight sm:text-3xl">Character<span className="text-accent">Us</span></p>
                   <span className="inline-flex items-center gap-2 rounded-md border border-accent/20 bg-card/80 px-3 py-2 text-sm font-medium sm:text-base text-muted-foreground">
                     {step === "code" ? <Hash className="size-4 text-accent sm:size-5" aria-hidden="true" /> : step === "password" ? <LockKeyhole className="size-4 text-accent sm:size-5" aria-hidden="true" /> : <Users className="size-4 text-accent sm:size-5" aria-hidden="true" />}
-                    {step === "code" ? "Código de sala" : step === "password" ? "Sala privada" : "Tu entrada"}
+                    {step === "code" ? "Código de sala" : step === "password" ? "Sala privada" : inviteRoomId ? "Invitación" : "Tu entrada"}
                   </span>
                 </div>
                 <div className="absolute -right-7 -top-10 size-48 rounded-full border border-accent/15" aria-hidden="true" />
@@ -405,7 +295,7 @@ function JoinRoomForm({ initialCode }: { initialCode?: string }) {
               <CardHeader className="gap-3 sm:px-10">
                 <CardTitle><h1 className="text-3xl font-semibold sm:text-4xl">{getTitle()}</h1></CardTitle>
                 <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">{getSubtitle()}</p>
-                {step !== "code" && <p className="mt-3 inline-flex w-fit items-center gap-2 rounded-md bg-muted/60 px-3 py-2 text-sm text-muted-foreground"><Hash className="size-4 text-accent" aria-hidden="true" />Sala <span className="font-semibold tracking-widest text-foreground">{roomCode}</span></p>}
+                {!inviteRoomId && step !== "code" && <p className="mt-3 inline-flex w-fit items-center gap-2 rounded-md bg-muted/60 px-3 py-2 text-sm text-muted-foreground"><Hash className="size-4 text-accent" aria-hidden="true" />Sala <span className="font-semibold tracking-widest text-foreground">{roomCode}</span></p>}
               </CardHeader>
               <motion.div key={step} initial={reduced ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }}>
                 {renderStep()}

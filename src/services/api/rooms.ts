@@ -20,7 +20,7 @@ export async function fetchPublicRooms(signal: AbortSignal): Promise<PublicRoomS
       timeout: 5_000,
     });
     if (!Array.isArray(data?.rooms)) throw new Error("El servidor no devolvió un listado válido.");
-    return data.rooms;
+    return data.rooms.filter(room => room.playMode !== "in_person");
   } catch (error) {
     throw getApiError(error);
   }

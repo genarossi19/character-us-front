@@ -1,5 +1,6 @@
+import { useGameAudio } from "./hooks/useGameAudio";
 import { useEffect, type ReactNode } from "react";
-import { Navigate, Routes, Route, useSearchParams } from "react-router";
+import { Navigate, Routes, Route } from "react-router";
 import LoginScreenV2 from "./pages/LoginScreenV2";
 import SignupScreenV2 from "./pages/SignupScreenV2";
 import HomePage from "./pages/HomePage";
@@ -21,11 +22,6 @@ import { useSocketRoomEvents } from "./hooks/useSocketRoomEvents";
 import { useRoomRecovery } from "./hooks/useRoomRecovery";
 import { useRoomSessionStore } from "./store/useRoomSessionStore";
 import RoomRecoveryScreen from "./components/RoomRecoveryScreen";
-
-function HomeEntry() {
-  const [params] = useSearchParams();
-  return params.has("code") ? <QuickJoinScreenV2 invitationCode={params.get("code") ?? ""} /> : <HomePage />;
-}
 
 function SessionBootstrap() {
   const restoreSession = useUserStore((state) => state.restoreSession);
@@ -71,6 +67,7 @@ function AuthenticatedOnlyRoute({ children }: { children: ReactNode }) {
 }
 
 function App() {
+  useGameAudio();
   useSocketGameEvents();
   useSocketRoomEvents();
   const retryRecovery = useRoomRecovery();
@@ -85,7 +82,7 @@ function App() {
         {/* Auth & Landing */}
         <Route path="/signup" element={<SignupScreenV2 />} />
         <Route path="/login" element={<LoginScreenV2 />} />
-        <Route index element={<HomeEntry />} />
+        <Route index element={<HomePage />} />
 
         {/* Main flow (V2) */}
         <Route
@@ -122,7 +119,7 @@ function App() {
             </AuthenticatedOnlyRoute>
           }
         />
-        <Route path="/join/:code?" element={<QuickJoinScreenV2 />} />
+        <Route path="/join/:roomId?" element={<QuickJoinScreenV2 />} />
         <Route path="/lobby" element={<WaitingRoomV2 />} />
 
         {/* Game (V2) */}

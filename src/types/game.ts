@@ -25,7 +25,7 @@ export type TypingActivityPayload = {
 } & ({ phase: "word"; turnIndex: number } | { phase: "debate" | "voting" });
 
 export type PlayerTyping = TypingActivityPayload & { playerId: string; ttlMs: number };
-export type RoomMode = "classic" | "anonymous" | "special";
+export type RoomMode = "classic" | "anonymous";
 export type RoomStatus = "waiting" | "playing" | "finished";
 export type GamePhase =
   | "waiting"
@@ -50,7 +50,15 @@ export interface RoomSettings {
   password?: string;
 }
 
+export interface LobbyEntry {
+  id: number;
+  kind: "chat" | "system";
+  username: string;
+  text: string;
+}
+
 export interface Room {
+  lobbyMessages?: LobbyEntry[];
   id: string;
   code: number;
   hostId: string;
@@ -103,7 +111,6 @@ export interface RoundResult {
   round: number;
   eliminatedPlayer: Player | null;
   wasImpostor: boolean;
-  wasJoker: boolean;
   votes: Record<string, string>;
   wordHints: WordHint[];
 }
@@ -123,13 +130,14 @@ export interface CreateRoomPayload {
   settings: RoomSettings;
 }
 
-export interface JoinRoomPayload {
-  code: number;
+export type JoinRoomPayload = {
   username: string;
-  listedRoomId?: string;
   token?: string;
   password?: string;
-}
+} & (
+  | { code: number; listedRoomId?: string; inviteRoomId?: never }
+  | { inviteRoomId: string; code?: never; listedRoomId?: never }
+);
 
 export interface SubmitWordPayload {
   roomId: string;

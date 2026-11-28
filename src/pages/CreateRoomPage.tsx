@@ -182,7 +182,6 @@ export default function CreateRoomPage() {
                   <SelectContent className="bg-card text-foreground border-border">
                     <SelectItem value="clasico">Clásico</SelectItem>
                     <SelectItem value="anonimo">Anónimo</SelectItem>
-                    <SelectItem value="especial">Especial</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-sm text-muted-foreground">

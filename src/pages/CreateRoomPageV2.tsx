@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -93,6 +93,7 @@ function CategoryLoading() {
 
 export default function CreateRoomPageV2() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const reduced = useReducedMotion();
   const pending = useRef(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -102,7 +103,10 @@ export default function CreateRoomPageV2() {
   const token = useUserStore((s) => s.token);
   const isLoggedIn = useUserStore((s) => s.isLoggedIn);
   const logout = useUserStore((s) => s.logout);
-  const [editableSettings, setSettings] = useState<RoomSettings>(defaultSettings);
+  const [editableSettings, setSettings] = useState<RoomSettings>(() => ({
+    ...defaultSettings,
+    privacy: params.get("privacy") === "public" ? "public" : defaultSettings.privacy,
+  }));
   const settings = applyRoomModeRules(editableSettings);
   const [creating, setCreating] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -127,7 +131,12 @@ export default function CreateRoomPageV2() {
     key: K,
     value: RoomSettings[K]
   ) => {
-    setSettings((prev) => ({ ...prev, [key]: value, ...(key === "privacy" && value === "public" ? { password: undefined } : {}) }));
+    setSettings((previous) => {
+      const next = { ...previous, [key]: value };
+      if (next.playMode === "in_person") next.privacy = "private";
+      if (next.privacy === "public") next.password = undefined;
+      return next;
+    });
     setSettingsError(null);
     if (key === "category") setCategoryError(null);
   };
@@ -211,7 +220,7 @@ export default function CreateRoomPageV2() {
 
   const isConfigReady = Boolean(categories.some((category) => category.id === settings.category) &&
     (settings.privacy === "public" || settings.password));
-  const modeLabels: Record<RoomMode, string> = { classic: "Clásico", anonymous: "Anónimo", special: "Especial" };
+  const modeLabels: Record<RoomMode, string> = { classic: "Clásico", anonymous: "Anónimo" };
   const controlClass = "min-w-0 w-full border-border bg-muted/20 text-base data-[size=default]:h-12";
   const optionClass = "flex h-12 cursor-pointer items-center justify-center gap-2 rounded-md border border-border px-2 text-base font-normal text-muted-foreground hover:bg-muted peer-data-[state=checked]:border-accent peer-data-[state=checked]:bg-accent/10 peer-data-[state=checked]:font-semibold peer-data-[state=checked]:text-foreground peer-focus-visible:ring-2 peer-focus-visible:ring-ring";
 
@@ -286,17 +295,17 @@ export default function CreateRoomPageV2() {
                     <h2 id="create-players" className="mb-3 flex items-center gap-2 text-lg font-semibold"><Users className="size-5 text-accent" aria-hidden="true" />Jugadores y roles</h2>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div><Label id="capacity-label" className="mb-2 block text-base">Capacidad de la sala</Label>
-                        <RadioGroup orientation="horizontal" aria-labelledby="capacity-label" value={String(settings.maxPlayers)} onValueChange={(value) => updateCapacity(Number(value))} className="grid grid-cols-3 gap-2" disabled={creating}>
+                        <RadioGroup orientation="horizontal" aria-labelledby="capacity-label" aria-describedby="capacity-help" value={String(settings.maxPlayers)} onValueChange={(value) => updateCapacity(Number(value))} className="grid grid-cols-3 gap-2" disabled={creating}>
                           {[4, 6, 8].map((count) => <div key={count} className="relative"><RadioGroupItem id={`capacity-${count}`} value={String(count)} className="peer absolute inset-0 z-10 size-full rounded-md opacity-0" /><Label htmlFor={`capacity-${count}`} className={`flex h-12 cursor-pointer items-center justify-center gap-2 rounded-md border text-base peer-focus-visible:ring-2 peer-focus-visible:ring-ring ${settings.maxPlayers === count ? "border-accent bg-accent/10 font-semibold text-foreground" : "border-border text-muted-foreground hover:bg-muted"}`}><Users className="size-4" aria-hidden="true" />{count}</Label></div>)}
                         </RadioGroup>
+                        <p id="capacity-help" className="mt-2 text-sm text-muted-foreground">Mínimo {getMinimumPlayers(settings.impostorCount)} jugadores para empezar.</p>
                       </div>
                       <div><Label htmlFor="impostor-count" className="mb-2 block text-base">Impostores</Label>
                         <div className="flex h-12 items-center gap-2 rounded-md border border-border bg-muted/20 px-1">
                           <Button type="button" variant="ghost" size="icon" disabled={creating || settings.impostorCount <= 1} onClick={() => update("impostorCount", settings.impostorCount - 1)} aria-label="Quitar un impostor"><Minus className="size-4" aria-hidden="true" /></Button>
-                          <Input id="impostor-count" type="number" min={1} max={maxImpostors} aria-describedby="impostor-count-help" value={settings.impostorCount} onChange={(event) => { const value = Number(event.target.value); if (Number.isInteger(value) && value >= 1 && value <= maxImpostors) update("impostorCount", value); }} className="h-10 min-w-0 flex-1 border-0 bg-transparent text-center text-base font-semibold shadow-none" />
+                          <Input id="impostor-count" type="number" min={1} max={maxImpostors} value={settings.impostorCount} onChange={(event) => { const value = Number(event.target.value); if (Number.isInteger(value) && value >= 1 && value <= maxImpostors) update("impostorCount", value); }} className="h-10 min-w-0 flex-1 border-0 bg-transparent text-center text-base font-semibold shadow-none" />
                           <Button type="button" variant="ghost" size="icon" disabled={creating || settings.impostorCount >= maxImpostors} onClick={() => update("impostorCount", settings.impostorCount + 1)} aria-label="Agregar un impostor"><Plus className="size-4" aria-hidden="true" /></Button>
                         </div>
-                        <p id="impostor-count-help" className="mt-2 text-sm text-muted-foreground">Mínimo {getMinimumPlayers(settings.impostorCount)} jugadores para empezar.</p>
                       </div>
                     </div>
                   </section>
@@ -305,9 +314,15 @@ export default function CreateRoomPageV2() {
                     <h2 id="create-rules" className="mb-3 flex items-center gap-2 text-lg font-semibold"><SlidersHorizontal className="size-5 text-accent" aria-hidden="true" />Acceso y reglas</h2>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div><Label id="privacy-label" className="mb-2 block text-base">Privacidad</Label>
-                        <RadioGroup orientation="horizontal" aria-labelledby="privacy-label" value={settings.privacy} onValueChange={(value) => update("privacy", value as "public" | "private")} disabled={creating} className="grid grid-cols-2 gap-2">
-                          {([{ value: "public", label: "Pública", icon: Globe2 }, { value: "private", label: "Privada", icon: Lock }] as const).map((option) => <div className="relative" key={option.value}><RadioGroupItem id={`privacy-${option.value}`} value={option.value} className="peer absolute inset-0 z-10 size-full rounded-md opacity-0" /><Label htmlFor={`privacy-${option.value}`} className={`flex h-12 cursor-pointer items-center justify-center gap-2 rounded-md border text-sm peer-focus-visible:ring-2 peer-focus-visible:ring-ring ${settings.privacy === option.value ? "border-accent bg-accent/10 font-semibold" : "border-border text-muted-foreground hover:bg-muted"}`}><option.icon className="size-4" aria-hidden="true" />{option.label}</Label></div>)}
-                        </RadioGroup>
+                        {settings.playMode === "in_person" ? (
+                          <p className="flex min-h-12 items-center gap-2 rounded-md border border-accent/20 bg-accent/10 px-3 text-sm font-semibold">
+                            <Lock className="size-4 shrink-0 text-accent" aria-hidden="true" />Privada · solo por invitación
+                          </p>
+                        ) : (
+                          <RadioGroup orientation="horizontal" aria-labelledby="privacy-label" value={settings.privacy} onValueChange={(value) => update("privacy", value as "public" | "private")} disabled={creating} className="grid grid-cols-2 gap-2">
+                            {([{ value: "public", label: "Pública", icon: Globe2 }, { value: "private", label: "Privada", icon: Lock }] as const).map((option) => <div className="relative" key={option.value}><RadioGroupItem id={`privacy-${option.value}`} value={option.value} className="peer absolute inset-0 z-10 size-full rounded-md opacity-0" /><Label htmlFor={`privacy-${option.value}`} className={`flex h-12 cursor-pointer items-center justify-center gap-2 rounded-md border text-sm peer-focus-visible:ring-2 peer-focus-visible:ring-ring ${settings.privacy === option.value ? "border-accent bg-accent/10 font-semibold" : "border-border text-muted-foreground hover:bg-muted"}`}><option.icon className="size-4" aria-hidden="true" />{option.label}</Label></div>)}
+                          </RadioGroup>
+                        )}
                       </div>
                       {settings.privacy === "private" ? <motion.div initial={reduced ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }}>
                         <Label htmlFor="room-password" className="mb-2 block text-base">Contraseña de la sala</Label>
@@ -326,8 +341,8 @@ export default function CreateRoomPageV2() {
                   </div>
                   <div className="flex flex-1 flex-col gap-3 p-4">
                     <div className="rounded-lg border border-border bg-muted/20 p-3">
-                      <div className="flex items-center justify-between gap-3 text-sm"><span className="flex items-center gap-1.5"><Users className="size-4 text-accent" aria-hidden="true" />Hasta {settings.maxPlayers} jugadores</span><span className="flex items-center gap-1 text-xs text-muted-foreground"><VenetianMask className="size-4" aria-hidden="true" />{settings.impostorCount} {settings.impostorCount === 1 ? "impostor" : "impostores"}</span></div>
-                      <div className="mt-3 flex gap-1.5" aria-hidden="true">{Array.from({ length: settings.maxPlayers }, (_, index) => <span key={index} className={`flex size-7 flex-1 items-center justify-center rounded-md ${index < settings.impostorCount ? "bg-purple/15 text-purple" : "bg-accent/15 text-accent"}`}>{index < settings.impostorCount ? <VenetianMask className="size-4" /> : <Users className="size-3.5" />}</span>)}</div>
+                      <div className="flex items-center justify-between gap-3 text-sm"><span className="flex items-center gap-1.5"><Users className="size-4 text-accent" aria-hidden="true" />Hasta {settings.maxPlayers} jugadores</span><span className="flex items-center gap-1 text-xs text-muted-foreground"><VenetianMask className="size-4 text-impostor" aria-hidden="true" />{settings.impostorCount} {settings.impostorCount === 1 ? "impostor" : "impostores"}</span></div>
+                      <div className="mt-3 flex gap-1.5" aria-hidden="true">{Array.from({ length: settings.maxPlayers }, (_, index) => <span key={index} className={`flex size-7 flex-1 items-center justify-center rounded-md ${index < settings.impostorCount ? "bg-impostor/15 text-impostor" : "bg-accent/15 text-accent"}`}>{index < settings.impostorCount ? <VenetianMask className="size-4" /> : <Users className="size-3.5" />}</span>)}</div>
                     </div>
                     <dl className="divide-y divide-border text-sm">
                       {[["Tipo de partida", settings.playMode === "in_person" ? "Presencial" : "En línea"], ["Modalidad", modeLabels[settings.mode]], ["Rondas", settings.maxRounds ?? "Sin límite"], ["Privacidad", settings.privacy === "private" ? "Privada" : "Pública"], ["Impostores se conocen", settings.impostorsKnowEachOther ? "Sí" : "No"], ["Objetivos de los votos", settings.visibleVotes ? "Visibles" : "Ocultos"]].map(([label, value]) => <div key={label} className="flex items-center justify-between gap-3 py-2"><dt className="text-muted-foreground">{label}</dt><dd className="text-right font-medium">{value}</dd></div>)}
